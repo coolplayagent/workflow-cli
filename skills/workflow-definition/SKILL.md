@@ -25,6 +25,12 @@ unknown, identify that missing information instead of presenting a fabricated
 version as executable. The compiler checks version syntax only; it does not
 resolve capabilities or authorize execution.
 
+`workflow capability list` and `capability describe` expose the built-in catalog
+and exact input/output contracts. A node intended for checked direct invocation
+must match those contracts and reference an available capability version. The
+worker boundary supports read-only capability calls; full workflow execution and
+subworkflow bundle resolution remain separate work.
+
 Run `workflow validate <file>` after editing. Read the JSON `diagnostics`, including
 `code`, `path`, `node` and `edge`, and fix the affected fields. Exit 1 means an
 invalid definition; exit 2 means a usage or I/O failure. A successful static check
@@ -69,4 +75,4 @@ version should be executed.
 
 Report the resulting file or registry identity, revision, validation diagnostics,
 digest and unresolved bindings. Stop at the definition operation requested by the
-user; this CLI still has no execution or running-job administration commands.
+user; this CLI still has no workflow-run or running-job administration commands.

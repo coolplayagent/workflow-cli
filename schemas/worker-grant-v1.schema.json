@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Issued by a trusted host after authorization. A digest is a binding, not a signature.\nKeep this on a separate authenticated control channel from model/worker messages.",
+  "properties": {
+    "expires_at_unix_ms": {
+      "format": "uint64",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "protocol_version": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "request_digest": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "protocol_version",
+    "request_digest",
+    "expires_at_unix_ms"
+  ],
+  "title": "ExecutionGrant",
+  "type": "object"
+}

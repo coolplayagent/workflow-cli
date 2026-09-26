@@ -10,6 +10,12 @@ flowchart LR
     CLI[workflow-cli: application and CLI] --> V[workflow-validator: static checks and decisions]
     CLI --> D[workflow-definitions: editing and registry port]
     CLI --> S[workflow-registry-sqlite: local persistence]
+    CLI --> W[workflow-worker: capability contracts and checked invocation]
+    CLI --> B[workflow-builtin-capabilities: compiler adapters]
+    B --> W
+    B --> V
+    W --> V
+    W --> IR
     S --> D
     D --> V
     D --> IR[workflow-ir: portable data and schema]
@@ -32,7 +38,7 @@ completion of the workflow runtime.
 | Issues | Delivery |
 | --- | --- |
 | [R01 #2](https://github.com/coolplayagent/workflow-cli/issues/2) | Delivered: IR, static validation, decisions, examples, optimistic draft/node/edge CRUD, semantic diff, immutable publishing and history. Next: executable control-flow semantics and complete capability/subworkflow bundle resolution. |
-| [R02 #4](https://github.com/coolplayagent/workflow-cli/issues/4) | Provider-neutral execution ports, versioned worker protocol, standalone and workflow capability invocation, model replacement examples. |
+| [R02 #4](https://github.com/coolplayagent/workflow-cli/issues/4) | Delivered: capability descriptors/adapter port, protocol 1 request/grant/result validation, standalone and node invocation of read-only compiler capabilities. Next: model adapters and replacement examples, authenticated remote transport, remaining execution ports and durable effect dispatch. |
 | [R15 #3](https://github.com/coolplayagent/workflow-cli/issues/3) | Incremental deterministic invariant checks alongside modules; independent business baseline and fault experiments remain open. |
 | [R04 #5](https://github.com/coolplayagent/workflow-cli/issues/5), [R05 #6](https://github.com/coolplayagent/workflow-cli/issues/6) | Durable state/events/outbox; effects, retries, reconciliation and compensation. |
 | [R07 #7](https://github.com/coolplayagent/workflow-cli/issues/7), [R11 #8](https://github.com/coolplayagent/workflow-cli/issues/8) | Artifact provenance and workspace isolation; immutable versions and migrations. |
@@ -52,4 +58,5 @@ completion of the workflow runtime.
 | Condition missing/type/multiple/no match | Deterministic evaluator tests; join failure/skip/cancel tests remain pending |
 | Same validation at local/remote boundary | Serialized request parity test; actual remote transport is R02 |
 | Edits, optimistic conflicts, publishing, semantic diff | `workflow-definitions` and SQLite adapter tests; complete CLI authoring loop; OS process race and interrupted transaction recovery. External bundle resolution and run version locking remain open. |
+| Capability binding boundary | `workflow-worker` checks exact capability version/digest, node input/output contract and preconditions; built-in compiler capabilities run standalone and through a prepared node request. Complete bundle resolution and authoritative runtime transitions remain open. |
 | Business benefit | Not measured; no percentage or SLA claims |

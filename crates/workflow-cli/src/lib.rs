@@ -4,6 +4,7 @@ use std::io::{Read, Write};
 use workflow_ir::{Diagnostic, Format, MAX_DOCUMENT_BYTES, Workflow};
 
 mod registry;
+mod worker;
 
 const HELP: &str = "workflow — portable SOP definition compiler\n\nUSAGE\n  workflow validate <file.json|file.yaml>\n  workflow export <file.json|file.yaml> <json|yaml>\n  workflow schema\n  workflow help\n\nvalidate emits JSON with valid, digest and diagnostics.\nExit codes: 0 success, 1 invalid definition, 2 usage or I/O error.\nRelative files resolve against the caller's current directory.\n";
 
@@ -59,7 +60,15 @@ pub fn run(
         .collect::<Vec<_>>()
         .as_slice()
     {
-        [] | ["help" | "--help" | "-h"] => write(stdout, &format!("{HELP}\n{}", registry::HELP), 0),
+        [] | ["help" | "--help" | "-h"] => write(
+            stdout,
+            &format!("{HELP}\n{}\n{}", registry::HELP, worker::HELP),
+            0,
+        ),
+        args @ ["capability" | "worker", ..]
+        | args @ ["schema", "capability" | "request" | "grant" | "result"] => {
+            worker::run(args, stdout, stderr)
+        }
         args @ ["draft" | "release" | "diff", ..] | args @ ["schema", "patch"] => {
             registry::run(args, stdout, stderr)
         }

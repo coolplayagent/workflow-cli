@@ -1,0 +1,12 @@
+[package]
+name = "workflow-builtin-capabilities"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+serde_json.workspace = true
+workflow-ir = { path = "../workflow-ir" }
+workflow-validator = { path = "../workflow-validator" }
+workflow-worker = { path = "../workflow-worker" }

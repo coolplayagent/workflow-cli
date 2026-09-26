@@ -6,10 +6,10 @@ and evidence requirements. An LLM supplies node decisions; Skills explain how to
 use capabilities; CLI/API adapters implement them. Provider and deployment choices
 belong in bindings rather than in the business graph.
 
-**Current implementation:** a Rust definition compiler, static validator, and transactional
-local registry with revisioned drafts and immutable publications. Durable workflow
-execution and external capability resolution are
-being delivered through the [issue roadmap](docs/roadmap.md). `validate` is a
+**Current implementation:** a Rust definition compiler, static validator,
+transactional definition registry, and checked read-only capability invocation
+with a versioned worker protocol. Durable workflow execution and complete external
+binding resolution are being delivered through the [issue roadmap](docs/roadmap.md). `validate` is a
 static check, not permission to execute a capability or proof of a successful run.
 
 ## Use
@@ -52,11 +52,15 @@ remote service, which must revalidate the received definition.
 Definitions are data: reading or validating one does not invoke its capabilities.
 The registry supports incremental draft edits, historical queries and publication.
 Read the [authoring guide](docs/definition-registry.md) for the full CLI loop and
-concurrency semantics. There is no execution `run` command yet.
+concurrency semantics. The [workflow-capability Skill](skills/workflow-capability/SKILL.md)
+covers typed invocation of the compiler capabilities and worker request/result
+checks. Read the [worker protocol guide](docs/worker-protocol.md) for standalone
+and node invocation examples. There is no workflow `run` command yet.
 
 ## Contracts and development
 
 - [Draft editing, semantic diff and immutable publication](docs/definition-registry.md)
+- [Capability contracts, worker protocol and host authority](docs/worker-protocol.md)
 - [IR and decision semantics](docs/definition-semantics.md)
 - [Generated JSON Schema](schemas/workflow-v1.schema.json)
 - [Requirement review](examples/review.yaml), [parallel tests](examples/parallel-tests.json),
@@ -72,6 +76,8 @@ bazel test //...
 
 The tests run under Cargo and Bazel, cover malformed definitions and decisions,
 and check the CLI, examples and committed schemas. Registry tests also race
-independent processes and recover an interrupted SQLite transaction. `qualitygate.yaml` runs these
+independent processes and recover an interrupted SQLite transaction. Worker tests
+reject protocol drift, changed authority, expired requests and malformed outputs
+before accepting observations. `qualitygate.yaml` runs these
 four commands against its captured delivery snapshot. No business benefit or
 recovery SLA is claimed before the R15 benchmarks have been collected.

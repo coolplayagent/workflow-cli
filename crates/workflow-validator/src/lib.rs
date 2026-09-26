@@ -109,14 +109,14 @@ impl Checker<'_> {
     }
 }
 
-fn identifier(value: &str) -> bool {
+pub fn identifier(value: &str) -> bool {
     !value.is_empty()
         && value.len() <= 128
         && value
             .bytes()
             .all(|c| c.is_ascii_alphanumeric() || matches!(c, b'_' | b'-' | b'.'))
 }
-fn pinned_version(value: &str) -> bool {
+pub fn pinned_version(value: &str) -> bool {
     identifier(value)
         && !matches!(
             value.to_ascii_lowercase().as_str(),

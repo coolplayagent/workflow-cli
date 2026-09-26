@@ -522,15 +522,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "workflow-builtin-capabilities"
+version = "0.1.0"
+dependencies = [
+ "serde_json",
+ "workflow-ir",
+ "workflow-validator",
+ "workflow-worker",
+]
+
+[[package]]
 name = "workflow-cli"
 version = "0.1.0"
 dependencies = [
  "serde",
  "serde_json",
+ "workflow-builtin-capabilities",
  "workflow-definitions",
  "workflow-ir",
  "workflow-registry-sqlite",
  "workflow-validator",
+ "workflow-worker",
 ]
 
 [[package]]
@@ -572,6 +584,18 @@ dependencies = [
  "serde",
  "serde_json",
  "workflow-ir",
+]
+
+[[package]]
+name = "workflow-worker"
+version = "0.1.0"
+dependencies = [
+ "schemars",
+ "serde",
+ "serde_json",
+ "sha2",
+ "workflow-ir",
+ "workflow-validator",
 ]
 
 [[package]]

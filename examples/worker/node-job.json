@@ -1,0 +1,15 @@
+{
+  "request_id": "demo-request-1",
+  "trace_id": "demo-trace-1",
+  "timeout_ms": 60000,
+  "inputs": {
+    "document": "{\n  \"schema_version\": 1,\n  \"id\": \"requirements-review\",\n  \"version\": \"1.0.0\",\n  \"entry\": \"review\",\n  \"inputs\": {},\n  \"nodes\": [\n    {\n      \"id\": \"review\",\n      \"kind\": {\n        \"type\": \"wait\",\n        \"event\": \"design-review\",\n        \"timeout_ms\": 86400000\n      }\n    },\n    {\n      \"id\": \"implement\",\n      \"kind\": {\n        \"type\": \"task\",\n        \"capability\": {\n          \"id\": \"coding.implement\",\n          \"version\": \"1.0.0\"\n        },\n        \"policy\": null\n      }\n    },\n    {\n      \"id\": \"done\",\n      \"kind\": {\n        \"type\": \"terminal\",\n        \"outcome\": \"succeeded\"\n      }\n    },\n    {\n      \"id\": \"declined\",\n      \"kind\": {\n        \"type\": \"terminal\",\n        \"outcome\": \"cancelled\"\n      }\n    },\n    {\n      \"id\": \"expired\",\n      \"kind\": {\n        \"type\": \"terminal\",\n        \"outcome\": \"failed\"\n      }\n    }\n  ],\n  \"edges\": [\n    {\n      \"id\": \"approved\",\n      \"from\": \"review\",\n      \"to\": \"implement\",\n      \"route\": {\n        \"type\": \"accepted\"\n      }\n    },\n    {\n      \"id\": \"declined\",\n      \"from\": \"review\",\n      \"to\": \"declined\",\n      \"route\": {\n        \"type\": \"rejected\"\n      }\n    },\n    {\n      \"id\": \"expired\",\n      \"from\": \"review\",\n      \"to\": \"expired\",\n      \"route\": {\n        \"type\": \"timed_out\"\n      }\n    },\n    {\n      \"id\": \"implemented\",\n      \"from\": \"implement\",\n      \"to\": \"done\",\n      \"route\": {\n        \"type\": \"next\"\n      }\n    }\n  ]\n}\n",
+    "format": "json"
+  },
+  "attempt": {
+    "run_id": "demo-run-1",
+    "node_instance_id": "inspect-1",
+    "attempt_id": "inspect-attempt-1",
+    "lease_epoch": 1
+  }
+}
