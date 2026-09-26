@@ -1,0 +1,324 @@
+{
+  "bundle": {
+    "schema_version": 1,
+    "root": {
+      "id": "bounded-repair",
+      "version": "2.0.0"
+    },
+    "workflows": [
+      {
+        "schema_version": 1,
+        "id": "bounded-repair",
+        "version": "2.0.0",
+        "entry": "repair",
+        "inputs": {},
+        "nodes": [
+          {
+            "id": "repair",
+            "kind": {
+              "type": "loop",
+              "body": {
+                "id": "repair-round",
+                "version": "1.0.0"
+              },
+              "max_iterations": 3,
+              "deadline_ms": 600000
+            }
+          },
+          {
+            "id": "done",
+            "kind": {
+              "type": "terminal",
+              "outcome": "succeeded"
+            }
+          },
+          {
+            "id": "exhausted",
+            "kind": {
+              "type": "terminal",
+              "outcome": "failed"
+            }
+          }
+        ],
+        "edges": [
+          {
+            "id": "repaired",
+            "from": "repair",
+            "to": "done",
+            "route": {
+              "type": "completed"
+            }
+          },
+          {
+            "id": "exhausted",
+            "from": "repair",
+            "to": "exhausted",
+            "route": {
+              "type": "exhausted"
+            }
+          }
+        ]
+      },
+      {
+        "schema_version": 1,
+        "id": "repair-round",
+        "version": "1.0.0",
+        "entry": "fix",
+        "inputs": {},
+        "nodes": [
+          {
+            "id": "fix",
+            "kind": {
+              "type": "task",
+              "capability": {
+                "id": "coding.fix",
+                "version": "1.0.0"
+              },
+              "policy": null
+            }
+          },
+          {
+            "id": "test",
+            "kind": {
+              "type": "task",
+              "capability": {
+                "id": "test.check",
+                "version": "1.0.0"
+              },
+              "policy": null
+            },
+            "outputs": {
+              "passed": {
+                "value_type": {
+                  "type": "boolean"
+                },
+                "required": true
+              }
+            }
+          },
+          {
+            "id": "choose",
+            "kind": {
+              "type": "decision",
+              "mode": "exclusive"
+            },
+            "inputs": {
+              "passed": {
+                "value_type": {
+                  "type": "boolean"
+                },
+                "required": true
+              }
+            },
+            "bindings": {
+              "passed": {
+                "source": "node_output",
+                "node": "test",
+                "field": "passed"
+              }
+            }
+          },
+          {
+            "id": "done",
+            "kind": {
+              "type": "terminal",
+              "outcome": "succeeded"
+            }
+          },
+          {
+            "id": "retry",
+            "kind": {
+              "type": "terminal",
+              "outcome": "failed"
+            }
+          }
+        ],
+        "edges": [
+          {
+            "id": "fixed",
+            "from": "fix",
+            "to": "test",
+            "route": {
+              "type": "next"
+            }
+          },
+          {
+            "id": "tested",
+            "from": "test",
+            "to": "choose",
+            "route": {
+              "type": "next"
+            }
+          },
+          {
+            "id": "passed",
+            "from": "choose",
+            "to": "done",
+            "route": {
+              "type": "case",
+              "when": {
+                "op": "eq",
+                "field": "passed",
+                "value": true
+              }
+            }
+          },
+          {
+            "id": "failed",
+            "from": "choose",
+            "to": "retry",
+            "route": {
+              "type": "otherwise"
+            }
+          }
+        ]
+      }
+    ],
+    "capabilities": [
+      {
+        "schema_version": 1,
+        "capability": {
+          "id": "coding.fix",
+          "version": "1.0.0"
+        },
+        "inputs": {},
+        "outputs": {},
+        "timeout_ms": 1000,
+        "error_codes": {
+          "test_failure": "permanent"
+        },
+        "effects": {
+          "type": "read_only"
+        },
+        "usage": "Simulation contract only. No adapter is invoked and supplied results are not execution evidence.",
+        "skill": null
+      },
+      {
+        "schema_version": 1,
+        "capability": {
+          "id": "test.check",
+          "version": "1.0.0"
+        },
+        "inputs": {},
+        "outputs": {
+          "passed": {
+            "value_type": {
+              "type": "boolean"
+            },
+            "required": true
+          }
+        },
+        "timeout_ms": 1000,
+        "error_codes": {
+          "test_failure": "permanent"
+        },
+        "effects": {
+          "type": "read_only"
+        },
+        "usage": "Simulation contract only. No adapter is invoked and supplied results are not execution evidence.",
+        "skill": null
+      }
+    ]
+  },
+  "run_id": "demo-repair-third-round",
+  "inputs": {},
+  "started_at_unix_ms": 1000,
+  "events": [
+    {
+      "event_id": "event-1",
+      "run_id": "demo-repair-third-round",
+      "run_digest": "sha256:d385dc1a03002af232a9d82c7f96bec5e77c901370c6a85de905353cc257f87e",
+      "expected_revision": 1,
+      "at_unix_ms": 1001,
+      "kind": {
+        "type": "task_completed",
+        "instance_id": 6,
+        "result": {
+          "status": "succeeded",
+          "outputs": {}
+        }
+      }
+    },
+    {
+      "event_id": "event-2",
+      "run_id": "demo-repair-third-round",
+      "run_digest": "sha256:d385dc1a03002af232a9d82c7f96bec5e77c901370c6a85de905353cc257f87e",
+      "expected_revision": 2,
+      "at_unix_ms": 1002,
+      "kind": {
+        "type": "task_completed",
+        "instance_id": 8,
+        "result": {
+          "status": "succeeded",
+          "outputs": {
+            "passed": false
+          }
+        }
+      }
+    },
+    {
+      "event_id": "event-3",
+      "run_id": "demo-repair-third-round",
+      "run_digest": "sha256:d385dc1a03002af232a9d82c7f96bec5e77c901370c6a85de905353cc257f87e",
+      "expected_revision": 3,
+      "at_unix_ms": 1003,
+      "kind": {
+        "type": "task_completed",
+        "instance_id": 11,
+        "result": {
+          "status": "succeeded",
+          "outputs": {}
+        }
+      }
+    },
+    {
+      "event_id": "event-4",
+      "run_id": "demo-repair-third-round",
+      "run_digest": "sha256:d385dc1a03002af232a9d82c7f96bec5e77c901370c6a85de905353cc257f87e",
+      "expected_revision": 4,
+      "at_unix_ms": 1004,
+      "kind": {
+        "type": "task_completed",
+        "instance_id": 13,
+        "result": {
+          "status": "succeeded",
+          "outputs": {
+            "passed": false
+          }
+        }
+      }
+    },
+    {
+      "event_id": "event-5",
+      "run_id": "demo-repair-third-round",
+      "run_digest": "sha256:d385dc1a03002af232a9d82c7f96bec5e77c901370c6a85de905353cc257f87e",
+      "expected_revision": 5,
+      "at_unix_ms": 1005,
+      "kind": {
+        "type": "task_completed",
+        "instance_id": 16,
+        "result": {
+          "status": "succeeded",
+          "outputs": {}
+        }
+      }
+    },
+    {
+      "event_id": "event-6",
+      "run_id": "demo-repair-third-round",
+      "run_digest": "sha256:d385dc1a03002af232a9d82c7f96bec5e77c901370c6a85de905353cc257f87e",
+      "expected_revision": 6,
+      "at_unix_ms": 1006,
+      "kind": {
+        "type": "task_completed",
+        "instance_id": 18,
+        "result": {
+          "status": "succeeded",
+          "outputs": {
+            "passed": true
+          }
+        }
+      }
+    }
+  ]
+}

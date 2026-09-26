@@ -1,0 +1,192 @@
+{
+  "bundle": {
+    "schema_version": 1,
+    "root": {
+      "id": "parallel-tests",
+      "version": "2.0.0"
+    },
+    "workflows": [
+      {
+        "schema_version": 1,
+        "id": "parallel-tests",
+        "version": "2.0.0",
+        "entry": "split",
+        "inputs": {},
+        "nodes": [
+          {
+            "id": "split",
+            "kind": {
+              "type": "fork"
+            }
+          },
+          {
+            "id": "unit",
+            "kind": {
+              "type": "task",
+              "capability": {
+                "id": "test.unit",
+                "version": "1.0.0"
+              },
+              "policy": null
+            }
+          },
+          {
+            "id": "integration",
+            "kind": {
+              "type": "task",
+              "capability": {
+                "id": "test.integration",
+                "version": "1.0.0"
+              },
+              "policy": null
+            }
+          },
+          {
+            "id": "join",
+            "kind": {
+              "type": "join",
+              "mode": "any",
+              "remaining": "cancel_and_reconcile"
+            }
+          },
+          {
+            "id": "done",
+            "kind": {
+              "type": "terminal",
+              "outcome": "succeeded"
+            }
+          }
+        ],
+        "edges": [
+          {
+            "id": "unit-start",
+            "from": "split",
+            "to": "unit",
+            "route": {
+              "type": "next"
+            }
+          },
+          {
+            "id": "integration-start",
+            "from": "split",
+            "to": "integration",
+            "route": {
+              "type": "next"
+            }
+          },
+          {
+            "id": "unit-done",
+            "from": "unit",
+            "to": "join",
+            "route": {
+              "type": "next"
+            }
+          },
+          {
+            "id": "integration-done",
+            "from": "integration",
+            "to": "join",
+            "route": {
+              "type": "next"
+            }
+          },
+          {
+            "id": "finish",
+            "from": "join",
+            "to": "done",
+            "route": {
+              "type": "next"
+            }
+          }
+        ]
+      }
+    ],
+    "capabilities": [
+      {
+        "schema_version": 1,
+        "capability": {
+          "id": "test.unit",
+          "version": "1.0.0"
+        },
+        "inputs": {},
+        "outputs": {},
+        "timeout_ms": 1000,
+        "error_codes": {
+          "test_failure": "permanent"
+        },
+        "effects": {
+          "type": "read_only"
+        },
+        "usage": "Simulation contract only. No adapter is invoked and supplied results are not execution evidence.",
+        "skill": null
+      },
+      {
+        "schema_version": 1,
+        "capability": {
+          "id": "test.integration",
+          "version": "1.0.0"
+        },
+        "inputs": {},
+        "outputs": {},
+        "timeout_ms": 1000,
+        "error_codes": {
+          "test_failure": "permanent"
+        },
+        "effects": {
+          "type": "read_only"
+        },
+        "usage": "Simulation contract only. No adapter is invoked and supplied results are not execution evidence.",
+        "skill": null
+      }
+    ]
+  },
+  "run_id": "demo-parallel-any-cancel",
+  "inputs": {},
+  "started_at_unix_ms": 1000,
+  "events": [
+    {
+      "event_id": "event-1",
+      "run_id": "demo-parallel-any-cancel",
+      "run_digest": "sha256:e14f67ef9a2f7d8181b13a57d14c606e6c4b5798e324850747043cae370111b2",
+      "expected_revision": 1,
+      "at_unix_ms": 1001,
+      "kind": {
+        "type": "task_completed",
+        "instance_id": 5,
+        "result": {
+          "status": "succeeded",
+          "outputs": {}
+        }
+      }
+    },
+    {
+      "event_id": "event-2",
+      "run_id": "demo-parallel-any-cancel",
+      "run_digest": "sha256:e14f67ef9a2f7d8181b13a57d14c606e6c4b5798e324850747043cae370111b2",
+      "expected_revision": 2,
+      "at_unix_ms": 1002,
+      "kind": {
+        "type": "task_completed",
+        "instance_id": 2,
+        "result": {
+          "status": "uncertain",
+          "reason": "Host is still checking cancellation receipt"
+        }
+      }
+    },
+    {
+      "event_id": "event-3",
+      "run_id": "demo-parallel-any-cancel",
+      "run_digest": "sha256:e14f67ef9a2f7d8181b13a57d14c606e6c4b5798e324850747043cae370111b2",
+      "expected_revision": 3,
+      "at_unix_ms": 1003,
+      "kind": {
+        "type": "task_reconciled",
+        "instance_id": 2,
+        "result": {
+          "status": "cancelled"
+        }
+      }
+    }
+  ]
+}

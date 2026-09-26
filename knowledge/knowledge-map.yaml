@@ -1,8 +1,8 @@
 schema_version: 4
 artifact_kind: map
 map_type: knowledge
-map_version: 4
-updated_at: unix:1790422630
+map_version: 5
+updated_at: unix:1790426010
 directories:
 - directory: domain
   purpose: Domain concepts, models, and business rules.
@@ -56,9 +56,10 @@ topics:
   source_ids:
   - definition-authoring
   - definition-semantics
+  - kernel-semantics
   - worker-protocol
-  ref: topics/topic-4ca303a3bf7ddf7b-a1bbec0796fc31195cbcc6d81e700d8868ab7575e1d3f9638e72a341637e42ad.yaml
-  digest: a1bbec0796fc31195cbcc6d81e700d8868ab7575e1d3f9638e72a341637e42ad
+  ref: topics/topic-4ca303a3bf7ddf7b-0648bb2cf95d66d3a3d318c68606401f77bf684e52ffa1449cc4c51c1343375c.yaml
+  digest: 0648bb2cf95d66d3a3d318c68606401f77bf684e52ffa1449cc4c51c1343375c
 - id: business-knowledge
   title: Business knowledge
   description: Version-controlled business domains, terminology, aliases, semantics, and technical mappings.
@@ -92,3 +93,7 @@ history:
     action: source.add
     actor: cli
     summary: Added source 'worker-protocol' to topic 'architecture'.
+  - version: 5
+    action: source.add
+    actor: cli
+    summary: Added source 'kernel-semantics' to topic 'architecture'.

@@ -1,8 +1,8 @@
 # Definition IR v1
 
 This document specifies R01 static semantics. The [definition registry](definition-registry.md)
-adds revisioned editing and immutable publication. Implemented static behavior is
-separated below from execution requirements that the later runtime must satisfy.
+adds revisioned editing and immutable publication. The [kernel](kernel-semantics.md) adds bundle checks, deterministic control flow
+and checkpoint replay; external adapters and durable run storage remain host work.
 
 ## Representation and identity
 
@@ -47,16 +47,17 @@ actual input presence and cannot substitute null or a fabricated success.
 `validate_values` checks actual values independently and rejects undeclared fields,
 missing required values and wrong types. Preconditions read the node's inputs.
 Decision conditions also read inputs; binding a previous task output makes that
-handoff explicit. Only task nodes should obtain external results from adapters;
-control-node output semantics will be enforced by the execution layer.
+handoff explicit. Task and wait results use declared output contracts. The kernel checks child
+return contracts for subworkflow/loop nodes and requires other control outputs to
+be empty. Successful terminal inputs become the workflow return values.
 
 ## Graph and routes
 
 The outer graph is acyclic, reachable from its entry, and every node must have a
 path to an explicit terminal. This is a conservative structural check, not a proof
 that every arbitrary business condition terminates. Every edge has an ID and a
-route. Multiple incoming edges require a join or terminal; parallel scheduling,
-join dominance and branch cancellation are execution-level checks still to come.
+route. Multiple incoming edges require a join or terminal; the kernel settles
+edge tokens and validates closed branch regions before cancelling losing branches.
 
 | Node | Static contract |
 | --- | --- |
@@ -69,13 +70,12 @@ join dominance and branch cancellation are execution-level checks still to come.
 | `loop` | Pinned body, positive iteration limit and deadline; exactly `completed`, `exhausted` exits |
 | `terminal` | `succeeded`, `failed` or `cancelled`; no outgoing edges |
 
-A loop invokes a separately versioned body. The forthcoming runtime must allocate
-a fresh node instance for each iteration, use the same pinned body for all rounds,
-stop on successful completion, and retry a failed round only inside the specified
-bounds. The deadline is measured across the whole loop and survives restarts.
-Exhaustion uses the mandatory exit. Implicit graph backedges are rejected.
-Subworkflow dependency cycles must also be rejected when the registry resolves
-the complete definition bundle. That registry is not part of this increment.
+A loop invokes a separately versioned body. The kernel allocates fresh node
+instances for each iteration, pins the body for all rounds, stops on successful
+completion and retries failed rounds inside both bounds. The logical deadline
+is measured across the entire loop and preserved by checkpoint replay. Exhaustion
+uses the mandatory exit after child cancellation settles. Implicit graph backedges
+and recursive subworkflow/loop dependencies in the supplied bundle are rejected.
 
 ## Implemented condition evaluator
 
@@ -90,19 +90,23 @@ All case expressions are evaluated in declared edge order; a condition error
 fails selection. In `exclusive` mode, multiple true cases are an error. In
 `first_match` mode the first true case wins. If no case matches, `otherwise` wins.
 Malformed routing is rejected even if a matching case exists. Preconditions are
-validated expressions; applying them to task lifecycle is runtime work.
+validated expressions; the kernel skips a node on false and fails it on an error.
 
-## Required runtime semantics (not implemented here)
+## Kernel execution semantics
 
-A skipped branch is distinct from successful work. An `all` join must wait for all
-incoming branches to become terminal; failure/cancellation must not be counted
-as success. An `any` join selects the first successful branch. With
-`cancel_and_reconcile`, remaining branches receive cancellation and any uncertain
-external effects must be reconciled; cancellation does not undo a committed
-write. With `await`, their results must still be recorded. If no branch succeeds,
-the join cannot report success. Ordering ties require a persisted deterministic
-rule. These rules, wait event consumption, loop instances and terminal arbitration
-need runtime contract tests before R01 is closed.
+A skipped branch is distinct from successful work. An `all` join waits for all
+incoming tokens; failed or cancelled tokens prevent success. Skipped tokens are
+neutral when at least one branch succeeds; if all skip, the join skips. An `any`
+join selects the first successful token by deterministic token sequence. With
+`cancel_and_reconcile`, a verified closed fork region receives cancellation and
+uncertain results require a definite reconciliation event. With `await`, remaining
+results are recorded. The frame completes only after every node settles, including
+losers. No successful branch means the join cannot succeed.
+
+See [kernel semantics](kernel-semantics.md) for wait consumption, terminal
+arbitration, data availability and event order. Unit tests and CLI replay cover
+these transitions; durable host persistence and actual external cancellation are
+separate delivery work, so R01 remains open.
 
 ## Diagnostics
 

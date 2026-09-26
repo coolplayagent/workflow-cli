@@ -1,0 +1,54 @@
+schema_version: 4
+topic:
+  id: architecture
+  title: architecture
+  description: Added by CLI source registration.
+sources:
+- id: definition-authoring
+  topic: architecture
+  kind: doc
+  uri: docs/definition-registry.md
+  source_scope: docs
+  read_policy: direct
+  write_policy: manual-review
+  status: active
+  version: 1
+  description: Revisioned drafts, semantic diff and immutable local definition publication.
+- id: definition-semantics
+  topic: architecture
+  kind: doc
+  uri: docs/definition-semantics.md
+  source_scope: docs
+  read_policy: direct
+  write_policy: manual-review
+  status: active
+  version: 1
+  description: Portable workflow definition and decision semantics.
+- id: kernel-semantics
+  topic: architecture
+  kind: doc
+  uri: docs/kernel-semantics.md
+  source_scope: docs
+  read_policy: direct
+  write_policy: manual-review
+  status: active
+  version: 1
+  description: Deterministic bundle compilation, workflow transitions, replay and durable host boundary
+- id: worker-protocol
+  topic: architecture
+  kind: doc
+  uri: docs/worker-protocol.md
+  source_scope: docs
+  read_policy: direct
+  write_policy: manual-review
+  status: active
+  version: 1
+  description: Capability descriptors, request-bound host grants, checked worker invocation and protocol limits
+route:
+  topic: architecture
+  source_order:
+  - definition-semantics
+  - definition-authoring
+  - worker-protocol
+  - kernel-semantics
+  fallback: bounded-search

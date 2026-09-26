@@ -76,3 +76,30 @@ terms:
       - relation: represented_by
         target_kind: file
         target: crates/workflow-worker/src/protocol.rs
+  - id: workflow-kernel
+    domain: workflow
+    canonical_name: Deterministic workflow kernel
+    definition: A pure reducer of trusted host events into typed workflow state and ordered command intents, with pinned bundle contracts and no external I/O.
+    language: en
+    mappings:
+      - relation: represented_by
+        target_kind: file
+        target: crates/workflow-kernel/src/engine.rs
+  - id: node-instance
+    domain: workflow
+    canonical_name: Node instance
+    definition: A unique occurrence of a workflow node within a run, allocated afresh for every child frame and loop iteration.
+    language: en
+    mappings:
+      - relation: represented_by
+        target_kind: file
+        target: crates/workflow-kernel/src/model.rs
+  - id: run-checkpoint
+    domain: workflow
+    canonical_name: Run checkpoint
+    definition: A bounded run seed and accepted event journal whose checksum and replayed state digest detect corruption; authentication and transactional durability belong to the host.
+    language: en
+    mappings:
+      - relation: represented_by
+        target_kind: file
+        target: crates/workflow-kernel/src/model.rs

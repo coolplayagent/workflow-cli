@@ -3,6 +3,7 @@ use serde::Serialize;
 use std::io::{Read, Write};
 use workflow_ir::{Diagnostic, Format, MAX_DOCUMENT_BYTES, Workflow};
 
+mod kernel;
 mod registry;
 mod worker;
 
@@ -62,9 +63,19 @@ pub fn run(
     {
         [] | ["help" | "--help" | "-h"] => write(
             stdout,
-            &format!("{HELP}\n{}\n{}", registry::HELP, worker::HELP),
+            &format!(
+                "{HELP}\n{}\n{}\n{}",
+                registry::HELP,
+                worker::HELP,
+                kernel::HELP
+            ),
             0,
         ),
+        args @ ["kernel", ..]
+        | args @ [
+            "schema",
+            "kernel-bundle" | "kernel-event" | "kernel-scenario" | "kernel-checkpoint",
+        ] => kernel::run(args, stdout, stderr),
         args @ ["capability" | "worker", ..]
         | args @ ["schema", "capability" | "request" | "grant" | "result"] => {
             worker::run(args, stdout, stderr)
