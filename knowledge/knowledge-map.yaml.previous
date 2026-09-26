@@ -1,8 +1,8 @@
 schema_version: 4
 artifact_kind: map
 map_type: knowledge
-map_version: 3
-updated_at: unix:1790415615
+map_version: 4
+updated_at: unix:1790422630
 directories:
 - directory: domain
   purpose: Domain concepts, models, and business rules.
@@ -56,8 +56,9 @@ topics:
   source_ids:
   - definition-authoring
   - definition-semantics
-  ref: topics/topic-4ca303a3bf7ddf7b-ecfbfe05108005f4dd6fd9ac323df3a40c0b21bbb03d554b825693c2704da74d.yaml
-  digest: ecfbfe05108005f4dd6fd9ac323df3a40c0b21bbb03d554b825693c2704da74d
+  - worker-protocol
+  ref: topics/topic-4ca303a3bf7ddf7b-a1bbec0796fc31195cbcc6d81e700d8868ab7575e1d3f9638e72a341637e42ad.yaml
+  digest: a1bbec0796fc31195cbcc6d81e700d8868ab7575e1d3f9638e72a341637e42ad
 - id: business-knowledge
   title: Business knowledge
   description: Version-controlled business domains, terminology, aliases, semantics, and technical mappings.
@@ -87,3 +88,7 @@ history:
     action: source.add
     actor: cli
     summary: Added source 'definition-authoring' to topic 'architecture'.
+  - version: 4
+    action: source.add
+    actor: cli
+    summary: Added source 'worker-protocol' to topic 'architecture'.

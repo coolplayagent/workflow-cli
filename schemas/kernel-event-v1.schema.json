@@ -1,0 +1,217 @@
+{
+  "$defs": {
+    "EventKind": {
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "instance_id": {
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "result": {
+              "$ref": "#/$defs/TaskResult"
+            },
+            "type": {
+              "const": "task_completed",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "instance_id",
+            "result"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "instance_id": {
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "result": {
+              "$ref": "#/$defs/TaskResult"
+            },
+            "type": {
+              "const": "task_reconciled",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "instance_id",
+            "result"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "accepted": {
+              "type": "boolean"
+            },
+            "event": {
+              "type": "string"
+            },
+            "instance_id": {
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "outputs": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": {
+              "const": "signal",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "instance_id",
+            "event",
+            "accepted",
+            "outputs"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "const": "advance_time",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "const": "cancel",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "TaskResult": {
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "outputs": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "status": {
+              "const": "succeeded",
+              "type": "string"
+            }
+          },
+          "required": [
+            "status",
+            "outputs"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "code": {
+              "type": "string"
+            },
+            "status": {
+              "const": "failed",
+              "type": "string"
+            }
+          },
+          "required": [
+            "status",
+            "code"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "status": {
+              "const": "cancelled",
+              "type": "string"
+            }
+          },
+          "required": [
+            "status"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "reason": {
+              "type": "string"
+            },
+            "status": {
+              "const": "uncertain",
+              "type": "string"
+            }
+          },
+          "required": [
+            "status",
+            "reason"
+          ],
+          "type": "object"
+        }
+      ]
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "at_unix_ms": {
+      "format": "uint64",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "event_id": {
+      "type": "string"
+    },
+    "expected_revision": {
+      "format": "uint64",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "kind": {
+      "$ref": "#/$defs/EventKind"
+    },
+    "run_digest": {
+      "type": "string"
+    },
+    "run_id": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "event_id",
+    "run_id",
+    "run_digest",
+    "expected_revision",
+    "at_unix_ms",
+    "kind"
+  ],
+  "title": "Event",
+  "type": "object"
+}

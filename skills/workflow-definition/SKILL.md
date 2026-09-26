@@ -28,8 +28,9 @@ resolve capabilities or authorize execution.
 `workflow capability list` and `capability describe` expose the built-in catalog
 and exact input/output contracts. A node intended for checked direct invocation
 must match those contracts and reference an available capability version. The
-worker boundary supports read-only capability calls; full workflow execution and
-subworkflow bundle resolution remain separate work.
+worker boundary supports read-only capability calls. For bundle contract checks
+and deterministic control-flow simulation, use the workflow-replay Skill and
+`workflow kernel check/replay`. These operations do not dispatch tasks or persist runs.
 
 Run `workflow validate <file>` after editing. Read the JSON `diagnostics`, including
 `code`, `path`, `node` and `edge`, and fix the affected fields. Exit 1 means an

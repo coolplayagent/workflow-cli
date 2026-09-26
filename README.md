@@ -7,9 +7,9 @@ use capabilities; CLI/API adapters implement them. Provider and deployment choic
 belong in bindings rather than in the business graph.
 
 **Current implementation:** a Rust definition compiler, static validator,
-transactional definition registry, and checked read-only capability invocation
-with a versioned worker protocol. Durable workflow execution and complete external
-binding resolution are being delivered through the [issue roadmap](docs/roadmap.md). `validate` is a
+transactional definition registry, checked read-only capability invocation, and a
+deterministic workflow kernel with bundle resolution and event replay. Durable
+workflow execution and external adapters are being delivered through the [issue roadmap](docs/roadmap.md). `validate` is a
 static check, not permission to execute a capability or proof of a successful run.
 
 ## Use
@@ -55,12 +55,24 @@ Read the [authoring guide](docs/definition-registry.md) for the full CLI loop an
 concurrency semantics. The [workflow-capability Skill](skills/workflow-capability/SKILL.md)
 covers typed invocation of the compiler capabilities and worker request/result
 checks. Read the [worker protocol guide](docs/worker-protocol.md) for standalone
-and node invocation examples. There is no workflow `run` command yet.
+and node invocation examples. The [workflow-replay Skill](skills/workflow-replay/SKILL.md)
+and [kernel guide](docs/kernel-semantics.md) cover bundle checks, simulated transitions
+and checkpoint restore. There is no durable workflow `run` command yet.
+
+```sh
+cargo run --locked -- kernel replay examples/kernel/review-approved.json
+cargo run --locked -- kernel replay examples/kernel/repair-third-round.json
+```
+
+These examples contain simulation contracts and supplied task results. Replay
+calculates commands without invoking adapters; inspect `snapshot.status` even when
+the CLI exits 0.
 
 ## Contracts and development
 
 - [Draft editing, semantic diff and immutable publication](docs/definition-registry.md)
 - [Capability contracts, worker protocol and host authority](docs/worker-protocol.md)
+- [Deterministic kernel, bundle checks and replay](docs/kernel-semantics.md)
 - [IR and decision semantics](docs/definition-semantics.md)
 - [Generated JSON Schema](schemas/workflow-v1.schema.json)
 - [Requirement review](examples/review.yaml), [parallel tests](examples/parallel-tests.json),
@@ -78,6 +90,8 @@ The tests run under Cargo and Bazel, cover malformed definitions and decisions,
 and check the CLI, examples and committed schemas. Registry tests also race
 independent processes and recover an interrupted SQLite transaction. Worker tests
 reject protocol drift, changed authority, expired requests and malformed outputs
-before accepting observations. `qualitygate.yaml` runs these
+before accepting observations. Kernel tests cover branch arbitration, cancellation
+and reconciliation, bounded iterations, logical deadlines, event conflicts and
+checkpoint replay. `qualitygate.yaml` runs these
 four commands against its captured delivery snapshot. No business benefit or
 recovery SLA is claimed before the R15 benchmarks have been collected.

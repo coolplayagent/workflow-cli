@@ -10,6 +10,10 @@ flowchart LR
     CLI[workflow-cli: application and CLI] --> V[workflow-validator: static checks and decisions]
     CLI --> D[workflow-definitions: editing and registry port]
     CLI --> S[workflow-registry-sqlite: local persistence]
+    CLI --> K[workflow-kernel: deterministic transitions and replay]
+    K --> W
+    K --> V
+    K --> IR
     CLI --> W[workflow-worker: capability contracts and checked invocation]
     CLI --> B[workflow-builtin-capabilities: compiler adapters]
     B --> W
@@ -23,8 +27,7 @@ flowchart LR
     V --> IR
 ```
 
-These are independent Rust libraries with explicit Bazel targets. Future runtime,
-registry, storage, model and capability adapters will depend on stable contracts;
+These are independent Rust libraries with explicit Bazel targets. Future run storage, model and capability adapters will depend on stable contracts;
 the IR must remain free of those implementations. Cargo and Bazel compile the same
 source files and external dependency lock. Rust and Bazel versions are pinned.
 
@@ -37,10 +40,10 @@ completion of the workflow runtime.
 
 | Issues | Delivery |
 | --- | --- |
-| [R01 #2](https://github.com/coolplayagent/workflow-cli/issues/2) | Delivered: IR, static validation, decisions, examples, optimistic draft/node/edge CRUD, semantic diff, immutable publishing and history. Next: executable control-flow semantics and complete capability/subworkflow bundle resolution. |
+| [R01 #2](https://github.com/coolplayagent/workflow-cli/issues/2) | Delivered: IR, static validation, decisions, examples, optimistic draft/node/edge CRUD, semantic diff, immutable publishing and history. Also delivered: deterministic control flow, capability/subworkflow bundle checks, immutable run binding and checkpoint replay. Next: durable host integration, model policy resolution and remaining full-runtime acceptance evidence. |
 | [R02 #4](https://github.com/coolplayagent/workflow-cli/issues/4) | Delivered: capability descriptors/adapter port, protocol 1 request/grant/result validation, standalone and node invocation of read-only compiler capabilities. Next: model adapters and replacement examples, authenticated remote transport, remaining execution ports and durable effect dispatch. |
 | [R15 #3](https://github.com/coolplayagent/workflow-cli/issues/3) | Incremental deterministic invariant checks alongside modules; independent business baseline and fault experiments remain open. |
-| [R04 #5](https://github.com/coolplayagent/workflow-cli/issues/5), [R05 #6](https://github.com/coolplayagent/workflow-cli/issues/6) | Durable state/events/outbox; effects, retries, reconciliation and compensation. |
+| [R04 #5](https://github.com/coolplayagent/workflow-cli/issues/5), [R05 #6](https://github.com/coolplayagent/workflow-cli/issues/6) | Kernel state/event/command contracts and cancellation/reconciliation transitions delivered. Next: transactional RunStore/outbox, actual effect dispatch, retries and compensation. |
 | [R07 #7](https://github.com/coolplayagent/workflow-cli/issues/7), [R11 #8](https://github.com/coolplayagent/workflow-cli/issues/8) | Artifact provenance and workspace isolation; immutable versions and migrations. |
 | [R03 #10](https://github.com/coolplayagent/workflow-cli/issues/10), [R06 #11](https://github.com/coolplayagent/workflow-cli/issues/11) | Evidence gates, approvals and asynchronous durable waits. |
 | [R08 #12](https://github.com/coolplayagent/workflow-cli/issues/12) | Single-machine execution and backup/restore. |
@@ -53,10 +56,11 @@ completion of the workflow runtime.
 | Requirement | Evidence and remaining boundary |
 | --- | --- |
 | Shared versioned JSON/YAML/builder IR | `workflow-ir` round-trip, digest and type tests; generated JSON Schema checked against source |
-| Review, parallel tests, bounded repair, rejection examples | Four JSON examples and equivalent review YAML pass the same compiler; runtime outcome tests remain pending |
-| Unknown refs, cycles, reachability, bounds and input types | Negative validator tests; external capability/subworkflow availability belongs to registry resolution |
-| Condition missing/type/multiple/no match | Deterministic evaluator tests; join failure/skip/cancel tests remain pending |
+| Review, parallel tests, bounded repair, rejection examples | Compiler fixtures plus five CLI replay scenarios and kernel outcome tests; external task results in scenarios are simulated |
+| Unknown refs, cycles, reachability, bounds and input types | Negative validator and bundle tests; contracts and references resolved inside the supplied bundle, external adapter availability remains a host check |
+| Condition missing/type/multiple/no match | Deterministic evaluator and kernel tests, including join failure/skip/cancel and missing actual values |
 | Same validation at local/remote boundary | Serialized request parity test; actual remote transport is R02 |
-| Edits, optimistic conflicts, publishing, semantic diff | `workflow-definitions` and SQLite adapter tests; complete CLI authoring loop; OS process race and interrupted transaction recovery. External bundle resolution and run version locking remain open. |
-| Capability binding boundary | `workflow-worker` checks exact capability version/digest, node input/output contract and preconditions; built-in compiler capabilities run standalone and through a prepared node request. Complete bundle resolution and authoritative runtime transitions remain open. |
+| Edits, optimistic conflicts, publishing, semantic diff | `workflow-definitions` and SQLite adapter tests; complete CLI authoring loop; OS process race and interrupted transaction recovery. Bundle checks and definition/capability digests lock kernel runs; durable registry-to-run transactions remain open. |
+| Capability binding boundary | `workflow-worker` checks exact capability version/digest, node input/output contract and preconditions; built-in compiler capabilities run standalone and through a prepared node request. Kernel checks supplied bundles and reduces trusted host events; authenticated ingress, live ownership and durable commits remain open. |
+| Control-flow runtime | `workflow-kernel` tests sequence, decisions, all/any, waits, subworkflow values and bounded loops; checkpoint restore preserves deadlines and instance identity. No task dispatch or transactional run storage yet. |
 | Business benefit | Not measured; no percentage or SLA claims |

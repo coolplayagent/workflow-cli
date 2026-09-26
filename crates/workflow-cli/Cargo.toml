@@ -6,6 +6,7 @@ license.workspace = true
 rust-version.workspace = true
 
 [dependencies]
+workflow-kernel = { path = "../workflow-kernel" }
 workflow-worker = { path = "../workflow-worker" }
 workflow-builtin-capabilities = { path = "../workflow-builtin-capabilities" }
 serde.workspace = true

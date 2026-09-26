@@ -1,0 +1,301 @@
+{
+  "$defs": {
+    "Event": {
+      "additionalProperties": false,
+      "properties": {
+        "at_unix_ms": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "event_id": {
+          "type": "string"
+        },
+        "expected_revision": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "kind": {
+          "$ref": "#/$defs/EventKind"
+        },
+        "run_digest": {
+          "type": "string"
+        },
+        "run_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "event_id",
+        "run_id",
+        "run_digest",
+        "expected_revision",
+        "at_unix_ms",
+        "kind"
+      ],
+      "type": "object"
+    },
+    "EventKind": {
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "instance_id": {
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "result": {
+              "$ref": "#/$defs/TaskResult"
+            },
+            "type": {
+              "const": "task_completed",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "instance_id",
+            "result"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "instance_id": {
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "result": {
+              "$ref": "#/$defs/TaskResult"
+            },
+            "type": {
+              "const": "task_reconciled",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "instance_id",
+            "result"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "accepted": {
+              "type": "boolean"
+            },
+            "event": {
+              "type": "string"
+            },
+            "instance_id": {
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "outputs": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": {
+              "const": "signal",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "instance_id",
+            "event",
+            "accepted",
+            "outputs"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "const": "advance_time",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "const": "cancel",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "Limits": {
+      "additionalProperties": false,
+      "properties": {
+        "max_events": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "max_frames": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "max_instances": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "max_transitions": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "max_frames",
+        "max_instances",
+        "max_transitions",
+        "max_events"
+      ],
+      "type": "object"
+    },
+    "TaskResult": {
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "outputs": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "status": {
+              "const": "succeeded",
+              "type": "string"
+            }
+          },
+          "required": [
+            "status",
+            "outputs"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "code": {
+              "type": "string"
+            },
+            "status": {
+              "const": "failed",
+              "type": "string"
+            }
+          },
+          "required": [
+            "status",
+            "code"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "status": {
+              "const": "cancelled",
+              "type": "string"
+            }
+          },
+          "required": [
+            "status"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "reason": {
+              "type": "string"
+            },
+            "status": {
+              "const": "uncertain",
+              "type": "string"
+            }
+          },
+          "required": [
+            "status",
+            "reason"
+          ],
+          "type": "object"
+        }
+      ]
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "bundle_digest": {
+      "type": "string"
+    },
+    "checksum": {
+      "type": "string"
+    },
+    "events": {
+      "items": {
+        "$ref": "#/$defs/Event"
+      },
+      "type": "array"
+    },
+    "inputs": {
+      "additionalProperties": true,
+      "type": "object"
+    },
+    "limits": {
+      "$ref": "#/$defs/Limits"
+    },
+    "run_id": {
+      "type": "string"
+    },
+    "schema_version": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "started_at_unix_ms": {
+      "format": "uint64",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "state_digest": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema_version",
+    "bundle_digest",
+    "run_id",
+    "inputs",
+    "started_at_unix_ms",
+    "limits",
+    "events",
+    "state_digest",
+    "checksum"
+  ],
+  "title": "Checkpoint",
+  "type": "object"
+}
