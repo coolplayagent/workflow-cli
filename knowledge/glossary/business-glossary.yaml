@@ -49,3 +49,30 @@ terms:
       - relation: represented_by
         target_kind: file
         target: crates/workflow-registry-sqlite/src/lib.rs
+  - id: capability-descriptor
+    domain: workflow
+    canonical_name: Capability descriptor
+    definition: An immutable adapter contract identified by exact capability version and digest, declaring typed inputs and outputs, errors, timeout, effects and Skill usage.
+    language: en
+    mappings:
+      - relation: represented_by
+        target_kind: file
+        target: crates/workflow-worker/src/descriptor.rs
+  - id: work-request
+    domain: workflow
+    canonical_name: Work request
+    definition: A versioned invocation carrying exact input and capability digests, deadlines and trace identity; workflow scope also identifies the definition, run, node instance, attempt and lease epoch.
+    language: en
+    mappings:
+      - relation: represented_by
+        target_kind: file
+        target: crates/workflow-worker/src/protocol.rs
+  - id: execution-grant
+    domain: workflow
+    canonical_name: Execution grant
+    definition: A host-issued request digest and expiry binding for an approved invocation; the host separately establishes authentication, current ownership and authority to commit state.
+    language: en
+    mappings:
+      - relation: represented_by
+        target_kind: file
+        target: crates/workflow-worker/src/protocol.rs
