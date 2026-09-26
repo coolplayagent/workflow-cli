@@ -1,0 +1,33 @@
+schema_version: 1
+domains:
+  - id: workflow
+    name: Business workflow contracts
+    description: Portable business SOP definitions independent of model and deployment bindings.
+terms:
+  - id: definition
+    domain: workflow
+    canonical_name: Workflow definition
+    definition: A versioned graph of business steps with explicit contracts, legal routes and terminal outcomes.
+    language: en
+    mappings:
+      - relation: represented_by
+        target_kind: file
+        target: crates/workflow-ir/src/lib.rs
+  - id: capability
+    domain: workflow
+    canonical_name: Capability reference
+    definition: A stable ID and exact version identifying a unit of work implemented by a CLI or API adapter; a Skill supplies usage semantics.
+    language: en
+    mappings:
+      - relation: represented_by
+        target_kind: file
+        target: crates/workflow-ir/src/lib.rs
+  - id: static-validation
+    domain: workflow
+    canonical_name: Static definition validation
+    definition: Checks the portable definition for type, reference and graph errors before runtime binding and execution; it is not an execution receipt.
+    language: en
+    mappings:
+      - relation: represented_by
+        target_kind: file
+        target: crates/workflow-validator/src/lib.rs

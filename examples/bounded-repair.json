@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "id": "bounded-repair",
+  "version": "1.0.0",
+  "entry": "repair",
+  "inputs": {},
+  "nodes": [
+    {
+      "id": "repair",
+      "kind": {
+        "type": "loop",
+        "body": {
+          "id": "repair-round",
+          "version": "1.0.0"
+        },
+        "max_iterations": 2,
+        "deadline_ms": 600000
+      }
+    },
+    {
+      "id": "done",
+      "kind": {
+        "type": "terminal",
+        "outcome": "succeeded"
+      }
+    },
+    {
+      "id": "exhausted",
+      "kind": {
+        "type": "terminal",
+        "outcome": "failed"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "repaired",
+      "from": "repair",
+      "to": "done",
+      "route": {
+        "type": "completed"
+      }
+    },
+    {
+      "id": "exhausted",
+      "from": "repair",
+      "to": "exhausted",
+      "route": {
+        "type": "exhausted"
+      }
+    }
+  ]
+}

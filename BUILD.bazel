@@ -1,0 +1,11 @@
+exports_files(["Cargo.toml", "Cargo.lock"])
+alias(
+    name = "workflow",
+    actual = "//crates/workflow-cli:workflow",
+    visibility = ["//visibility:public"],
+)
+filegroup(
+    name = "fixtures",
+    srcs = glob(["examples/*.json", "examples/*.yaml", "schemas/*.json"]),
+    visibility = ["//visibility:public"],
+)

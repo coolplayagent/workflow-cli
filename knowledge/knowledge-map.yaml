@@ -1,0 +1,84 @@
+schema_version: 4
+artifact_kind: map
+map_type: knowledge
+map_version: 2
+updated_at: unix:1790413434
+directories:
+- directory: domain
+  purpose: Domain concepts, models, and business rules.
+  content_scope:
+  - knowledge/domain/**
+  key_files:
+  - knowledge/domain/README.md
+  load_hint: on_demand
+  relations: []
+  update_rule: reviewed
+- directory: guides
+  purpose: Task-oriented repository knowledge guides.
+  content_scope:
+  - knowledge/guides/**
+  key_files:
+  - knowledge/guides/README.md
+  load_hint: on_demand
+  relations: []
+  update_rule: reviewed
+- directory: ops
+  purpose: Operational procedures and diagnostics.
+  content_scope:
+  - knowledge/ops/**
+  key_files:
+  - knowledge/ops/README.md
+  load_hint: on_demand
+  relations: []
+  update_rule: reviewed
+- directory: glossary
+  purpose: Business terminology, aliases, and technical mappings.
+  content_scope:
+  - knowledge/glossary/**
+  key_files:
+  - knowledge/glossary/README.md
+  load_hint: on_demand
+  relations: []
+  update_rule: reviewed
+- directory: best-practices
+  purpose: Reviewed engineering and knowledge-management practices.
+  content_scope:
+  - knowledge/best-practices/**
+  key_files:
+  - knowledge/best-practices/README.md
+  load_hint: on_demand
+  relations: []
+  update_rule: reviewed
+topics:
+- id: architecture
+  title: architecture
+  description: Added by CLI source registration.
+  source_ids:
+  - definition-semantics
+  ref: topics/topic-4ca303a3bf7ddf7b-b28c48760694cbd09af0a4b0550a2ac706a95b777e0a38c1f826d5876f5d16fb.yaml
+  digest: b28c48760694cbd09af0a4b0550a2ac706a95b777e0a38c1f826d5876f5d16fb
+- id: business-knowledge
+  title: Business knowledge
+  description: Version-controlled business domains, terminology, aliases, semantics, and technical mappings.
+  source_ids:
+  - repository-business-glossary
+  ref: topics/topic-17438b0266842113-79d9f29ebf10de1411c359a80aa9f343853d255098085e63fdc9e5c6c43d1adc.yaml
+  digest: 79d9f29ebf10de1411c359a80aa9f343853d255098085e63fdc9e5c6c43d1adc
+- id: software-model
+  title: Whole-software model
+  description: Code-map-backed architecture, build, deployment, dependency, configuration, and design knowledge.
+  source_ids:
+  - repository-software-model
+  ref: topics/topic-247e2a0d6f43d185-fc2d5534a38a5ddc28536afa855ff77db8e2941ccaccbfa79f948ddcfaec2f7d.yaml
+  digest: fc2d5534a38a5ddc28536afa855ff77db8e2941ccaccbfa79f948ddcfaec2f7d
+history:
+  omitted_through: 0
+  recent:
+  - version: 1
+    action: init
+    actor: cli
+    summary: Created knowledge map with repository software-model route.
+  - version: 2
+    action: source.add
+    actor: cli
+    summary: Added source 'definition-semantics' to topic 'architecture'.

@@ -1,0 +1,3 @@
+build --incompatible_strict_action_env
+build --jobs=4
+test --test_output=errors
