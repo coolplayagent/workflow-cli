@@ -1,0 +1,29 @@
+load("@crates//:defs.bzl", "all_crate_deps")
+load("@rules_rust//rust:defs.bzl", "rust_library", "rust_test", "rust_binary")
+
+exports_files(["Cargo.toml"])
+
+rust_library(
+    name = "workflow_cli",
+    srcs = glob(["src/**/*.rs"], exclude = ["src/main.rs"]),
+    crate_root = "src/lib.rs",
+    edition = "2024",
+    deps = ["//crates/workflow-ir:workflow_ir", "//crates/workflow-validator:workflow_validator"] + all_crate_deps(normal = True),
+    proc_macro_deps = all_crate_deps(proc_macro = True),
+    visibility = ["//visibility:public"],
+)
+
+rust_test(
+    name = "tests",
+    size = "small",
+    crate = ":workflow_cli",
+    data = ["//:fixtures"],
+)
+
+rust_binary(
+    name = "workflow",
+    srcs = ["src/main.rs"],
+    edition = "2024",
+    deps = [":workflow_cli"],
+    visibility = ["//visibility:public"],
+)

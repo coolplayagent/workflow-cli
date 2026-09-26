@@ -1,0 +1,114 @@
+{
+  "schema_version": 1,
+  "id": "repair-round",
+  "version": "1.0.0",
+  "entry": "fix",
+  "inputs": {},
+  "nodes": [
+    {
+      "id": "fix",
+      "kind": {
+        "type": "task",
+        "capability": {
+          "id": "coding.fix",
+          "version": "1.0.0"
+        },
+        "policy": null
+      }
+    },
+    {
+      "id": "test",
+      "kind": {
+        "type": "task",
+        "capability": {
+          "id": "test.check",
+          "version": "1.0.0"
+        },
+        "policy": null
+      },
+      "outputs": {
+        "passed": {
+          "value_type": {
+            "type": "boolean"
+          },
+          "required": true
+        }
+      }
+    },
+    {
+      "id": "choose",
+      "kind": {
+        "type": "decision",
+        "mode": "exclusive"
+      },
+      "inputs": {
+        "passed": {
+          "value_type": {
+            "type": "boolean"
+          },
+          "required": true
+        }
+      },
+      "bindings": {
+        "passed": {
+          "source": "node_output",
+          "node": "test",
+          "field": "passed"
+        }
+      }
+    },
+    {
+      "id": "done",
+      "kind": {
+        "type": "terminal",
+        "outcome": "succeeded"
+      }
+    },
+    {
+      "id": "retry",
+      "kind": {
+        "type": "terminal",
+        "outcome": "failed"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "fixed",
+      "from": "fix",
+      "to": "test",
+      "route": {
+        "type": "next"
+      }
+    },
+    {
+      "id": "tested",
+      "from": "test",
+      "to": "choose",
+      "route": {
+        "type": "next"
+      }
+    },
+    {
+      "id": "passed",
+      "from": "choose",
+      "to": "done",
+      "route": {
+        "type": "case",
+        "when": {
+          "op": "eq",
+          "field": "passed",
+          "value": true
+        }
+      }
+    },
+    {
+      "id": "failed",
+      "from": "choose",
+      "to": "retry",
+      "route": {
+        "type": "otherwise"
+      }
+    }
+  ]
+}

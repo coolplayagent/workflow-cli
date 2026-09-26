@@ -1,0 +1,53 @@
+schema_version: 1
+exclude: []
+languages: [rust]
+rulesets: [core]
+rules:
+  line-ending:
+    enabled: true
+    required: true
+    severity: error
+    parameters: {}
+checks:
+  - id: rust-format
+    kind: command
+    argv: [cargo, fmt, --all, --check]
+    cwd: .
+    timeout_seconds: 120
+    required: true
+    severity: error
+  - id: rust-clippy
+    kind: command
+    argv: [cargo, clippy, --workspace, --all-targets, --locked, --, '-D', warnings]
+    cwd: .
+    timeout_seconds: 900
+    required: true
+    severity: error
+  - id: rust-tests
+    kind: command
+    argv: [cargo, test, --workspace, --locked]
+    cwd: .
+    timeout_seconds: 900
+    required: true
+    severity: error
+  - id: bazel-tests
+    kind: command
+    argv: [bazel, test, //...]
+    cwd: .
+    timeout_seconds: 1800
+    required: true
+    severity: error
+profiles: {}
+verification_assets:
+  - qualitygate.yaml
+  - Cargo.toml
+  - Cargo.lock
+  - rust-toolchain.toml
+  - MODULE.bazel
+  - MODULE.bazel.lock
+  - '**/BUILD.bazel'
+  - '**/Cargo.toml'
+  - '**/tests.rs'
+  - examples/**
+  - schemas/**
+  - .github/workflows/**
