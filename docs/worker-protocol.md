@@ -4,7 +4,8 @@ This R02 increment provides a working read-only capability boundary and the JSON
 contract a future local/remote worker host can reuse. It includes two actual
 compiler capabilities. A worker produces checked observations; committing a run,
 arbitrating transitions and fencing concurrent owners require the forthcoming
-RunStore and runtime. No command in this increment starts or resumes a run.
+RunStore and runtime. Worker commands do not start a run; the separate
+[run storage CLI](run-store.md) persists state and command intents.
 
 ## Independent components
 
@@ -180,5 +181,4 @@ Failures must use a descriptor's declared code and matching class. Transient doe
 not authorize automatic retry. Missing outputs, wrong types, undeclared outputs,
 invalid evidence, forged request identity and attempted transition fields fail
 result validation. No model adapter, provider credentials, durable effects,
-RunStore, full capability/subworkflow bundle resolver or live lease fencing is
-implemented by this increment. R01/R02/R04/R05 remain open for those parts.
+live lease fencing or effect executor is implemented by this increment. R01/R02/R04/R05 remain open for those parts.

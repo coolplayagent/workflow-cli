@@ -59,4 +59,5 @@ as hard cancellation of arbitrary Rust code.
 
 Report the exact capability/version, contract or request digest, outcome and any
 remaining host-side verification. Stop at the requested invocation/integration;
-there is no workflow `run` or running-job administration command yet.
+use workflow-run for requested durable state operations. Worker dispatch does not
+commit the run; it still needs the host transaction and authority checks.

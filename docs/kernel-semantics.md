@@ -138,6 +138,7 @@ and ordered command outbox, then dispatch from that outbox with stable command
 identity, e.g. `(run_id, revision, command_index)`. It must also supply live leases,
 fencing, authenticated event ingress and recoverable timer delivery. Replay must
 not dispatch historical commands. Task attempts/retries, model policies, effect
-execution/compensation and transactional RunStore are subsequent adapters. This
-MR delivers their deterministic transition contract, without claiming durable
-execution, exactly-once effects, business benefits or recovery SLAs.
+execution/compensation remain subsequent adapters. The [SQLite RunStore](run-store.md)
+now implements atomic state/event/outbox commits and verified recovery. Kernel
+replay itself remains a pure calculation; neither layer claims exactly-once
+effects, business benefits or recovery SLAs.

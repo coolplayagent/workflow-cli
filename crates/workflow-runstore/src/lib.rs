@@ -1,0 +1,132 @@
+//! Durable run storage port. Adapters commit state, events and command intents atomically.
+mod model;
+pub use model::*;
+use serde::{Deserialize, Serialize};
+pub use workflow_kernel::{
+    BundleSpec, Checkpoint, Command, Event, Limits, RunStatus, Snapshot, Transition, Values,
+};
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ErrorCode {
+    InvalidRequest,
+    NotFound,
+    StartConflict,
+    BindingConflict,
+    ReceiptConflict,
+    DeliveryOrder,
+    TransitionRejected,
+    Busy,
+    Storage,
+    UnsupportedStorage,
+    CorruptStorage,
+}
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Error {
+    pub code: ErrorCode,
+    pub message: String,
+    pub kernel_code: Option<workflow_kernel::ErrorCode>,
+}
+impl Error {
+    pub fn new(code: ErrorCode, message: impl Into<String>) -> Self {
+        Self {
+            code,
+            message: message.into(),
+            kernel_code: None,
+        }
+    }
+}
+impl std::fmt::Display for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.message)
+    }
+}
+impl std::error::Error for Error {}
+impl From<workflow_kernel::Error> for Error {
+    fn from(e: workflow_kernel::Error) -> Self {
+        Self {
+            code: ErrorCode::TransitionRejected,
+            message: e.message,
+            kernel_code: Some(e.code),
+        }
+    }
+}
+impl From<workflow_worker::Error> for Error {
+    fn from(e: workflow_worker::Error) -> Self {
+        Self::new(ErrorCode::InvalidRequest, e.message)
+    }
+}
+pub type Result<T> = std::result::Result<T, Error>;
+
+/// A successful mutation must follow the adapter's durable commit. Read methods
+/// observe one consistent transaction. Events/receipts are trusted host inputs.
+/// Reading pending commands is not a lease or permission to execute them.
+pub trait RunStore {
+    fn start(&mut self, request: &StartRun) -> Result<Committed>;
+    fn apply(&mut self, event: &Event) -> Result<Committed>;
+    fn get(&mut self, run_id: &str) -> Result<Snapshot>;
+    fn list(&mut self, after: Option<&str>, limit: u32) -> Result<Page<RunSummary, String>>;
+    fn history(
+        &mut self,
+        run_id: &str,
+        after_revision: u64,
+        limit: u32,
+    ) -> Result<Page<RecordedEvent, u64>>;
+    fn outbox(
+        &mut self,
+        run_id: &str,
+        after_sequence: u64,
+        limit: u32,
+        pending_only: bool,
+    ) -> Result<Page<OutboxEntry, u64>>;
+    fn acknowledge(&mut self, receipt: &DeliveryReceipt) -> Result<OutboxEntry>;
+    fn verify(&mut self, run_id: &str) -> Result<Verification>;
+}
+pub fn validate_id(id: &str) -> Result<()> {
+    if !workflow_validator::identifier(id) {
+        return Err(Error::new(ErrorCode::InvalidRequest, "stable ID required"));
+    }
+    Ok(())
+}
+pub fn validate_limit(limit: u32) -> Result<()> {
+    if !(1..=100).contains(&limit) {
+        return Err(Error::new(
+            ErrorCode::InvalidRequest,
+            "page limit must be 1..100",
+        ));
+    }
+    Ok(())
+}
+pub fn command_entry(
+    run_digest: &str,
+    run_id: &str,
+    sequence: u64,
+    revision: u64,
+    index: u32,
+    command: Command,
+) -> Result<OutboxEntry> {
+    Ok(OutboxEntry {
+        run_id: run_id.into(),
+        sequence,
+        revision,
+        command_index: index,
+        command_id: workflow_worker::digest(&(run_digest, revision, index))?,
+        command_digest: workflow_worker::digest(&command)?,
+        command,
+        receipt: None,
+    })
+}
+pub fn schema(kind: &str) -> Result<String> {
+    let schema = match kind {
+        "start" => schemars::schema_for!(StartRun),
+        "receipt" => schemars::schema_for!(DeliveryReceipt),
+        _ => {
+            return Err(Error::new(
+                ErrorCode::InvalidRequest,
+                "run schema must be start or receipt",
+            ));
+        }
+    };
+    serde_json::to_string_pretty(&schema)
+        .map_err(|e| Error::new(ErrorCode::InvalidRequest, e.to_string()))
+}

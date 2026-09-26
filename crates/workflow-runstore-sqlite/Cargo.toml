@@ -1,0 +1,13 @@
+[package]
+name = "workflow-runstore-sqlite"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+rusqlite.workspace = true
+serde.workspace = true
+workflow-runstore = { path = "../workflow-runstore" }
+workflow-kernel = { path = "../workflow-kernel" }
+workflow-worker = { path = "../workflow-worker" }

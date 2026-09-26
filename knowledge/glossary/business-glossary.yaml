@@ -103,3 +103,30 @@ terms:
       - relation: represented_by
         target_kind: file
         target: crates/workflow-kernel/src/model.rs
+  - id: run-store
+    domain: workflow
+    canonical_name: RunStore
+    definition: A persistence port that commits an immutable run seed, authoritative state revision, accepted events and successor command intents atomically before acknowledgement.
+    language: en
+    mappings:
+      - relation: represented_by
+        target_kind: file
+        target: crates/workflow-runstore/src/lib.rs
+  - id: command-outbox
+    domain: workflow
+    canonical_name: Command outbox
+    definition: An ordered persistent journal of kernel intents with stable run-revision-command identities, retained across retries and process recovery until acknowledged by a host.
+    language: en
+    mappings:
+      - relation: represented_by
+        target_kind: file
+        target: crates/workflow-runstore-sqlite/src/writes.rs
+  - id: delivery-receipt
+    domain: workflow
+    canonical_name: Delivery receipt
+    definition: An immutable host acknowledgement of durable command delivery bound to the exact command digest; it is separate from task completion and external effect evidence.
+    language: en
+    mappings:
+      - relation: represented_by
+        target_kind: file
+        target: crates/workflow-runstore/src/model.rs

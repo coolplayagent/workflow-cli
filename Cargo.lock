@@ -542,6 +542,8 @@ dependencies = [
  "workflow-ir",
  "workflow-kernel",
  "workflow-registry-sqlite",
+ "workflow-runstore",
+ "workflow-runstore-sqlite",
  "workflow-validator",
  "workflow-worker",
 ]
@@ -588,6 +590,29 @@ dependencies = [
  "rusqlite",
  "workflow-definitions",
  "workflow-ir",
+]
+
+[[package]]
+name = "workflow-runstore"
+version = "0.1.0"
+dependencies = [
+ "schemars",
+ "serde",
+ "serde_json",
+ "workflow-kernel",
+ "workflow-validator",
+ "workflow-worker",
+]
+
+[[package]]
+name = "workflow-runstore-sqlite"
+version = "0.1.0"
+dependencies = [
+ "rusqlite",
+ "serde",
+ "workflow-kernel",
+ "workflow-runstore",
+ "workflow-worker",
 ]
 
 [[package]]

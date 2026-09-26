@@ -10,6 +10,11 @@ flowchart LR
     CLI[workflow-cli: application and CLI] --> V[workflow-validator: static checks and decisions]
     CLI --> D[workflow-definitions: editing and registry port]
     CLI --> S[workflow-registry-sqlite: local persistence]
+    CLI --> RS[workflow-runstore: durable storage port]
+    CLI --> DB[workflow-runstore-sqlite: transactional run adapter]
+    DB --> RS
+    DB --> K
+    RS --> K
     CLI --> K[workflow-kernel: deterministic transitions and replay]
     K --> W
     K --> V
@@ -43,7 +48,7 @@ completion of the workflow runtime.
 | [R01 #2](https://github.com/coolplayagent/workflow-cli/issues/2) | Delivered: IR, static validation, decisions, examples, optimistic draft/node/edge CRUD, semantic diff, immutable publishing and history. Also delivered: deterministic control flow, capability/subworkflow bundle checks, immutable run binding and checkpoint replay. Next: durable host integration, model policy resolution and remaining full-runtime acceptance evidence. |
 | [R02 #4](https://github.com/coolplayagent/workflow-cli/issues/4) | Delivered: capability descriptors/adapter port, protocol 1 request/grant/result validation, standalone and node invocation of read-only compiler capabilities. Next: model adapters and replacement examples, authenticated remote transport, remaining execution ports and durable effect dispatch. |
 | [R15 #3](https://github.com/coolplayagent/workflow-cli/issues/3) | Incremental deterministic invariant checks alongside modules; independent business baseline and fault experiments remain open. |
-| [R04 #5](https://github.com/coolplayagent/workflow-cli/issues/5), [R05 #6](https://github.com/coolplayagent/workflow-cli/issues/6) | Kernel state/event/command contracts and cancellation/reconciliation transitions delivered. Next: transactional RunStore/outbox, actual effect dispatch, retries and compensation. |
+| [R04 #5](https://github.com/coolplayagent/workflow-cli/issues/5), [R05 #6](https://github.com/coolplayagent/workflow-cli/issues/6) | Kernel state/event/command contracts and cancellation/reconciliation transitions delivered. Also delivered: RunStore port, SQLite atomic state/event/checkpoint/outbox commits, ordered delivery receipts, persistent CLI, CAS/crash/corruption/full-disk tests. Next: attempts/leases, pause/resume, autonomous dispatch/timers, effects, retries, artifacts and backup/restore. |
 | [R07 #7](https://github.com/coolplayagent/workflow-cli/issues/7), [R11 #8](https://github.com/coolplayagent/workflow-cli/issues/8) | Artifact provenance and workspace isolation; immutable versions and migrations. |
 | [R03 #10](https://github.com/coolplayagent/workflow-cli/issues/10), [R06 #11](https://github.com/coolplayagent/workflow-cli/issues/11) | Evidence gates, approvals and asynchronous durable waits. |
 | [R08 #12](https://github.com/coolplayagent/workflow-cli/issues/12) | Single-machine execution and backup/restore. |
@@ -61,6 +66,19 @@ completion of the workflow runtime.
 | Condition missing/type/multiple/no match | Deterministic evaluator and kernel tests, including join failure/skip/cancel and missing actual values |
 | Same validation at local/remote boundary | Serialized request parity test; actual remote transport is R02 |
 | Edits, optimistic conflicts, publishing, semantic diff | `workflow-definitions` and SQLite adapter tests; complete CLI authoring loop; OS process race and interrupted transaction recovery. Bundle checks and definition/capability digests lock kernel runs; durable registry-to-run transactions remain open. |
-| Capability binding boundary | `workflow-worker` checks exact capability version/digest, node input/output contract and preconditions; built-in compiler capabilities run standalone and through a prepared node request. Kernel checks supplied bundles and reduces trusted host events; authenticated ingress, live ownership and durable commits remain open. |
-| Control-flow runtime | `workflow-kernel` tests sequence, decisions, all/any, waits, subworkflow values and bounded loops; checkpoint restore preserves deadlines and instance identity. No task dispatch or transactional run storage yet. |
+| Capability binding boundary | `workflow-worker` checks exact capability version/digest, node input/output contract and preconditions; built-in compiler capabilities run standalone and through a prepared node request. Kernel checks supplied bundles and reduces trusted host events; SQLite run commits are implemented; authenticated ingress, live ownership and dispatch remain open. |
+| Control-flow runtime | `workflow-kernel` tests sequence, decisions, all/any, waits, subworkflow values and bounded loops; checkpoint restore preserves deadlines and instance identity. SQLite run storage persists those transitions; no task dispatch yet. |
 | Business benefit | Not measured; no percentage or SLA claims |
+
+## R04 first increment evidence
+
+The [run storage guide](run-store.md) specifies the RunStore port, SQLite contract
+and tested crash model. Atomic start/apply/receipt transactions, immutable binding
+locks, event deduplication, CAS, retained waits/loop frames and complete recovery
+have contract tests. Independent processes are terminated around commits; SQLite
+full-disk/read-only failures never emit success. Checkpoint-plus-tail, complete
+history, current state and every outbox intent are compared during recovery.
+
+Attempts, leases, effect/artifact ledgers, pause/resume, autonomous timers, controlled
+retry, backup/restore and retention are still required before R04 closes. Process
+recovery evidence does not establish whole-disk disaster recovery or RPO/RTO.
