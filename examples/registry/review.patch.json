@@ -1,0 +1,13 @@
+{
+  "expected_revision": 1,
+  "operations": [
+    { "op": "set_version", "version": "2.0.0" },
+    {
+      "op": "replace_node",
+      "node": {
+        "id": "review",
+        "kind": { "type": "wait", "event": "design-review", "timeout_ms": 43200000 }
+      }
+    }
+  ]
+}

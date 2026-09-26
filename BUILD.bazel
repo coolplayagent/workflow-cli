@@ -6,6 +6,6 @@ alias(
 )
 filegroup(
     name = "fixtures",
-    srcs = glob(["examples/*.json", "examples/*.yaml", "schemas/*.json"]),
+    srcs = glob(["examples/**/*.json", "examples/*.yaml", "schemas/*.json"]),
     visibility = ["//visibility:public"],
 )

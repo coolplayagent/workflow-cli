@@ -1,8 +1,8 @@
 schema_version: 4
 artifact_kind: map
 map_type: knowledge
-map_version: 1
-updated_at: unix:1790412594
+map_version: 2
+updated_at: unix:1790413434
 directories:
 - directory: domain
   purpose: Domain concepts, models, and business rules.
@@ -50,6 +50,13 @@ directories:
   relations: []
   update_rule: reviewed
 topics:
+- id: architecture
+  title: architecture
+  description: Added by CLI source registration.
+  source_ids:
+  - definition-semantics
+  ref: topics/topic-4ca303a3bf7ddf7b-b28c48760694cbd09af0a4b0550a2ac706a95b777e0a38c1f826d5876f5d16fb.yaml
+  digest: b28c48760694cbd09af0a4b0550a2ac706a95b777e0a38c1f826d5876f5d16fb
 - id: business-knowledge
   title: Business knowledge
   description: Version-controlled business domains, terminology, aliases, semantics, and technical mappings.
@@ -71,3 +78,7 @@ history:
     action: init
     actor: cli
     summary: Created knowledge map with repository software-model route.
+  - version: 2
+    action: source.add
+    actor: cli
+    summary: Added source 'definition-semantics' to topic 'architecture'.

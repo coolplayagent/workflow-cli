@@ -1,6 +1,7 @@
 # Definition IR v1
 
-This document specifies the first R01 increment. Implemented static behavior is
+This document specifies R01 static semantics. The [definition registry](definition-registry.md)
+adds revisioned editing and immutable publication. Implemented static behavior is
 separated below from execution requirements that the later runtime must satisfy.
 
 ## Representation and identity
@@ -24,7 +25,7 @@ use it. The digest is `sha256:` followed by the SHA-256 of those UTF-8 bytes. Th
 is the workflow-v1 canonical form, not an RFC 8785 implementation. Workflow ID,
 version, contracts and literals participate in the digest. Import/export retains
 stable IDs and behavior; changing irrelevant source whitespace does not change
-the digest. Validated content must be frozen before treating a digest as a
+the digest. The registry freezes validated content before treating a digest as a
 published version. The current API exposes canonicalization separately from
 validation; the CLI emits a digest only after validation succeeds.
 
