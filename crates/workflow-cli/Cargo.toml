@@ -6,6 +6,8 @@ license.workspace = true
 rust-version.workspace = true
 
 [dependencies]
+workflow-runstore = { path = "../workflow-runstore" }
+workflow-runstore-sqlite = { path = "../workflow-runstore-sqlite" }
 workflow-kernel = { path = "../workflow-kernel" }
 workflow-worker = { path = "../workflow-worker" }
 workflow-builtin-capabilities = { path = "../workflow-builtin-capabilities" }

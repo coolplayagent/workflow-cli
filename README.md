@@ -8,8 +8,8 @@ belong in bindings rather than in the business graph.
 
 **Current implementation:** a Rust definition compiler, static validator,
 transactional definition registry, checked read-only capability invocation, and a
-deterministic workflow kernel with bundle resolution and event replay. Durable
-workflow execution and external adapters are being delivered through the [issue roadmap](docs/roadmap.md). `validate` is a
+deterministic workflow kernel, and a transactional RunStore with event history,
+checkpoints and a command outbox. Worker dispatch and external adapters are being delivered through the [issue roadmap](docs/roadmap.md). `validate` is a
 static check, not permission to execute a capability or proof of a successful run.
 
 ## Use
@@ -57,7 +57,10 @@ covers typed invocation of the compiler capabilities and worker request/result
 checks. Read the [worker protocol guide](docs/worker-protocol.md) for standalone
 and node invocation examples. The [workflow-replay Skill](skills/workflow-replay/SKILL.md)
 and [kernel guide](docs/kernel-semantics.md) cover bundle checks, simulated transitions
-and checkpoint restore. There is no durable workflow `run` command yet.
+and checkpoint restore. The [workflow-run Skill](skills/workflow-run/SKILL.md) and
+[run storage guide](docs/run-store.md) cover `run start/status/event/cancel`, history
+and pending delivery. These storage commands commit progress without starting a
+worker or background timer service.
 
 ```sh
 cargo run --locked -- kernel replay examples/kernel/review-approved.json
@@ -72,6 +75,7 @@ the CLI exits 0.
 
 - [Draft editing, semantic diff and immutable publication](docs/definition-registry.md)
 - [Capability contracts, worker protocol and host authority](docs/worker-protocol.md)
+- [Durable run state, events, checkpoints and outbox](docs/run-store.md)
 - [Deterministic kernel, bundle checks and replay](docs/kernel-semantics.md)
 - [IR and decision semantics](docs/definition-semantics.md)
 - [Generated JSON Schema](schemas/workflow-v1.schema.json)
@@ -92,6 +96,8 @@ independent processes and recover an interrupted SQLite transaction. Worker test
 reject protocol drift, changed authority, expired requests and malformed outputs
 before accepting observations. Kernel tests cover branch arbitration, cancellation
 and reconciliation, bounded iterations, logical deadlines, event conflicts and
-checkpoint replay. `qualitygate.yaml` runs these
+checkpoint replay. RunStore tests force process termination around commit, race
+independent writers, inject SQLite disk-full/read-only failures and verify complete
+journal/checkpoint/outbox recovery. `qualitygate.yaml` runs these
 four commands against its captured delivery snapshot. No business benefit or
 recovery SLA is claimed before the R15 benchmarks have been collected.

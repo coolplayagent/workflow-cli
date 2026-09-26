@@ -5,6 +5,7 @@ use workflow_ir::{Diagnostic, Format, MAX_DOCUMENT_BYTES, Workflow};
 
 mod kernel;
 mod registry;
+mod runs;
 mod worker;
 
 const HELP: &str = "workflow — portable SOP definition compiler\n\nUSAGE\n  workflow validate <file.json|file.yaml>\n  workflow export <file.json|file.yaml> <json|yaml>\n  workflow schema\n  workflow help\n\nvalidate emits JSON with valid, digest and diagnostics.\nExit codes: 0 success, 1 invalid definition, 2 usage or I/O error.\nRelative files resolve against the caller's current directory.\n";
@@ -64,13 +65,17 @@ pub fn run(
         [] | ["help" | "--help" | "-h"] => write(
             stdout,
             &format!(
-                "{HELP}\n{}\n{}\n{}",
+                "{HELP}\n{}\n{}\n{}\n{}",
                 registry::HELP,
                 worker::HELP,
-                kernel::HELP
+                kernel::HELP,
+                runs::HELP
             ),
             0,
         ),
+        args @ ["run", ..] | args @ ["schema", "run-start" | "run-receipt"] => {
+            runs::run(args, stdout, stderr)
+        }
         args @ ["kernel", ..]
         | args @ [
             "schema",

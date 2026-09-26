@@ -2,7 +2,8 @@
 
 This document specifies R01 static semantics. The [definition registry](definition-registry.md)
 adds revisioned editing and immutable publication. The [kernel](kernel-semantics.md) adds bundle checks, deterministic control flow
-and checkpoint replay; external adapters and durable run storage remain host work.
+and checkpoint replay. The [RunStore](run-store.md) persists these transitions;
+external execution and authority remain host work.
 
 ## Representation and identity
 

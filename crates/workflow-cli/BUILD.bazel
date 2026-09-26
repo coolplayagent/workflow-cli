@@ -8,7 +8,7 @@ rust_library(
     srcs = glob(["src/**/*.rs"], exclude = ["src/main.rs"]),
     crate_root = "src/lib.rs",
     edition = "2024",
-    deps = ["//crates/workflow-ir:workflow_ir", "//crates/workflow-validator:workflow_validator", "//crates/workflow-worker:workflow_worker", "//crates/workflow-builtin-capabilities:workflow_builtin_capabilities", "//crates/workflow-kernel:workflow_kernel"] + ["//crates/workflow-definitions:workflow_definitions", "//crates/workflow-registry-sqlite:workflow_registry_sqlite"] + all_crate_deps(normal = True),
+    deps = ["//crates/workflow-runstore:workflow_runstore", "//crates/workflow-runstore-sqlite:workflow_runstore_sqlite", "//crates/workflow-ir:workflow_ir", "//crates/workflow-validator:workflow_validator", "//crates/workflow-worker:workflow_worker", "//crates/workflow-builtin-capabilities:workflow_builtin_capabilities", "//crates/workflow-kernel:workflow_kernel"] + ["//crates/workflow-definitions:workflow_definitions", "//crates/workflow-registry-sqlite:workflow_registry_sqlite"] + all_crate_deps(normal = True),
     proc_macro_deps = all_crate_deps(proc_macro = True),
     visibility = ["//visibility:public"],
 )

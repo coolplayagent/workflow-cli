@@ -76,4 +76,5 @@ version should be executed.
 
 Report the resulting file or registry identity, revision, validation diagnostics,
 digest and unresolved bindings. Stop at the definition operation requested by the
-user; this CLI still has no workflow-run or running-job administration commands.
+user. For requested durable progress, use workflow-run and its explicit database;
+run storage still requires a host for external execution.
