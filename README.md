@@ -6,8 +6,9 @@ and evidence requirements. An LLM supplies node decisions; Skills explain how to
 use capabilities; CLI/API adapters implement them. Provider and deployment choices
 belong in bindings rather than in the business graph.
 
-**Current implementation:** a Rust definition compiler and static validator for
-version 1 of the IR. Execution, persistence and external capability resolution are
+**Current implementation:** a Rust definition compiler, static validator, and transactional
+local registry with revisioned drafts and immutable publications. Durable workflow
+execution and external capability resolution are
 being delivered through the [issue roadmap](docs/roadmap.md). `validate` is a
 static check, not permission to execute a capability or proof of a successful run.
 
@@ -49,11 +50,13 @@ remote service, which must revalidate the received definition.
 ```
 
 Definitions are data: reading or validating one does not invoke its capabilities.
-The draft editing commands, published-version registry and execution protocol are
-subsequent deliveries; there is no `run` command in this first increment.
+The registry supports incremental draft edits, historical queries and publication.
+Read the [authoring guide](docs/definition-registry.md) for the full CLI loop and
+concurrency semantics. There is no execution `run` command yet.
 
 ## Contracts and development
 
+- [Draft editing, semantic diff and immutable publication](docs/definition-registry.md)
 - [IR and decision semantics](docs/definition-semantics.md)
 - [Generated JSON Schema](schemas/workflow-v1.schema.json)
 - [Requirement review](examples/review.yaml), [parallel tests](examples/parallel-tests.json),
@@ -68,6 +71,7 @@ bazel test //...
 ```
 
 The tests run under Cargo and Bazel, cover malformed definitions and decisions,
-and check the CLI, examples and committed schema. `qualitygate.yaml` runs these
+and check the CLI, examples and committed schemas. Registry tests also race
+independent processes and recover an interrupted SQLite transaction. `qualitygate.yaml` runs these
 four commands against its captured delivery snapshot. No business benefit or
 recovery SLA is claimed before the R15 benchmarks have been collected.

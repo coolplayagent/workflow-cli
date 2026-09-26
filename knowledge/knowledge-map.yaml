@@ -1,8 +1,8 @@
 schema_version: 4
 artifact_kind: map
 map_type: knowledge
-map_version: 2
-updated_at: unix:1790413434
+map_version: 3
+updated_at: unix:1790415615
 directories:
 - directory: domain
   purpose: Domain concepts, models, and business rules.
@@ -54,9 +54,10 @@ topics:
   title: architecture
   description: Added by CLI source registration.
   source_ids:
+  - definition-authoring
   - definition-semantics
-  ref: topics/topic-4ca303a3bf7ddf7b-b28c48760694cbd09af0a4b0550a2ac706a95b777e0a38c1f826d5876f5d16fb.yaml
-  digest: b28c48760694cbd09af0a4b0550a2ac706a95b777e0a38c1f826d5876f5d16fb
+  ref: topics/topic-4ca303a3bf7ddf7b-ecfbfe05108005f4dd6fd9ac323df3a40c0b21bbb03d554b825693c2704da74d.yaml
+  digest: ecfbfe05108005f4dd6fd9ac323df3a40c0b21bbb03d554b825693c2704da74d
 - id: business-knowledge
   title: Business knowledge
   description: Version-controlled business domains, terminology, aliases, semantics, and technical mappings.
@@ -82,3 +83,7 @@ history:
     action: source.add
     actor: cli
     summary: Added source 'definition-semantics' to topic 'architecture'.
+  - version: 3
+    action: source.add
+    actor: cli
+    summary: Added source 'definition-authoring' to topic 'architecture'.

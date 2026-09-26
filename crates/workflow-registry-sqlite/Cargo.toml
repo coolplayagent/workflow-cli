@@ -1,0 +1,11 @@
+[package]
+name = "workflow-registry-sqlite"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+rusqlite.workspace = true
+workflow-ir = { path = "../workflow-ir" }
+workflow-definitions = { path = "../workflow-definitions" }

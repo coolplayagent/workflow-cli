@@ -31,3 +31,21 @@ terms:
       - relation: represented_by
         target_kind: file
         target: crates/workflow-validator/src/lib.rs
+  - id: definition-draft
+    domain: workflow
+    canonical_name: Definition draft
+    definition: An editable workflow definition with a permanent authoring identity, optimistic revision and retained history; it may contain semantic diagnostics.
+    language: en
+    mappings:
+      - relation: represented_by
+        target_kind: file
+        target: crates/workflow-definitions/src/lib.rs
+  - id: published-definition
+    domain: workflow
+    canonical_name: Published definition
+    definition: Statically validated immutable definition content bound to workflow ID, version, digest and source draft revision; publication does not start execution.
+    language: en
+    mappings:
+      - relation: represented_by
+        target_kind: file
+        target: crates/workflow-registry-sqlite/src/lib.rs

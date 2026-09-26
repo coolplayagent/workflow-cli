@@ -3,6 +3,8 @@ use serde::Serialize;
 use std::io::{Read, Write};
 use workflow_ir::{Diagnostic, Format, MAX_DOCUMENT_BYTES, Workflow};
 
+mod registry;
+
 const HELP: &str = "workflow — portable SOP definition compiler\n\nUSAGE\n  workflow validate <file.json|file.yaml>\n  workflow export <file.json|file.yaml> <json|yaml>\n  workflow schema\n  workflow help\n\nvalidate emits JSON with valid, digest and diagnostics.\nExit codes: 0 success, 1 invalid definition, 2 usage or I/O error.\nRelative files resolve against the caller's current directory.\n";
 
 #[derive(Serialize)]
@@ -57,7 +59,10 @@ pub fn run(
         .collect::<Vec<_>>()
         .as_slice()
     {
-        [] | ["help" | "--help" | "-h"] => write(stdout, HELP, 0),
+        [] | ["help" | "--help" | "-h"] => write(stdout, &format!("{HELP}\n{}", registry::HELP), 0),
+        args @ ["draft" | "release" | "diff", ..] | args @ ["schema", "patch"] => {
+            registry::run(args, stdout, stderr)
+        }
         ["schema"] => match workflow_ir::schema() {
             Ok(schema) => write(stdout, &schema, 0),
             Err(e) => write(stderr, &e.to_string(), 2),

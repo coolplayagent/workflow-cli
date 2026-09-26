@@ -1,6 +1,6 @@
 ---
 name: workflow-definition
-description: Create, validate, or convert portable workflow-cli SOP definitions in JSON or YAML using the workflow compiler. Use for business process definitions and their diagnostics; this compiler does not execute workflows or administer running jobs.
+description: Create, edit, validate, compare and publish portable workflow-cli SOP definitions using revisioned drafts and the workflow compiler. Use for business process definitions and their diagnostics; this compiler does not execute workflows or administer running jobs.
 ---
 
 # Workflow definition
@@ -41,6 +41,32 @@ positive iteration and time limits, and an exhaustion route. Decisions need a
 default route. `exclusive` rejects multiple matches; `first_match` respects edge
 order. Guard optional comparisons with `exists` inside an ordered `all`.
 
-Report the resulting file, validation result, digest and unresolved bindings.
-Stop after the requested definition task; this CLI version has no execution,
-publication or draft-registry commands.
+For registry authoring, use an explicit database path from the task or project.
+Only `draft create` initializes storage. Read `workflow schema patch` for the
+current patch format. `draft get` returns the current revision; put that revision
+in the patch's `expected_revision`. A draft can retain incomplete graph
+semantics, with diagnostics. Its digest identifies content and is not proof of
+validity. Add or replace individual nodes and edges to keep edits reviewable.
+
+When a mutation returns `revision_conflict`, read the current draft and inspect
+`draft diff` between historical revisions before rebasing the intended changes.
+Do not blindly substitute the newest revision into an old replacement. Failed
+batches have no partial effect. Node removal leaves attached references visible
+for explicit repair. Edge order changes can affect first-match decisions.
+
+For a requested publication, inspect the semantic diff and use `draft publish`
+with the expected revision. Publication revalidates the whole definition and
+freezes its ID/version/digest. On `publication_conflict`, preserve the old release
+and choose a new workflow version consistent with the task. Use `release get` or
+`release digest` to inspect the exact stored release. Publishing a definition is
+local registry state; it does not resolve external bindings or start execution.
+
+`draft revision` retrieves old content. Deletion retains a tombstone and history;
+the draft ID cannot be reused. Draft/release listing is paginated with an explicit
+cursor and a limit of 1–100; `-` selects the first page. Follow `next_cursor` for
+additional records. Release versions are sorted lexicographically, not by which
+version should be executed.
+
+Report the resulting file or registry identity, revision, validation diagnostics,
+digest and unresolved bindings. Stop at the definition operation requested by the
+user; this CLI still has no execution or running-job administration commands.
