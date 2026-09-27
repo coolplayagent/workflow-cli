@@ -11,7 +11,9 @@ transactional definition registry, checked read-only capability invocation, a
 deterministic workflow kernel, and a transactional RunStore with event history,
 checkpoints and a command outbox. A local driver executes read-only tasks with
 durable leases, attempts and fenced result commits. Typed artifact manifests bind
-content and provenance; result acceptance verifies their durable dependencies. Model/remote adapters and
+content and provenance; result acceptance verifies their durable dependencies.
+A portable evidence checker produces PASS/FAIL/UNKNOWN from settled execution records
+and exact targets, with a read-only evaluation/revalidation CLI. Model/remote adapters and
 external effects follow the [issue roadmap](docs/roadmap.md). `validate` is a
 static check, not permission to execute a capability or proof of a successful run.
 
@@ -66,7 +68,9 @@ and pending delivery. The [local execution guide](docs/local-execution.md) cover
 `run drive`, which calls built-in adapters and commits real results. No background
 timer service remains after the command exits. The [workflow-artifact Skill](skills/workflow-artifact/SKILL.md)
 and [artifact guide](docs/artifacts.md) cover typed reports, provenance, integrity
-checks and their connection to fenced result submission.
+checks and their connection to fenced result submission. The [workflow-gate Skill](skills/workflow-gate/SKILL.md)
+and [evidence checker guide](docs/evidence-gates.md) cover exact policy/target checks
+and decision revalidation; mandatory runtime gating remains a subsequent increment.
 
 ```sh
 cargo run --locked -- kernel replay examples/kernel/review-approved.json
@@ -82,6 +86,7 @@ the CLI exits 0.
 - [Draft editing, semantic diff and immutable publication](docs/definition-registry.md)
 - [Capability contracts, worker protocol and host authority](docs/worker-protocol.md)
 - [Typed artifacts, provenance, atomic publication and evidence](docs/artifacts.md)
+- [Evidence checker, policy/target binding and revalidation](docs/evidence-gates.md)
 - [Local execution, leases, attempts and migration](docs/local-execution.md)
 - [Durable run state, events, checkpoints and outbox](docs/run-store.md)
 - [Deterministic kernel, bundle checks and replay](docs/kernel-semantics.md)

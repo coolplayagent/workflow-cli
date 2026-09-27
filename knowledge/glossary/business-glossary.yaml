@@ -184,3 +184,12 @@ terms:
       - relation: represented_by
         target_kind: file
         target: crates/workflow-artifact-local/src/lib.rs
+  - id: evidence-decision
+    domain: workflow
+    canonical_name: Evidence decision
+    definition: A deterministic PASS, FAIL or UNKNOWN observation bound to an exact policy, action, target and settled execution evidence with an exclusive expiry; it does not itself advance a run or authorize an effect.
+    language: en
+    mappings:
+      - relation: represented_by
+        target_kind: file
+        target: crates/workflow-gates/src/model.rs

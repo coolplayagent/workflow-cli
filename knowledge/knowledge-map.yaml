@@ -1,8 +1,8 @@
 schema_version: 4
 artifact_kind: map
 map_type: knowledge
-map_version: 8
-updated_at: unix:1790473168
+map_version: 9
+updated_at: unix:1790487957
 directories:
 - directory: domain
   purpose: Domain concepts, models, and business rules.
@@ -61,8 +61,9 @@ topics:
   - local-execution
   - run-store
   - worker-protocol
-  ref: topics/topic-4ca303a3bf7ddf7b-3598f9776706d6af92ce41c9a6315bed5e9155766b4cb4bc5c8493add3e7f46b.yaml
-  digest: 3598f9776706d6af92ce41c9a6315bed5e9155766b4cb4bc5c8493add3e7f46b
+  - workflow-evidence-gates
+  ref: topics/topic-4ca303a3bf7ddf7b-cb77533e960d1010cc8b57de61993ba7407ab4dd872881eb645c4aa74f3378dd.yaml
+  digest: cb77533e960d1010cc8b57de61993ba7407ab4dd872881eb645c4aa74f3378dd
 - id: business-knowledge
   title: Business knowledge
   description: Version-controlled business domains, terminology, aliases, semantics, and technical mappings.
@@ -112,3 +113,7 @@ history:
     action: source.add
     actor: cli
     summary: Added source 'artifact-contracts' to topic 'architecture'.
+  - version: 9
+    action: source.add
+    actor: cli
+    summary: Added source 'workflow-evidence-gates' to topic 'architecture'.
