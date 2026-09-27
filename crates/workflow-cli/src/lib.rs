@@ -4,6 +4,7 @@ use std::io::{Read, Write};
 use workflow_ir::{Diagnostic, Format, MAX_DOCUMENT_BYTES, Workflow};
 
 mod artifacts;
+mod gates;
 mod kernel;
 mod registry;
 mod runs;
@@ -66,15 +67,19 @@ pub fn run(
         [] | ["help" | "--help" | "-h"] => write(
             stdout,
             &format!(
-                "{HELP}\n{}\n{}\n{}\n{}\n{}",
+                "{HELP}\n{}\n{}\n{}\n{}\n{}\n{}",
                 registry::HELP,
                 worker::HELP,
                 kernel::HELP,
                 runs::HELP,
-                artifacts::HELP
+                artifacts::HELP,
+                gates::HELP
             ),
             0,
         ),
+        args @ ["gate", ..] | args @ ["schema", "gate-request" | "gate-decision"] => {
+            gates::run(args, stdout, stderr)
+        }
         args @ ["artifact", ..]
         | args @ [
             "schema",

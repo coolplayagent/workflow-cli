@@ -1,8 +1,8 @@
 schema_version: 4
 artifact_kind: map
 map_type: knowledge
-map_version: 7
-updated_at: unix:1790470968
+map_version: 8
+updated_at: unix:1790473168
 directories:
 - directory: domain
   purpose: Domain concepts, models, and business rules.
@@ -54,14 +54,15 @@ topics:
   title: architecture
   description: Added by CLI source registration.
   source_ids:
+  - artifact-contracts
   - definition-authoring
   - definition-semantics
   - kernel-semantics
   - local-execution
   - run-store
   - worker-protocol
-  ref: topics/topic-4ca303a3bf7ddf7b-db641799910e53ca4451cecf3be5a761da27ac3755990eff0c23c08737f4dab1.yaml
-  digest: db641799910e53ca4451cecf3be5a761da27ac3755990eff0c23c08737f4dab1
+  ref: topics/topic-4ca303a3bf7ddf7b-3598f9776706d6af92ce41c9a6315bed5e9155766b4cb4bc5c8493add3e7f46b.yaml
+  digest: 3598f9776706d6af92ce41c9a6315bed5e9155766b4cb4bc5c8493add3e7f46b
 - id: business-knowledge
   title: Business knowledge
   description: Version-controlled business domains, terminology, aliases, semantics, and technical mappings.
@@ -107,3 +108,7 @@ history:
     action: source.add
     actor: cli
     summary: Added source 'local-execution' to topic 'architecture'.
+  - version: 8
+    action: source.add
+    actor: cli
+    summary: Added source 'artifact-contracts' to topic 'architecture'.
