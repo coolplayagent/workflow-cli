@@ -16,6 +16,12 @@ flowchart LR
     G --> A
     G --> V
     G --> IR
+    CLI --> WS[workflow-workspaces: portable attempt workspace contracts]
+    CLI --> WL[workflow-workspace-local: Linux files and Git objects]
+    WL --> WS
+    WL --> A
+    WS --> A
+    WS --> IR
     CLI --> A[workflow-artifacts: typed manifests and reader/store ports]
     CLI --> AF[workflow-artifact-local: files and manifest catalog]
     AF --> A
@@ -66,7 +72,7 @@ completion of the workflow runtime.
 | [R02 #4](https://github.com/coolplayagent/workflow-cli/issues/4) | Delivered: capability descriptors/adapter port, protocol 1 request/grant/result validation, standalone and node invocation of read-only compiler capabilities. Next: model adapters and replacement examples, authenticated remote transport, remaining execution ports and durable effect dispatch. |
 | [R15 #3](https://github.com/coolplayagent/workflow-cli/issues/3) | Incremental deterministic invariant checks alongside modules; independent business baseline and fault experiments remain open. |
 | [R04 #5](https://github.com/coolplayagent/workflow-cli/issues/5), [R05 #6](https://github.com/coolplayagent/workflow-cli/issues/6) | Kernel state/event/command contracts and cancellation/reconciliation transitions delivered. Also delivered: RunStore port, SQLite atomic state/event/checkpoint/outbox commits, ordered delivery receipts, persistent CLI, CAS/crash/corruption/full-disk tests. Also delivered: run leases, epoch fencing, durable attempts, atomic result/event/receipt commits, bounded read-only retries and explicit storage migration; artifact evidence is verified before completion and during recovery. Next: pause/resume, autonomous dispatch/timers, effects, general retry policy, artifacts and backup/restore. |
-| [R07 #7](https://github.com/coolplayagent/workflow-cli/issues/7), [R11 #8](https://github.com/coolplayagent/workflow-cli/issues/8) | Delivered: typed artifact manifests, exact producer/input/source provenance, local atomic upload, retention-safe orphan cleanup, lineage/impact, portable local export/import and run evidence verification. Next: isolated workspaces, resource/merge policy, authenticated remote storage and controlled invalidation; immutable versions and migrations. |
+| [R07 #7](https://github.com/coolplayagent/workflow-cli/issues/7), [R11 #8](https://github.com/coolplayagent/workflow-cli/issues/8) | Delivered: typed artifact manifests, exact producer/input/source provenance, local atomic upload, retention-safe orphan cleanup, lineage/impact, portable local export/import and run evidence verification. Also delivered: attempt-bound workspace contracts, independent committed-file exports, current file observation, typed output capture and explicit merge policy. Next: automatic execution/gate workspace binding, sandboxing, resource/merge execution, authenticated remote storage and controlled invalidation; immutable versions and migrations. |
 | [R03 #10](https://github.com/coolplayagent/workflow-cli/issues/10), [R06 #11](https://github.com/coolplayagent/workflow-cli/issues/11) | Delivered: portable PASS/FAIL/UNKNOWN checker with exact policy/target/tool/input bindings, settled execution provenance and read-only CLI revalidation. Also delivered: frozen mandatory task/terminal postconditions, fenced decision commits and replay, durable UNKNOWN retry and declared bounded repair. Next: effect authorization, current-workspace verification, approvals and asynchronous durable waits. |
 | [R08 #12](https://github.com/coolplayagent/workflow-cli/issues/12) | Delivered: explicit local read-only drive with real built-in capability results. Next: broader adapters, autonomous operation and backup/restore. |
 | [R09 #13](https://github.com/coolplayagent/workflow-cli/issues/13), [R14 #9](https://github.com/coolplayagent/workflow-cli/issues/9) | Local run ownership and epoch fencing foundation delivered; cluster leasing, fairness, tenant identity and secrets remain open. |
@@ -132,3 +138,14 @@ repair. Tests cover three-round exhaustion/deadlines, raw ingress rejection,
 precommit expiry rollback, process races/crashes and migration. R03 remains open
 for workspace verification, atomic external action consumption, human exceptions
 and final acceptance manifests.
+
+## R07 attempt workspace increment
+
+The [workspace guide](workspaces.md) defines attempt identity, fixed Git object
+verification, independent writable files, deterministic observations and typed
+output capture. The real CLI example proves allocated bytes equal the prepared
+validator inputs, settles captured evidence and completes both existing gates.
+Concurrent process allocation, crash cleanup, object corruption and SQLite
+capacity tests exercise the failure boundary. Directory isolation is not an OS
+sandbox; automatic run/gate binding, shared-resource coordination, merging and
+remote authorization remain open.

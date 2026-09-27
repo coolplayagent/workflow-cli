@@ -178,3 +178,13 @@ recovery, hostile shared-directory safety, remote authentication or business
 benefit. R07 stays open for isolated attempt workspaces, resource/merge policies,
 authenticated remote storage and controlled recomputation; R04/R08 still require
 backup/restore and broader lifecycle management.
+
+## Outputs from attempt workspaces
+
+The [workspace adapter](workspaces.md) captures declared paths with exact artifact
+types and retains an output manifest whose lineage includes the original input
+artifacts and captured files. It preserves the allocation's base source revision
+and records the changed tree digest separately. Host-managed execution must bind
+actual inputs to that directory and settle its real result before the captured
+reports can be eligible evidence. Workspace observation does not authorize effects
+or automatically inspect the current target during gate consumption.

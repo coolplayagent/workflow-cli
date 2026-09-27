@@ -211,3 +211,30 @@ terms:
       - relation: represented_by
         target_kind: file
         target: crates/workflow-runstore-sqlite/src/execution/controls.rs
+  - id: attempt-workspace
+    domain: workflow
+    canonical_name: Attempt workspace
+    definition: An immutable allocation contract binding a run, node instance and attempt to exact request/input digests, committed source files, typed output declarations and an explicit merge policy; its editable files are physically independent.
+    language: en
+    mappings:
+      - relation: represented_by
+        target_kind: file
+        target: crates/workflow-workspaces/src/model.rs
+  - id: workspace-observation
+    domain: workflow
+    canonical_name: Workspace observation
+    definition: A deterministic file and executable-bit inventory with a tree digest and changes against the allocated baseline; it describes observed bytes without granting execution or proving an external target stayed unchanged.
+    language: en
+    mappings:
+      - relation: represented_by
+        target_kind: file
+        target: crates/workflow-workspace-local/src/files.rs
+  - id: workspace-output-capture
+    domain: workflow
+    canonical_name: Workspace output capture
+    definition: Retained typed artifacts for declared workspace paths plus a manifest binding the baseline, observed tree and file links; input dependencies remain in lineage and later edits cannot rewrite the capture.
+    language: en
+    mappings:
+      - relation: represented_by
+        target_kind: file
+        target: crates/workflow-workspace-local/src/store.rs

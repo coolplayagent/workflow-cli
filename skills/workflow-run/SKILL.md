@@ -2,7 +2,7 @@
 name: workflow-run
 description: Create and inspect durable workflow-cli runs, submit trusted events, cancel with an expected revision, inspect the command outbox and verify storage recovery, and drive local read-only tasks with durable leases. Use for persistent workflow progress and explicit local execution; no background daemon remains.
 metadata:
-  version: "1.3.0"
+  version: "1.4.0"
 ---
 
 # Workflow run
@@ -97,3 +97,9 @@ authorized explicit `run retry-gate <db> <run-id> <instance-id> <event-id>
 its cause first. Missing attachments on settled results cannot be added later.
 Raw successful task events for these runs, all raw gate events, and manual gate
 receipts are rejected. Use declared repair bounds and retain failure history.
+
+For host-managed files from a fixed Git commit, use the workflow-workspace Skill
+with this actual prepared request. Its independent directory and typed capture
+are separate from run execution authority. Bind the real capability inputs to
+those files, then attach the capture references before settlement. The built-in
+driver does not automatically allocate workspaces or inspect them at gate time.

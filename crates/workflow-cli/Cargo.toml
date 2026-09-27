@@ -24,6 +24,9 @@ workflow-registry-sqlite = { path = "../workflow-registry-sqlite" }
 workflow-artifacts = { path = "../workflow-artifacts" }
 workflow-artifact-local = { path = "../workflow-artifact-local" }
 
+workflow-workspaces = { path = "../workflow-workspaces" }
+workflow-workspace-local = { path = "../workflow-workspace-local" }
+
 [[bin]]
 name = "workflow"
 path = "src/main.rs"
