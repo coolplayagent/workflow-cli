@@ -1,0 +1,407 @@
+{
+  "ok": true,
+  "result": {
+    "$defs": {
+      "ArtifactLink": {
+        "additionalProperties": false,
+        "properties": {
+          "artifact_id": {
+            "type": "string"
+          },
+          "digest": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "artifact_id",
+          "digest"
+        ],
+        "type": "object"
+      },
+      "ArtifactType": {
+        "additionalProperties": false,
+        "properties": {
+          "content": {
+            "$ref": "#/$defs/ContentSchema"
+          },
+          "identity": {
+            "$ref": "#/$defs/VersionRef"
+          }
+        },
+        "required": [
+          "identity",
+          "content"
+        ],
+        "type": "object"
+      },
+      "CheckoutSpec": {
+        "additionalProperties": false,
+        "properties": {
+          "inputs": {
+            "items": {
+              "$ref": "#/$defs/ArtifactLink"
+            },
+            "type": "array"
+          },
+          "merge_policy": {
+            "$ref": "#/$defs/MergePolicy"
+          },
+          "outputs": {
+            "description": "Exact portable paths, up to 64. Capturing never guesses which files are deliverables.",
+            "items": {
+              "$ref": "#/$defs/OutputFile"
+            },
+            "type": "array"
+          },
+          "producer": {
+            "$ref": "#/$defs/Producer"
+          },
+          "schema_version": {
+            "format": "uint32",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "source_revision": {
+            "$ref": "#/$defs/SourceRevision"
+          }
+        },
+        "required": [
+          "schema_version",
+          "producer",
+          "source_revision",
+          "merge_policy",
+          "inputs",
+          "outputs"
+        ],
+        "type": "object"
+      },
+      "ContentSchema": {
+        "oneOf": [
+          {
+            "additionalProperties": false,
+            "properties": {
+              "format": {
+                "const": "bytes",
+                "type": "string"
+              }
+            },
+            "required": [
+              "format"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "format": {
+                "const": "utf8",
+                "type": "string"
+              }
+            },
+            "required": [
+              "format"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "format": {
+                "const": "json",
+                "type": "string"
+              },
+              "value_type": {
+                "$ref": "#/$defs/ValueType"
+              }
+            },
+            "required": [
+              "format",
+              "value_type"
+            ],
+            "type": "object"
+          }
+        ]
+      },
+      "Environment": {
+        "additionalProperties": false,
+        "properties": {
+          "architecture": {
+            "type": "string"
+          },
+          "git_version": {
+            "type": "string"
+          },
+          "os": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "os",
+          "architecture",
+          "git_version"
+        ],
+        "type": "object"
+      },
+      "FileEntry": {
+        "additionalProperties": false,
+        "properties": {
+          "bytes": {
+            "format": "uint64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "digest": {
+            "type": "string"
+          },
+          "executable": {
+            "type": "boolean"
+          },
+          "path": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "path",
+          "digest",
+          "bytes",
+          "executable"
+        ],
+        "type": "object"
+      },
+      "MergePolicy": {
+        "oneOf": [
+          {
+            "const": "explicit",
+            "description": "Changes are proposals. A separate authorized merge must produce a new verified revision.",
+            "type": "string"
+          }
+        ]
+      },
+      "OutputFile": {
+        "additionalProperties": false,
+        "properties": {
+          "artifact_type": {
+            "$ref": "#/$defs/ArtifactType"
+          },
+          "path": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "path",
+          "artifact_type"
+        ],
+        "type": "object"
+      },
+      "Producer": {
+        "additionalProperties": false,
+        "properties": {
+          "attempt_id": {
+            "type": "string"
+          },
+          "input_digest": {
+            "type": "string"
+          },
+          "node_instance_id": {
+            "type": "string"
+          },
+          "request_digest": {
+            "type": "string"
+          },
+          "run_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "run_id",
+          "node_instance_id",
+          "attempt_id",
+          "request_digest",
+          "input_digest"
+        ],
+        "type": "object"
+      },
+      "SourceRevision": {
+        "additionalProperties": false,
+        "properties": {
+          "repository": {
+            "type": "string"
+          },
+          "revision": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "repository",
+          "revision"
+        ],
+        "type": "object"
+      },
+      "ValueType": {
+        "oneOf": [
+          {
+            "additionalProperties": false,
+            "properties": {
+              "type": {
+                "const": "string",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "type": {
+                "const": "boolean",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "type": {
+                "const": "integer",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "type": {
+                "const": "number",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "items": {
+                "$ref": "#/$defs/ValueType"
+              },
+              "type": {
+                "const": "array",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type",
+              "items"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "fields": {
+                "additionalProperties": {
+                  "$ref": "#/$defs/ValueType"
+                },
+                "type": "object"
+              },
+              "type": {
+                "const": "object",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type",
+              "fields"
+            ],
+            "type": "object"
+          }
+        ]
+      },
+      "VersionRef": {
+        "additionalProperties": false,
+        "description": "Versions are immutable opaque release identifiers, never ranges or `latest`.",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "version"
+        ],
+        "type": "object"
+      },
+      "WorkspaceManifest": {
+        "additionalProperties": false,
+        "properties": {
+          "baseline": {
+            "items": {
+              "$ref": "#/$defs/FileEntry"
+            },
+            "type": "array"
+          },
+          "environment": {
+            "$ref": "#/$defs/Environment"
+          },
+          "git_tree": {
+            "type": "string"
+          },
+          "spec": {
+            "$ref": "#/$defs/CheckoutSpec"
+          },
+          "tree_digest": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "spec",
+          "git_tree",
+          "baseline",
+          "tree_digest",
+          "environment"
+        ],
+        "type": "object"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "additionalProperties": false,
+    "properties": {
+      "digest": {
+        "type": "string"
+      },
+      "location": {
+        "type": "string"
+      },
+      "manifest": {
+        "$ref": "#/$defs/WorkspaceManifest"
+      },
+      "workspace_id": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "workspace_id",
+      "digest",
+      "location",
+      "manifest"
+    ],
+    "title": "WorkspaceRef",
+    "type": "object"
+  }
+}

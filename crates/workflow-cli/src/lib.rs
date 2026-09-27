@@ -9,6 +9,7 @@ mod kernel;
 mod registry;
 mod runs;
 mod worker;
+mod workspaces;
 
 const HELP: &str = "workflow — portable SOP definition compiler\n\nUSAGE\n  workflow validate <file.json|file.yaml>\n  workflow export <file.json|file.yaml> <json|yaml>\n  workflow schema\n  workflow help\n\nvalidate emits JSON with valid, digest and diagnostics.\nExit codes: 0 success, 1 invalid definition, 2 usage or I/O error.\nRelative files resolve against the caller's current directory.\n";
 
@@ -67,16 +68,22 @@ pub fn run(
         [] | ["help" | "--help" | "-h"] => write(
             stdout,
             &format!(
-                "{HELP}\n{}\n{}\n{}\n{}\n{}\n{}",
+                "{HELP}\n{}\n{}\n{}\n{}\n{}\n{}\n{}",
                 registry::HELP,
                 worker::HELP,
                 kernel::HELP,
                 runs::HELP,
                 artifacts::HELP,
-                gates::HELP
+                gates::HELP,
+                workspaces::HELP
             ),
             0,
         ),
+        args @ ["workspace", ..]
+        | args @ [
+            "schema",
+            "workspace-checkout" | "workspace-ref" | "workspace-observation" | "workspace-output",
+        ] => workspaces::run(args, stdout, stderr),
         args @ ["gate", ..] | args @ ["schema", "gate-request" | "gate-decision"] => {
             gates::run(args, stdout, stderr)
         }

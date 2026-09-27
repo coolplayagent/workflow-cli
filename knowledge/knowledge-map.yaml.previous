@@ -1,8 +1,8 @@
 schema_version: 4
 artifact_kind: map
 map_type: knowledge
-map_version: 9
-updated_at: unix:1790487957
+map_version: 10
+updated_at: unix:1790495858
 directories:
 - directory: domain
   purpose: Domain concepts, models, and business rules.
@@ -60,10 +60,11 @@ topics:
   - kernel-semantics
   - local-execution
   - run-store
+  - runtime-postconditions
   - worker-protocol
   - workflow-evidence-gates
-  ref: topics/topic-4ca303a3bf7ddf7b-cb77533e960d1010cc8b57de61993ba7407ab4dd872881eb645c4aa74f3378dd.yaml
-  digest: cb77533e960d1010cc8b57de61993ba7407ab4dd872881eb645c4aa74f3378dd
+  ref: topics/topic-4ca303a3bf7ddf7b-22a1c9dcf7de9d4cc3972f8f1147e3af5f6111271c9f07e436f1a5a95627e046.yaml
+  digest: 22a1c9dcf7de9d4cc3972f8f1147e3af5f6111271c9f07e436f1a5a95627e046
 - id: business-knowledge
   title: Business knowledge
   description: Version-controlled business domains, terminology, aliases, semantics, and technical mappings.
@@ -117,3 +118,7 @@ history:
     action: source.add
     actor: cli
     summary: Added source 'workflow-evidence-gates' to topic 'architecture'.
+  - version: 10
+    action: source.add
+    actor: cli
+    summary: Added source 'runtime-postconditions' to topic 'architecture'.

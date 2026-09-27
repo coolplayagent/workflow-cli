@@ -15,7 +15,9 @@ content and provenance; result acceptance verifies their durable dependencies.
 A portable evidence checker produces PASS/FAIL/UNKNOWN from settled execution records
 and exact targets. Frozen task and terminal postconditions require PASS before
 advancing; UNKNOWN waits for explicit retry and FAIL follows declared repair bounds.
-A separate CLI supports read-only evaluation/revalidation. Model/remote adapters and
+A separate CLI supports read-only evaluation/revalidation. Attempt workspace
+contracts and a local Linux/Git adapter allocate independent files, observe changes
+and capture typed outputs with exact provenance. Model/remote adapters and
 external effects follow the [issue roadmap](docs/roadmap.md). `validate` is a
 static check, not permission to execute a capability or proof of a successful run.
 
@@ -74,6 +76,8 @@ checks and their connection to fenced result submission. The [workflow-gate Skil
 and [evidence checker guide](docs/evidence-gates.md) cover exact policy/target checks
 and decision revalidation. The [runtime postcondition guide](docs/runtime-postconditions.md)
 covers frozen mandatory gates, durable UNKNOWN waits and bounded repair.
+The [workflow-workspace Skill](skills/workflow-workspace/SKILL.md) and [workspace guide](docs/workspaces.md)
+cover host-managed attempt directories and typed output capture.
 
 ```sh
 cargo run --locked -- kernel replay examples/kernel/review-approved.json
@@ -90,6 +94,7 @@ the CLI exits 0.
 - [Capability contracts, worker protocol and host authority](docs/worker-protocol.md)
 - [Typed artifacts, provenance, atomic publication and evidence](docs/artifacts.md)
 - [Evidence checker, policy/target binding and revalidation](docs/evidence-gates.md)
+- [Attempt workspaces, source objects and captured outputs](docs/workspaces.md)
 - [Mandatory task/terminal gates and bounded repair](docs/runtime-postconditions.md)
 - [Local execution, leases, attempts and migration](docs/local-execution.md)
 - [Durable run state, events, checkpoints and outbox](docs/run-store.md)

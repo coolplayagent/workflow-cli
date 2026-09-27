@@ -149,3 +149,8 @@ the target and atomically compare it when applying the action, with reconciliati
 where that external service cannot close the race. The built-in driver does not
 automatically publish reports; host/worker adapters must supply retained reports
 when settling their actual results.
+
+The [workspace port and local adapter](workspaces.md) now provide independent
+attempt files and current observations. Their example supplies actual captured
+report evidence to these existing gates. Automatic workspace observation during
+execution/decision consumption remains a required subsequent integration.
