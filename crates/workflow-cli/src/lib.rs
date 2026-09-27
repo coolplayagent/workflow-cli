@@ -73,9 +73,11 @@ pub fn run(
             ),
             0,
         ),
-        args @ ["run", ..] | args @ ["schema", "run-start" | "run-receipt"] => {
-            runs::run(args, stdout, stderr)
-        }
+        args @ ["run", ..]
+        | args @ [
+            "schema",
+            "run-start" | "run-receipt" | "run-lease" | "run-execution-record",
+        ] => runs::run(args, stdout, stderr),
         args @ ["kernel", ..]
         | args @ [
             "schema",

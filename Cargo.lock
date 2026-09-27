@@ -544,6 +544,7 @@ dependencies = [
  "workflow-registry-sqlite",
  "workflow-runstore",
  "workflow-runstore-sqlite",
+ "workflow-runtime",
  "workflow-validator",
  "workflow-worker",
 ]
@@ -612,6 +613,19 @@ dependencies = [
  "serde",
  "workflow-kernel",
  "workflow-runstore",
+ "workflow-worker",
+]
+
+[[package]]
+name = "workflow-runtime"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "workflow-builtin-capabilities",
+ "workflow-kernel",
+ "workflow-runstore",
+ "workflow-runstore-sqlite",
  "workflow-worker",
 ]
 

@@ -137,8 +137,9 @@ A durable host must atomically commit the accepted event, new revision/checkpoin
 and ordered command outbox, then dispatch from that outbox with stable command
 identity, e.g. `(run_id, revision, command_index)`. It must also supply live leases,
 fencing, authenticated event ingress and recoverable timer delivery. Replay must
-not dispatch historical commands. Task attempts/retries, model policies, effect
-execution/compensation remain subsequent adapters. The [SQLite RunStore](run-store.md)
-now implements atomic state/event/outbox commits and verified recovery. Kernel
+not dispatch historical commands. The [SQLite RunStore](run-store.md) implements
+atomic state/event/outbox commits and verified recovery; the [local executor](local-execution.md)
+adds run leases, fenced attempts and bounded read-only retries. Model policies and
+effect execution/compensation remain subsequent adapters. Kernel
 replay itself remains a pure calculation; neither layer claims exactly-once
 effects, business benefits or recovery SLAs.

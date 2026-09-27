@@ -1,0 +1,646 @@
+{
+  "ok": true,
+  "result": {
+    "$defs": {
+      "AdapterOutcome": {
+        "oneOf": [
+          {
+            "additionalProperties": false,
+            "properties": {
+              "evidence": {
+                "items": {
+                  "$ref": "#/$defs/EvidenceRef"
+                },
+                "type": "array"
+              },
+              "outputs": {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              "status": {
+                "const": "succeeded",
+                "type": "string"
+              }
+            },
+            "required": [
+              "status",
+              "outputs",
+              "evidence"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "class": {
+                "$ref": "#/$defs/FailureClass"
+              },
+              "code": {
+                "type": "string"
+              },
+              "evidence": {
+                "items": {
+                  "$ref": "#/$defs/EvidenceRef"
+                },
+                "type": "array"
+              },
+              "message": {
+                "type": "string"
+              },
+              "status": {
+                "const": "failed",
+                "type": "string"
+              }
+            },
+            "required": [
+              "status",
+              "code",
+              "class",
+              "message",
+              "evidence"
+            ],
+            "type": "object"
+          }
+        ]
+      },
+      "Error": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "$ref": "#/$defs/ErrorCode"
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message"
+        ],
+        "type": "object"
+      },
+      "ErrorCode": {
+        "enum": [
+          "invalid_message",
+          "unsupported_protocol",
+          "invalid_descriptor",
+          "invalid_request",
+          "unauthorized",
+          "expired",
+          "digest_mismatch",
+          "invalid_input",
+          "invalid_output",
+          "missing_capability",
+          "duplicate_capability",
+          "unsupported_effect",
+          "invalid_binding",
+          "precondition_failed",
+          "invalid_result",
+          "adapter_panicked",
+          "deadline_exceeded",
+          "clock_error"
+        ],
+        "type": "string"
+      },
+      "EvidenceRef": {
+        "additionalProperties": false,
+        "properties": {
+          "artifact_id": {
+            "type": "string"
+          },
+          "digest": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "artifact_id",
+          "digest"
+        ],
+        "type": "object"
+      },
+      "ExecutionAction": {
+        "oneOf": [
+          {
+            "additionalProperties": false,
+            "properties": {
+              "lease": {
+                "$ref": "#/$defs/Lease"
+              },
+              "type": {
+                "const": "acquired",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type",
+              "lease"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "at_unix_ms": {
+                "format": "uint64",
+                "minimum": 0,
+                "type": "integer"
+              },
+              "lease": {
+                "$ref": "#/$defs/Lease"
+              },
+              "type": {
+                "const": "renewed",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type",
+              "lease",
+              "at_unix_ms"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "at_unix_ms": {
+                "format": "uint64",
+                "minimum": 0,
+                "type": "integer"
+              },
+              "epoch": {
+                "format": "uint64",
+                "minimum": 0,
+                "type": "integer"
+              },
+              "type": {
+                "const": "released",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type",
+              "epoch",
+              "at_unix_ms"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "attempt": {
+                "$ref": "#/$defs/PreparedTask"
+              },
+              "type": {
+                "const": "prepared",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type",
+              "attempt"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "at_unix_ms": {
+                "format": "uint64",
+                "minimum": 0,
+                "type": "integer"
+              },
+              "attempt_id": {
+                "type": "string"
+              },
+              "event_id": {
+                "type": "string"
+              },
+              "event_revision": {
+                "format": "uint64",
+                "minimum": 0,
+                "type": "integer"
+              },
+              "result": {
+                "$ref": "#/$defs/WorkResult"
+              },
+              "type": {
+                "const": "finished",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type",
+              "attempt_id",
+              "result",
+              "event_id",
+              "event_revision",
+              "at_unix_ms"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "at_unix_ms": {
+                "format": "uint64",
+                "minimum": 0,
+                "type": "integer"
+              },
+              "attempt_id": {
+                "type": "string"
+              },
+              "error": {
+                "$ref": "#/$defs/Error"
+              },
+              "type": {
+                "const": "failed",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type",
+              "attempt_id",
+              "error",
+              "at_unix_ms"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "at_unix_ms": {
+                "format": "uint64",
+                "minimum": 0,
+                "type": "integer"
+              },
+              "command_id": {
+                "type": "string"
+              },
+              "epoch": {
+                "format": "uint64",
+                "minimum": 0,
+                "type": "integer"
+              },
+              "event_id": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "event_revision": {
+                "format": "uint64",
+                "minimum": 0,
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "type": {
+                "const": "handled",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type",
+              "epoch",
+              "command_id",
+              "at_unix_ms"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "at_unix_ms": {
+                "format": "uint64",
+                "minimum": 0,
+                "type": "integer"
+              },
+              "epoch": {
+                "format": "uint64",
+                "minimum": 0,
+                "type": "integer"
+              },
+              "event_id": {
+                "type": "string"
+              },
+              "event_revision": {
+                "format": "uint64",
+                "minimum": 0,
+                "type": "integer"
+              },
+              "type": {
+                "const": "timer_advanced",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type",
+              "epoch",
+              "event_id",
+              "event_revision",
+              "at_unix_ms"
+            ],
+            "type": "object"
+          }
+        ]
+      },
+      "ExecutionGrant": {
+        "additionalProperties": false,
+        "description": "Issued by a trusted host after authorization. A digest is a binding, not a signature.\nKeep this on a separate authenticated control channel from model/worker messages.",
+        "properties": {
+          "expires_at_unix_ms": {
+            "format": "uint64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "protocol_version": {
+            "format": "uint32",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "request_digest": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "protocol_version",
+          "request_digest",
+          "expires_at_unix_ms"
+        ],
+        "type": "object"
+      },
+      "FailureClass": {
+        "enum": [
+          "invalid_input",
+          "permanent",
+          "transient",
+          "cancelled",
+          "unknown_effect"
+        ],
+        "type": "string"
+      },
+      "InvocationScope": {
+        "oneOf": [
+          {
+            "additionalProperties": false,
+            "properties": {
+              "type": {
+                "const": "standalone",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "attempt_id": {
+                "type": "string"
+              },
+              "definition_digest": {
+                "type": "string"
+              },
+              "lease_epoch": {
+                "format": "uint64",
+                "minimum": 0,
+                "type": "integer"
+              },
+              "node_id": {
+                "type": "string"
+              },
+              "node_instance_id": {
+                "type": "string"
+              },
+              "run_id": {
+                "type": "string"
+              },
+              "type": {
+                "const": "workflow",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type",
+              "definition_digest",
+              "run_id",
+              "node_id",
+              "node_instance_id",
+              "attempt_id",
+              "lease_epoch"
+            ],
+            "type": "object"
+          }
+        ]
+      },
+      "Lease": {
+        "additionalProperties": false,
+        "properties": {
+          "acquisition_id": {
+            "type": "string"
+          },
+          "epoch": {
+            "format": "uint64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "expires_at_unix_ms": {
+            "format": "uint64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "issued_at_unix_ms": {
+            "format": "uint64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "owner": {
+            "type": "string"
+          },
+          "run_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "run_id",
+          "owner",
+          "acquisition_id",
+          "epoch",
+          "issued_at_unix_ms",
+          "expires_at_unix_ms"
+        ],
+        "type": "object"
+      },
+      "PreparedTask": {
+        "additionalProperties": false,
+        "properties": {
+          "attempt_id": {
+            "type": "string"
+          },
+          "command_id": {
+            "type": "string"
+          },
+          "command_sequence": {
+            "format": "uint64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "epoch": {
+            "format": "uint64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "grant": {
+            "$ref": "#/$defs/ExecutionGrant"
+          },
+          "number": {
+            "format": "uint32",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "prepared_revision": {
+            "format": "uint64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "request": {
+            "$ref": "#/$defs/WorkRequest"
+          }
+        },
+        "required": [
+          "attempt_id",
+          "command_id",
+          "command_sequence",
+          "epoch",
+          "number",
+          "prepared_revision",
+          "request",
+          "grant"
+        ],
+        "type": "object"
+      },
+      "VersionRef": {
+        "additionalProperties": false,
+        "description": "Versions are immutable opaque release identifiers, never ranges or `latest`.",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "version"
+        ],
+        "type": "object"
+      },
+      "WorkRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "capability": {
+            "$ref": "#/$defs/VersionRef"
+          },
+          "contract_digest": {
+            "type": "string"
+          },
+          "deadline_unix_ms": {
+            "format": "uint64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "input_digest": {
+            "type": "string"
+          },
+          "inputs": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "issued_at_unix_ms": {
+            "format": "uint64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "protocol_version": {
+            "format": "uint32",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "request_id": {
+            "type": "string"
+          },
+          "scope": {
+            "$ref": "#/$defs/InvocationScope"
+          },
+          "trace_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "protocol_version",
+          "request_id",
+          "trace_id",
+          "scope",
+          "capability",
+          "contract_digest",
+          "inputs",
+          "input_digest",
+          "issued_at_unix_ms",
+          "deadline_unix_ms"
+        ],
+        "type": "object"
+      },
+      "WorkResult": {
+        "additionalProperties": false,
+        "properties": {
+          "completed_at_unix_ms": {
+            "format": "uint64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "outcome": {
+            "$ref": "#/$defs/AdapterOutcome"
+          },
+          "protocol_version": {
+            "format": "uint32",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "request_digest": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "protocol_version",
+          "request_digest",
+          "completed_at_unix_ms",
+          "outcome"
+        ],
+        "type": "object"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "additionalProperties": false,
+    "properties": {
+      "action": {
+        "$ref": "#/$defs/ExecutionAction"
+      },
+      "sequence": {
+        "format": "uint64",
+        "minimum": 0,
+        "type": "integer"
+      }
+    },
+    "required": [
+      "sequence",
+      "action"
+    ],
+    "title": "ExecutionRecord",
+    "type": "object"
+  }
+}

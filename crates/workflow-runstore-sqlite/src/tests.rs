@@ -299,7 +299,7 @@ fn only_init_creates_storage_and_foreign_or_future_databases_are_refused() {
     let store = db.store();
     store
         .connection
-        .pragma_update(None, "user_version", 2)
+        .pragma_update(None, "user_version", STORAGE_VERSION + 1)
         .unwrap();
     drop(store);
     assert!(matches!(
@@ -477,6 +477,10 @@ fn process_worker() {
             }
         }
     };
+    if mode.starts_with("execution-") {
+        execution::process(&mut store, dir, &mode, &slot, &phase);
+        return;
+    }
     let s = scenario("review-approved");
     if mode == "start" {
         store.start_internal(&start(&s), hook).unwrap();
@@ -702,3 +706,5 @@ fn final_completion_and_cancel_race_preserves_the_winner_and_late_observation() 
     }
     store.verify(&s.run_id).unwrap();
 }
+
+mod execution;

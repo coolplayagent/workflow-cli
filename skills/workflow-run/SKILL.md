@@ -1,20 +1,21 @@
 ---
 name: workflow-run
-description: Create and inspect durable workflow-cli runs, submit trusted events, cancel with an expected revision, inspect the command outbox and verify storage recovery. Use for persistent workflow progress; this storage CLI does not dispatch workers or run background timers.
+description: Create and inspect durable workflow-cli runs, submit trusted events, cancel with an expected revision, inspect the command outbox and verify storage recovery, and drive local read-only tasks with durable leases. Use for persistent workflow progress and explicit local execution; no background daemon remains.
 metadata:
-  version: "1.0.0"
+  version: "1.1.0"
 ---
 
 # Workflow run
 
 Resolve `workflow` and read `workflow help`. Use `cargo run --locked --` in this
 source checkout or the Bazel binary; `bazel run` needs absolute file paths. Consult
-`docs/run-store.md` for transaction and failure semantics.
+`docs/run-store.md` and `docs/local-execution.md` for transaction, lease and failure semantics.
 
 Choose the explicit run database from the user's task. `run init <db>` alone
 creates a store. Do not point it at a definition-registry database or silently
 initialize a different database after a query fails. Inspect the error and path.
-A future/foreign schema must not be overwritten to make it open.
+For schema 1, use the explicit `run migrate <db>` transaction when upgrading is
+within the task scope. A future/foreign schema must not be overwritten to make it open.
 
 Read `workflow schema run-start`, obtain exact definitions and descriptors from
 the task's catalog, and validate the bundle with `kernel check`. Use the intended
@@ -29,12 +30,24 @@ use limits 1–100 and follow `next_cursor`. `run list <db> - <limit>` discovers
 Read `result.status` for status or `result.snapshot.status` for mutations; exit 0
 means the storage command succeeded, including a failed/cancelled business run.
 
-The CLI starts no worker or daemon. Pending task/timer intents remain pending
-when the process exits. Never claim a timer is actively scheduled or a task ran
-because its command is in the outbox. Repository examples under `examples/runs`
+For authorized local read-only execution, use `run drive <db> <id> <owner>
+<max-commands>` with a budget of 1–100. This persists the lease/attempt, invokes
+built-in adapters and commits checked results. Inspect task counts and business
+status. It starts no background daemon: timers advance on the next explicit drive.
+Use `run execution-history <db> <id> 0 <limit>` for lease, request, result and error
+observations. Do not infer task execution from an outbox command alone.
+`examples/execution` exercises real built-in validation and business decisions.
+A worker error stops the drive; a later explicit drive may retry read-only work,
+up to three attempts per command. Lease conflicts require inspecting ownership
+and waiting for release/expiry. Never edit epochs, reset budgets or fabricate a
+result. Write effects, uncertain reconciliation and artifact evidence need their
+separate verified host mechanisms. A release error can follow a committed task;
+read status/history before retrying.
+
+Pending work persists when the process exits. Repository examples under `examples/runs`
 use simulated approvals, results and receipts; label them as simulation.
 
-For real progress, obtain authenticated, validated host observations, then read
+For administrative host events, obtain authenticated, validated observations, then read
 `workflow schema kernel-event` and submit `run event <db> <event.json>`. Use the
 actual run digest, instance ID and expected revision. Do not invent task results,
 approvals, effect receipts or reconciliation facts. Use a stable event ID and
@@ -50,14 +63,14 @@ history before deciding whether the requested event remains valid.
 `run acknowledge <db> <receipt.json>` is only for a real host's confirmed durable
 delivery/registration, or an explicitly labeled simulation. Read `schema run-receipt`
 and copy the exact command ID/digest. Do not acknowledge merely to clear pending
-work. Receipts follow sequence order and do not mean task success. The consumer
+work or manually bypass a managed task result. Receipts follow sequence order and do not mean task success. The consumer
 must deduplicate stable command IDs after lost acknowledgements.
 
 If storage is full/busy/read-only or the reply is lost, do not claim acceptance.
 Inspect `run status` and retry the exact event/start/receipt identity when justified;
 never change IDs to hide uncertainty. Exact duplicates produce no new transition
 commands. `run verify <db> <id>` checks full replay, checkpoint plus tail, outbox
-and receipts. Corruption must be investigated using the original records, not by
+receipts and execution authority. Corruption must be investigated using the original records, not by
 editing hashes or deleting recovery dependencies.
 
 Report the database, run ID/digest, revision, business status, pending intents and

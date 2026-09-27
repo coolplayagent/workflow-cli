@@ -1,8 +1,8 @@
 schema_version: 4
 artifact_kind: map
 map_type: knowledge
-map_version: 5
-updated_at: unix:1790426010
+map_version: 6
+updated_at: unix:1790427510
 directories:
 - directory: domain
   purpose: Domain concepts, models, and business rules.
@@ -57,9 +57,10 @@ topics:
   - definition-authoring
   - definition-semantics
   - kernel-semantics
+  - run-store
   - worker-protocol
-  ref: topics/topic-4ca303a3bf7ddf7b-0648bb2cf95d66d3a3d318c68606401f77bf684e52ffa1449cc4c51c1343375c.yaml
-  digest: 0648bb2cf95d66d3a3d318c68606401f77bf684e52ffa1449cc4c51c1343375c
+  ref: topics/topic-4ca303a3bf7ddf7b-ba0693084bfeec3b05c6c103a6f8c900dfee132dedf654aae229c7a78a3f0d08.yaml
+  digest: ba0693084bfeec3b05c6c103a6f8c900dfee132dedf654aae229c7a78a3f0d08
 - id: business-knowledge
   title: Business knowledge
   description: Version-controlled business domains, terminology, aliases, semantics, and technical mappings.
@@ -97,3 +98,7 @@ history:
     action: source.add
     actor: cli
     summary: Added source 'kernel-semantics' to topic 'architecture'.
+  - version: 6
+    action: source.add
+    actor: cli
+    summary: Added source 'run-store' to topic 'architecture'.

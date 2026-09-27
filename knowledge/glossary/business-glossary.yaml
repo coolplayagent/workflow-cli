@@ -130,3 +130,30 @@ terms:
       - relation: represented_by
         target_kind: file
         target: crates/workflow-runstore/src/model.rs
+  - id: run-lease
+    domain: workflow
+    canonical_name: Run execution lease
+    definition: A bounded ownership grant for one local run, identified by owner, unique acquisition and increasing epoch; expiry or replacement fences new result settlement.
+    language: en
+    mappings:
+      - relation: represented_by
+        target_kind: file
+        target: crates/workflow-runstore/src/execution/authority.rs
+  - id: durable-attempt
+    domain: workflow
+    canonical_name: Durable task attempt
+    definition: An exact worker request and grant committed before invocation, binding the command, node instance, inputs and lease epoch; read-only orphans may be retried within a fixed budget.
+    language: en
+    mappings:
+      - relation: represented_by
+        target_kind: file
+        target: crates/workflow-runstore/src/execution/model.rs
+  - id: result-settlement
+    domain: workflow
+    canonical_name: Atomic result settlement
+    definition: One fenced transaction that persists a validated worker result, kernel event and state, successor intents, command receipt and execution journal before acknowledging completion.
+    language: en
+    mappings:
+      - relation: represented_by
+        target_kind: file
+        target: crates/workflow-runstore-sqlite/src/execution/tasks.rs
