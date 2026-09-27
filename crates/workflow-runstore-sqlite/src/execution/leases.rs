@@ -2,6 +2,12 @@ use super::*;
 impl SqliteRunStore {
     /// Explicit, transactional storage upgrade. Ordinary create/open never migrates.
     pub fn migrate(path: impl AsRef<Path>) -> Result<Self> {
+        Self::migrate_with_artifacts(path, None)
+    }
+    pub fn migrate_with_artifacts(
+        path: impl AsRef<Path>,
+        artifacts: Option<Box<dyn workflow_artifacts::ArtifactReader>>,
+    ) -> Result<Self> {
         let mut connection = connect(path.as_ref(), OpenFlags::SQLITE_OPEN_READ_WRITE)?;
         let tx = connection
             .transaction_with_behavior(TransactionBehavior::Immediate)
@@ -15,7 +21,7 @@ impl SqliteRunStore {
         if app != APPLICATION_ID || !(1..=STORAGE_VERSION).contains(&version) {
             return Err(Error::new(
                 ErrorCode::UnsupportedStorage,
-                "only run store schema 1, 2 or 3 can migrate",
+                "only run store schema 1 through 4 can migrate",
             ));
         }
         if version < STORAGE_VERSION {
@@ -39,7 +45,7 @@ impl SqliteRunStore {
             tx.pragma_update(None, "user_version", STORAGE_VERSION)
                 .map_err(storage)?;
             for id in ids {
-                crate::recovery::recover(&tx, &id, None)?;
+                crate::recovery::recover(&tx, &id, artifacts.as_deref())?;
             }
         } else {
             check_version(&tx)?;
@@ -47,7 +53,7 @@ impl SqliteRunStore {
         tx.commit().map_err(storage)?;
         Ok(Self {
             connection,
-            artifacts: None,
+            artifacts,
         })
     }
     pub(crate) fn acquire_lease(

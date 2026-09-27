@@ -66,6 +66,10 @@ pub struct EdgeToken {
 pub enum NodeState {
     Pending,
     TaskReady,
+    CheckingGate {
+        context: Box<crate::GateContext>,
+        awaiting: bool,
+    },
     CancelRequested,
     Reconciling,
     Waiting {
@@ -100,6 +104,8 @@ pub struct NodeInstance {
     pub cancel_requested: bool,
     pub winner_edge: Option<String>,
     pub reason: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub gate_decision: Option<Box<workflow_gates::Decision>>,
 }
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -155,6 +161,15 @@ pub enum EventKind {
         accepted: bool,
         outputs: Values,
     },
+    GateEvaluated {
+        instance_id: u64,
+        context_digest: String,
+        evaluation: Box<crate::GateEvaluation>,
+    },
+    RetryGate {
+        instance_id: u64,
+        context_digest: String,
+    },
     AdvanceTime,
     Cancel,
 }
@@ -172,6 +187,10 @@ pub struct Event {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)]
 pub enum Command {
+    CheckGate {
+        instance_id: u64,
+        context: Box<crate::GateContext>,
+    },
     ExecuteTask {
         instance_id: u64,
         frame_id: u64,

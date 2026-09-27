@@ -180,3 +180,77 @@ fn drive_executes_real_builtins_and_reports_business_failure_and_storage_errors(
     );
     std::fs::remove_dir_all(dir).unwrap();
 }
+
+#[test]
+fn gated_drive_stops_on_unknown_and_retry_intent_is_cas_bound_and_idempotent() {
+    let dir = std::env::temp_dir().join(format!("workflow-gated-drive-cli-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let db = dir.join("runs.db");
+    let db = db.to_str().unwrap();
+    let path = base().join("examples/gates/guarded-start.json");
+    assert_eq!(invoke(&["run", "init", db]).0, 0);
+    assert_eq!(invoke(&["run", "start", db, path.to_str().unwrap()]).0, 0);
+    let drive = || invoke(&["run", "drive", db, "guarded-validation", "cli-test", "10"]);
+    let (code, first) = drive();
+    assert_eq!(code, 0, "{first}");
+    assert_eq!(first["result"]["executed_tasks"], 1);
+    assert_eq!(first["result"]["snapshot"]["status"], "running");
+    let snapshot = &first["result"]["snapshot"];
+    let node = &snapshot["frames"]["1"]["nodes"]["inspect"];
+    assert_eq!(node["gate_decision"]["verdict"], "UNKNOWN");
+    assert_eq!(node["state"]["awaiting"], false);
+    let instance = node["instance_id"].to_string();
+    let revision = snapshot["revision"].to_string();
+    let retry = [
+        "run",
+        "retry-gate",
+        db,
+        "guarded-validation",
+        &instance,
+        "retry-1",
+        &revision,
+    ];
+    assert_eq!(
+        invoke(&[
+            "run",
+            "retry-gate",
+            db,
+            "guarded-validation",
+            &instance,
+            "stale",
+            "1"
+        ])
+        .0,
+        1
+    );
+    let idle = drive();
+    assert_eq!(idle.1["result"]["processed_commands"], 0);
+    assert_eq!(
+        idle.1["result"]["snapshot"]["revision"],
+        snapshot["revision"]
+    );
+    assert_eq!(invoke(&retry).0, 0);
+    assert_eq!(invoke(&retry).1["result"]["transition"]["duplicate"], true);
+    let (code, second) = drive();
+    assert_eq!(code, 0, "{second}");
+    assert_eq!(second["result"]["executed_tasks"], 0);
+    assert_eq!(second["result"]["processed_commands"], 1);
+    assert_eq!(second["result"]["snapshot"]["status"], "running");
+    assert_eq!(invoke(&retry).1["result"]["transition"]["duplicate"], true);
+    assert_eq!(drive().1["result"]["processed_commands"], 0);
+    assert_eq!(
+        invoke(&[
+            "run",
+            "retry-gate",
+            db,
+            "guarded-validation",
+            "999",
+            "retry-1",
+            &revision
+        ])
+        .0,
+        1
+    );
+    assert_eq!(invoke(&["run", "verify", db, "guarded-validation"]).0, 0);
+    std::fs::remove_dir_all(dir).unwrap();
+}

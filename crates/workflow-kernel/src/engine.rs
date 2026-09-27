@@ -1,3 +1,4 @@
+mod postconditions;
 use crate::bundle::{key, workflow_key};
 use crate::*;
 use std::{
@@ -281,6 +282,7 @@ impl Engine {
                     cancel_requested: false,
                     winner_edge: None,
                     reason: None,
+                    gate_decision: None,
                 },
             );
         }
@@ -497,6 +499,15 @@ impl Engine {
                     Some(if *accepted { "accepted" } else { "rejected" }.into()),
                 )
             }
+            EventKind::GateEvaluated {
+                instance_id,
+                context_digest,
+                evaluation,
+            } => self.gate_evaluated(*instance_id, context_digest, evaluation),
+            EventKind::RetryGate {
+                instance_id,
+                context_digest,
+            } => self.retry_gate(*instance_id, context_digest, commands),
             EventKind::AdvanceTime => Ok(()),
             EventKind::Cancel => unreachable!("handled before timers"),
         }
@@ -589,6 +600,12 @@ impl Engine {
             TaskResult::Failed { code } => Some(code.clone()),
             _ => None,
         };
+        if !record.cancel_requested
+            && state == NodeState::Succeeded
+            && self.begin_gate(frame, &id, commands)?
+        {
+            return Ok(());
+        }
         self.finish(
             frame,
             &id,
@@ -703,7 +720,7 @@ impl Engine {
                     Some("cancelled".into()),
                 )?;
             }
-            NodeState::Pending => self.finish(
+            NodeState::CheckingGate { .. } | NodeState::Pending => self.finish(
                 frame,
                 id,
                 NodeState::Cancelled,
@@ -958,6 +975,9 @@ impl Engine {
                 };
                 if state == NodeState::Succeeded {
                     self.record_mut(frame, &node.id).outputs = inputs;
+                    if self.begin_gate(frame, &node.id, commands)? {
+                        return Ok(());
+                    }
                 }
                 self.finish(
                     frame,

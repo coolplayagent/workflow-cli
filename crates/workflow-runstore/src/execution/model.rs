@@ -74,6 +74,13 @@ pub enum ExecutionAction {
         event_revision: Option<u64>,
         at_unix_ms: u64,
     },
+    GateChecked {
+        epoch: u64,
+        command_id: String,
+        event_id: String,
+        event_revision: u64,
+        at_unix_ms: u64,
+    },
     TimerAdvanced {
         epoch: u64,
         event_id: String,

@@ -2,9 +2,11 @@
 mod bundle;
 mod engine;
 mod model;
+mod postconditions;
 pub use bundle::*;
 pub use engine::Engine;
 pub use model::*;
+pub use postconditions::*;
 use serde::{Deserialize, Serialize};
 pub use workflow_worker::Values;
 
@@ -24,6 +26,7 @@ pub enum ErrorCode {
     InvalidTaskResult,
     UnknownInstance,
     InvalidSignal,
+    InvalidGateResult,
     ClockReversal,
     BudgetExceeded,
     CorruptCheckpoint,
@@ -73,3 +76,9 @@ pub fn schema(kind: &str) -> Result<String> {
 
 #[cfg(test)]
 mod tests;
+
+impl From<workflow_gates::Error> for Error {
+    fn from(e: workflow_gates::Error) -> Self {
+        Self::new(ErrorCode::InvalidGateResult, e.message)
+    }
+}

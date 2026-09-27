@@ -219,6 +219,42 @@ pub(super) fn verify(
             }
             verify_receipt(r, &p.command_id, p.epoch)?;
         }
+        ExecutionAction::GateChecked {
+            epoch,
+            command_id,
+            event_id,
+            event_revision,
+            at_unix_ms,
+        } => {
+            let command = entry(r, command_id)?;
+            let Command::CheckGate {
+                instance_id,
+                context,
+            } = &command.command
+            else {
+                return Err(corrupt("gate proof has no gate command"));
+            };
+            verify_receipt(r, command_id, *epoch)?;
+            let expected = super::gates::evaluate(
+                r,
+                a,
+                context,
+                artifacts,
+                *at_unix_ms,
+                event_revision.saturating_sub(1),
+            )?;
+            if stored_event(r, event_id, *event_revision, *at_unix_ms)?.kind
+                != (EventKind::GateEvaluated {
+                    instance_id: *instance_id,
+                    context_digest: digest(context)?,
+                    evaluation: Box::new(expected),
+                })
+            {
+                return Err(corrupt(
+                    "gate observation differs from verified execution evidence",
+                ));
+            }
+        }
         ExecutionAction::Handled {
             epoch,
             command_id,

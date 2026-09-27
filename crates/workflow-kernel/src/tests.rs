@@ -46,6 +46,7 @@ fn spec(workflows: Vec<Workflow>) -> BundleSpec {
         }
     }
     BundleSpec {
+        postconditions: vec![],
         schema_version: 1,
         root,
         workflows,
@@ -1080,3 +1081,5 @@ fn declared_unknown_effect_errors_require_reconciliation_before_loop_retry() {
         NodeState::TaskReady
     );
 }
+
+mod postconditions;

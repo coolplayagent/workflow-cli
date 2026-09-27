@@ -37,6 +37,7 @@ fn base() -> PathBuf {
 }
 fn request(valid: bool) -> StartRun {
     let w = workflow_kernel::BundleSpec {
+        postconditions: vec![],
         schema_version: 1,
         root: serde_json::from_value(
             serde_json::json!({"id":"inspect-definition","version":"1.0.0"}),

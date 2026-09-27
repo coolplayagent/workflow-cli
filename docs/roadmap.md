@@ -20,6 +20,10 @@ flowchart LR
     CLI --> AF[workflow-artifact-local: files and manifest catalog]
     AF --> A
     DB --> A
+    DB --> G
+    RS --> G
+    K --> G
+    K --> A
     A --> IR
     A --> V
     CLI --> RT[workflow-runtime: local read-only driver]
@@ -63,7 +67,7 @@ completion of the workflow runtime.
 | [R15 #3](https://github.com/coolplayagent/workflow-cli/issues/3) | Incremental deterministic invariant checks alongside modules; independent business baseline and fault experiments remain open. |
 | [R04 #5](https://github.com/coolplayagent/workflow-cli/issues/5), [R05 #6](https://github.com/coolplayagent/workflow-cli/issues/6) | Kernel state/event/command contracts and cancellation/reconciliation transitions delivered. Also delivered: RunStore port, SQLite atomic state/event/checkpoint/outbox commits, ordered delivery receipts, persistent CLI, CAS/crash/corruption/full-disk tests. Also delivered: run leases, epoch fencing, durable attempts, atomic result/event/receipt commits, bounded read-only retries and explicit storage migration; artifact evidence is verified before completion and during recovery. Next: pause/resume, autonomous dispatch/timers, effects, general retry policy, artifacts and backup/restore. |
 | [R07 #7](https://github.com/coolplayagent/workflow-cli/issues/7), [R11 #8](https://github.com/coolplayagent/workflow-cli/issues/8) | Delivered: typed artifact manifests, exact producer/input/source provenance, local atomic upload, retention-safe orphan cleanup, lineage/impact, portable local export/import and run evidence verification. Next: isolated workspaces, resource/merge policy, authenticated remote storage and controlled invalidation; immutable versions and migrations. |
-| [R03 #10](https://github.com/coolplayagent/workflow-cli/issues/10), [R06 #11](https://github.com/coolplayagent/workflow-cli/issues/11) | Delivered: portable PASS/FAIL/UNKNOWN checker with exact policy/target/tool/input bindings, settled execution provenance and read-only CLI revalidation. Next: mandatory node/terminal gates, bounded repair, effect authorization, current-workspace verification, approvals and asynchronous durable waits. |
+| [R03 #10](https://github.com/coolplayagent/workflow-cli/issues/10), [R06 #11](https://github.com/coolplayagent/workflow-cli/issues/11) | Delivered: portable PASS/FAIL/UNKNOWN checker with exact policy/target/tool/input bindings, settled execution provenance and read-only CLI revalidation. Also delivered: frozen mandatory task/terminal postconditions, fenced decision commits and replay, durable UNKNOWN retry and declared bounded repair. Next: effect authorization, current-workspace verification, approvals and asynchronous durable waits. |
 | [R08 #12](https://github.com/coolplayagent/workflow-cli/issues/12) | Delivered: explicit local read-only drive with real built-in capability results. Next: broader adapters, autonomous operation and backup/restore. |
 | [R09 #13](https://github.com/coolplayagent/workflow-cli/issues/13), [R14 #9](https://github.com/coolplayagent/workflow-cli/issues/9) | Local run ownership and epoch fencing foundation delivered; cluster leasing, fairness, tenant identity and secrets remain open. |
 | [R10 #15](https://github.com/coolplayagent/workflow-cli/issues/15), [R12 #16](https://github.com/coolplayagent/workflow-cli/issues/16), [R13 #14](https://github.com/coolplayagent/workflow-cli/issues/14) | Hybrid deployment, cost/observability and composable SDLC templates. |
@@ -118,6 +122,13 @@ The [evidence checker guide](evidence-gates.md) defines exact requirements, targ
 bindings, source obligations and exclusive freshness windows. Core and real CLI
 tests reject stale/missing/uncommitted/mismatched evidence and fabricated decision
 fields; actual false compiler output remains FAIL even with a report claiming
-true. Evaluation does not advance a run or authorize an effect. R03 remains open
-for mandatory node/terminal enforcement, bounded repair, workspace verification,
-atomic action consumption, human exceptions and final acceptance manifests.
+true. Standalone evaluation does not advance a run or authorize an effect.
+
+The [runtime postcondition increment](runtime-postconditions.md) freezes mandatory
+task/terminal contracts in run bundles, checks settled evidence before successor
+release, commits decisions under a lease and rechecks proofs on recovery. UNKNOWN
+is durable and idle until explicit retry; confirmed FAIL enters declared bounded
+repair. Tests cover three-round exhaustion/deadlines, raw ingress rejection,
+precommit expiry rollback, process races/crashes and migration. R03 remains open
+for workspace verification, atomic external action consumption, human exceptions
+and final acceptance manifests.

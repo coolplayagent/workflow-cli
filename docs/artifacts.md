@@ -141,14 +141,16 @@ configuration or dependencies return an error instead of reporting a healthy run
 Payload corruption also blocks `status`/`verify`/recovery. A replacement adapter
 must validate equivalent manifests and bytes and honor retention. No automatic
 filesystem or network lookup is attempted without the host configuration.
-Administrative `run event` still accepts trusted kernel facts without evidence;
-it must not be exposed to untrusted workers as a way around this execution port.
+Administrative `run event` accepts other trusted kernel facts without evidence;
+it must not be exposed to untrusted workers. Runs containing postconditions reject
+raw successful task events, and all raw gate decisions are refused.
 Artifact integrity is not proof that the reported business assertions are true:
-evidence-gate policies, authenticated producers and objective checks remain R03.
+[Evidence policies](evidence-gates.md) and [mandatory postconditions](runtime-postconditions.md)
+check accepted worker outputs. Authenticated producers remain open.
 
-Run storage now uses schema **3** so older binaries cannot read new evidence
-semantics as if they were schema 2. `run migrate <db>` explicitly upgrades schema 1
-or 2 transactionally, verifies existing histories and preserves leases/attempts;
+Run storage now uses schema **4** so older binaries cannot accept protected gate
+transitions. `run --artifacts <store> migrate <db>` explicitly upgrades schema 1,
+2 or 3 transactionally, verifies dependencies and preserves leases/attempts;
 foreign/future stores are refused. Artifact catalog schema is separately versioned
 at 1. Existing definition/worker wire formats remain unchanged.
 

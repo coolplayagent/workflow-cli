@@ -476,7 +476,7 @@
           "REPO_MAPPING:rules_rust+,bazel_skylib bazel_skylib+",
           "REPO_MAPPING:rules_rust+,bazel_tools bazel_tools",
           "REPO_MAPPING:rules_rust+,rules_cc rules_cc+",
-          "FILE:@@//Cargo.lock 2e3eceba49a08646508a7ba98af3a62c59d9e2b950787591e19d1574c5de218e",
+          "FILE:@@//Cargo.lock 233884d306791d36b80fbe034ebdff71c1c77d9cd0021ca199840298b1fdf354",
           "FILE:@@//Cargo.toml f2944da30c9b3e25fbf6d966a752371e6617838479f5bdf0c863381d027d7525",
           "FILE:@@//crates/workflow-ir/Cargo.toml 81e0c679680f0f693efaa82b49261b0bad5a629adf72b97c2824748740b665b3",
           "FILE:@@//crates/workflow-validator/Cargo.toml 661c46420b2f4f69530fd81e6a26ccf8dcd0443ff5f61dd9db2f5a208cd2011e",
@@ -487,10 +487,10 @@
           "FILE:@@//crates/workflow-worker/Cargo.toml 7d9f78f451c102093bf6a8e8ba57cefc75b1d13c3ce8162427228f7b3acb904a",
           "FILE:@@//crates/workflow-definitions/Cargo.toml 0f63b0affd4bc3768dcf6cc898793abde584c393eeab9a0f4525d39cd368ae99",
           "FILE:@@//crates/workflow-gates/Cargo.toml 8dbb8e93ed89f973d58fc978258daedf97435552f2ec9a4fa06b1b223aa26a91",
-          "FILE:@@//crates/workflow-kernel/Cargo.toml fc30f967e7e632ffb43e51e2410534930a05eb0317cb7693d1eb211d183c6612",
+          "FILE:@@//crates/workflow-kernel/Cargo.toml ae7874806d66d82566f1b593fbc4b07988f2a35f0197aba3c62e4558995e9429",
           "FILE:@@//crates/workflow-registry-sqlite/Cargo.toml 12a5d7542de96912e579ec38bc8b921b45e4d333935f0049f802b12506e18c27",
-          "FILE:@@//crates/workflow-runstore/Cargo.toml 629d7e993caf5e503deeec2d6efcbc9710d0b2b9338e4703a38d4d61075adbd6",
-          "FILE:@@//crates/workflow-runstore-sqlite/Cargo.toml 10bfdac3a1fbef655f623de68339c05fb312cf8602b2352a58292365c1e28907",
+          "FILE:@@//crates/workflow-runstore/Cargo.toml c8028d4329c7e0600b6124f95c2ae5aef3f96b35b32f67681e8f256ce9232b1c",
+          "FILE:@@//crates/workflow-runstore-sqlite/Cargo.toml 65aa89d0ba331c7583c8d44e7549f46df5e7c9f15dd4c71da7b8a94d60d58db8",
           "FILE:@@//crates/workflow-runtime/Cargo.toml 0e7892be5597dbf8430fbbc50621158d7124a62eb49efe5a9e4848ca60c1df2a"
         ],
         "generatedRepoSpecs": {

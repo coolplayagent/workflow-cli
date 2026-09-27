@@ -1,5 +1,21 @@
 {
   "$defs": {
+    "ArtifactType": {
+      "additionalProperties": false,
+      "properties": {
+        "content": {
+          "$ref": "#/$defs/ContentSchema"
+        },
+        "identity": {
+          "$ref": "#/$defs/VersionRef"
+        }
+      },
+      "required": [
+        "identity",
+        "content"
+      ],
+      "type": "object"
+    },
     "Binding": {
       "oneOf": [
         {
@@ -231,6 +247,53 @@
           "required": [
             "op",
             "condition"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "ContentSchema": {
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "format": {
+              "const": "bytes",
+              "type": "string"
+            }
+          },
+          "required": [
+            "format"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "format": {
+              "const": "utf8",
+              "type": "string"
+            }
+          },
+          "required": [
+            "format"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "format": {
+              "const": "json",
+              "type": "string"
+            },
+            "value_type": {
+              "$ref": "#/$defs/ValueType"
+            }
+          },
+          "required": [
+            "format",
+            "value_type"
           ],
           "type": "object"
         }
@@ -606,12 +669,118 @@
         }
       ]
     },
+    "Policy": {
+      "additionalProperties": false,
+      "properties": {
+        "identity": {
+          "$ref": "#/$defs/VersionRef"
+        },
+        "requirements": {
+          "items": {
+            "$ref": "#/$defs/Requirement"
+          },
+          "type": "array"
+        },
+        "schema_version": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "schema_version",
+        "identity",
+        "requirements"
+      ],
+      "type": "object"
+    },
+    "Postcondition": {
+      "additionalProperties": false,
+      "description": "Mandatory success postcondition, frozen with its graph and policy in the run bundle.",
+      "properties": {
+        "action": {
+          "$ref": "#/$defs/VersionRef"
+        },
+        "artifacts": {
+          "$ref": "#/$defs/Binding"
+        },
+        "input_node": {
+          "description": "The current frame's task whose resolved inputs identify the checked subject.",
+          "type": "string"
+        },
+        "node_id": {
+          "type": "string"
+        },
+        "policy": {
+          "$ref": "#/$defs/Policy"
+        },
+        "repository": {
+          "$ref": "#/$defs/Binding"
+        },
+        "revision": {
+          "$ref": "#/$defs/Binding"
+        },
+        "workflow": {
+          "$ref": "#/$defs/VersionRef"
+        }
+      },
+      "required": [
+        "workflow",
+        "node_id",
+        "policy",
+        "action",
+        "repository",
+        "revision",
+        "input_node",
+        "artifacts"
+      ],
+      "type": "object"
+    },
     "RemainingPolicy": {
       "enum": [
         "await",
         "cancel_and_reconcile"
       ],
       "type": "string"
+    },
+    "Requirement": {
+      "additionalProperties": false,
+      "properties": {
+        "capability": {
+          "$ref": "#/$defs/VersionRef"
+        },
+        "contract_digest": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "max_age_ms": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "node_id": {
+          "type": "string"
+        },
+        "pass_field": {
+          "description": "Required Boolean in the accepted worker output; artifact text is not a verdict.",
+          "type": "string"
+        },
+        "report_type": {
+          "$ref": "#/$defs/ArtifactType"
+        }
+      },
+      "required": [
+        "id",
+        "node_id",
+        "capability",
+        "contract_digest",
+        "report_type",
+        "pass_field",
+        "max_age_ms"
+      ],
+      "type": "object"
     },
     "Route": {
       "oneOf": [
@@ -897,6 +1066,12 @@
     "capabilities": {
       "items": {
         "$ref": "#/$defs/CapabilityDescriptor"
+      },
+      "type": "array"
+    },
+    "postconditions": {
+      "items": {
+        "$ref": "#/$defs/Postcondition"
       },
       "type": "array"
     },

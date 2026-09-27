@@ -19,6 +19,16 @@ pub(crate) fn lock_bindings(c: &Connection, bundle: &CompiledBundle, create: boo
             create,
         )?;
     }
+    for gate in &bundle.spec().postconditions {
+        check(
+            c,
+            "gate_policy",
+            &gate.policy.identity.id,
+            &gate.policy.identity.version,
+            &workflow_gates::digest(&gate.policy)?,
+            create,
+        )?;
+    }
     Ok(())
 }
 fn check(

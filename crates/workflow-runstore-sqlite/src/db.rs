@@ -3,7 +3,7 @@ use rusqlite::{Connection, OpenFlags};
 use serde::{Serialize, de::DeserializeOwned};
 use std::{path::Path, time::Duration};
 pub(crate) const APPLICATION_ID: i64 = 0x57465231;
-pub(crate) const STORAGE_VERSION: i64 = 3;
+pub(crate) const STORAGE_VERSION: i64 = 4;
 pub(crate) const SCHEMA: &str = "
 CREATE TABLE bundles (digest TEXT PRIMARY KEY NOT NULL, document TEXT NOT NULL);
 CREATE TABLE binding_locks (

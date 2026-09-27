@@ -5,7 +5,7 @@ use std::io::{Read, Write};
 use workflow_runstore::*;
 use workflow_runstore_sqlite::SqliteRunStore;
 
-pub const HELP: &str = "DURABLE RUN STORAGE\n  workflow run init <db>\n  workflow run migrate <db>\n  workflow run start <db> <start.json>\n  workflow run drive <db> <run-id> <owner> <max-commands>\n  workflow run execution-history <db> <run-id> <after-sequence> <limit>\n  workflow run status <db> <run-id>\n  workflow run event <db> <event.json>\n  workflow run cancel <db> <run-id> <event-id> <expected-revision> <at-unix-ms>\n  workflow run list <db> <after-id|-> <limit>\n  workflow run history <db> <run-id> <after-revision> <limit>\n  workflow run outbox <db> <run-id> <after-sequence> <limit> <all|pending>\n  workflow run acknowledge <db> <receipt.json>\n  workflow run verify <db> <run-id>\n  workflow run acquire <db> <lease-request.json>\n  workflow run renew <db> <lease.json> <ttl-ms>\n  workflow run release <db> <lease.json>\n  workflow run claim <db> <lease.json>\n  workflow run tick-due <db> <lease.json>\n  workflow run finish <db> <lease.json> <attempt-id> <result.json>\n  workflow run attempt-failed <db> <lease.json> <attempt-id> <worker-error.json>\n  workflow run --artifacts <store> <operation> ...\n  workflow schema <run-start|run-receipt|run-lease|run-execution-record>\n\nOnly init creates a database. Mutations acknowledge after SQLite commit.\ndrive executes local read-only builtins with a durable run lease; max-commands is 1..100.\nTimers advance on drive; there is no background daemon. migrate explicitly upgrades v1/v2 storage to v3.\nRuns with artifact evidence require --artifacts on reads and mutations; this location is not persisted.\nEvents and delivery receipts are trusted host facts; delivery is not task success.\nExit 0 means committed/read successfully; inspect result.snapshot.status (mutations) or result.status (status).\nExit 1 means rejected request/transition/storage/execution; 2 means usage/input I/O/output failure.\n";
+pub const HELP: &str = "DURABLE RUN STORAGE\n  workflow run init <db>\n  workflow run migrate <db>\n  workflow run start <db> <start.json>\n  workflow run drive <db> <run-id> <owner> <max-commands>\n  workflow run execution-history <db> <run-id> <after-sequence> <limit>\n  workflow run status <db> <run-id>\n  workflow run event <db> <event.json>\n  workflow run cancel <db> <run-id> <event-id> <expected-revision> <at-unix-ms>\n  workflow run list <db> <after-id|-> <limit>\n  workflow run history <db> <run-id> <after-revision> <limit>\n  workflow run outbox <db> <run-id> <after-sequence> <limit> <all|pending>\n  workflow run acknowledge <db> <receipt.json>\n  workflow run verify <db> <run-id>\n  workflow run acquire <db> <lease-request.json>\n  workflow run renew <db> <lease.json> <ttl-ms>\n  workflow run release <db> <lease.json>\n  workflow run claim <db> <lease.json>\n  workflow run tick-due <db> <lease.json>\n  workflow run retry-gate <db> <run-id> <instance-id> <event-id> <expected-revision>\n  workflow run finish <db> <lease.json> <attempt-id> <result.json>\n  workflow run attempt-failed <db> <lease.json> <attempt-id> <worker-error.json>\n  workflow run --artifacts <store> <operation> ...\n  workflow schema <run-start|run-receipt|run-lease|run-execution-record>\n\nOnly init creates a database. Mutations acknowledge after SQLite commit.\ndrive executes local read-only builtins with a durable run lease; max-commands is 1..100.\nTimers advance on drive; there is no background daemon. migrate explicitly upgrades v1/v2/v3 storage to v4.\nRuns with artifact evidence require --artifacts on reads and mutations; this location is not persisted.\nclaim/drive checks frozen postconditions; UNKNOWN waits for explicit retry-gate.\nRaw gate events/manual gate receipts and raw successes in gated runs are refused.\nOther events and delivery receipts are trusted host facts; delivery is not task success.\nExit 0 means committed/read successfully; inspect result.snapshot.status (mutations) or result.status (status).\nExit 1 means rejected request/transition/storage/execution; 2 means usage/input I/O/output failure.\n";
 fn read<T: DeserializeOwned>(p: &str) -> Result<T> {
     let mut bytes = vec![];
     std::fs::File::open(p)
@@ -46,8 +46,14 @@ fn execute(args: &[&str], artifacts: Option<&str>) -> Result<Value> {
             Ok(json!({"initialized":true}))
         }
         ["run", "migrate", db] => {
-            SqliteRunStore::migrate(db)?;
-            Ok(json!({"migrated":true,"storage_version":3}))
+            let reader = artifacts
+                .map(workflow_artifact_local::LocalArtifactStore::open)
+                .transpose()?;
+            SqliteRunStore::migrate_with_artifacts(
+                db,
+                reader.map(|r| Box::new(r) as Box<dyn workflow_artifacts::ArtifactReader>),
+            )?;
+            Ok(json!({"migrated":true,"storage_version":4}))
         }
         ["run", "execution-history", db, id, after, limit] => {
             report(open(db, artifacts)?.execution_history(id, number(after)?, number(limit)?)?)
@@ -66,6 +72,54 @@ fn execute(args: &[&str], artifacts: Option<&str>) -> Result<Value> {
         }
         ["run", "claim", db, file] => {
             report(open(db, artifacts)?.claim_next(&read(file)?, &workflow_worker::SystemClock)?)
+        }
+        ["run", "retry-gate", db, id, instance, event_id, revision] => {
+            let mut store = open(db, artifacts)?;
+            let instance_id = number(instance)?;
+            let expected_revision = number(revision)?;
+            // A lost reply must not create another intent or change its timestamp.
+            if let Some(record) = store.history(id, expected_revision, 1)?.items.first()
+                && record.event.event_id == *event_id
+            {
+                if !matches!(record.event.kind, workflow_kernel::EventKind::RetryGate { instance_id: old, .. } if old == instance_id)
+                {
+                    return Err(Error::new(
+                        ErrorCode::InvalidRequest,
+                        "retry identity belongs to another event",
+                    ));
+                }
+                return report(store.apply(&record.event)?);
+            }
+            let snapshot = store.get(id)?;
+            let node = snapshot
+                .frames
+                .values()
+                .flat_map(|f| f.nodes.values())
+                .find(|n| n.instance_id == instance_id)
+                .ok_or_else(|| Error::new(ErrorCode::InvalidRequest, "unknown gate instance"))?;
+            let workflow_kernel::NodeState::CheckingGate {
+                context,
+                awaiting: false,
+            } = &node.state
+            else {
+                return Err(Error::new(
+                    ErrorCode::InvalidRequest,
+                    "only an observed UNKNOWN gate can be retried",
+                ));
+            };
+            use workflow_worker::Clock;
+            let event = Event {
+                event_id: (*event_id).into(),
+                run_id: (*id).into(),
+                run_digest: snapshot.run_digest.clone(),
+                expected_revision,
+                at_unix_ms: workflow_worker::SystemClock.now_unix_ms()?,
+                kind: workflow_kernel::EventKind::RetryGate {
+                    instance_id,
+                    context_digest: workflow_worker::digest(context)?,
+                },
+            };
+            report(store.apply(&event)?)
         }
         ["run", "tick-due", db, file] => {
             report(open(db, artifacts)?.tick_due(&read(file)?, &workflow_worker::SystemClock)?)

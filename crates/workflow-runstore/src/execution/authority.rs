@@ -281,7 +281,14 @@ impl Authority {
                 }
                 *at_unix_ms
             }
-            ExecutionAction::TimerAdvanced {
+            ExecutionAction::GateChecked {
+                epoch,
+                event_id,
+                event_revision,
+                at_unix_ms,
+                ..
+            }
+            | ExecutionAction::TimerAdvanced {
                 epoch,
                 event_id,
                 event_revision,

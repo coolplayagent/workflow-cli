@@ -193,3 +193,21 @@ terms:
       - relation: represented_by
         target_kind: file
         target: crates/workflow-gates/src/model.rs
+  - id: runtime-postcondition
+    domain: workflow
+    canonical_name: Mandatory runtime postcondition
+    definition: An immutable run-bundle policy and target binding that withholds task or terminal success until a fenced PASS; UNKNOWN waits for explicit retry and FAIL follows declared bounded repair.
+    language: en
+    mappings:
+      - relation: represented_by
+        target_kind: file
+        target: crates/workflow-kernel/src/postconditions.rs
+  - id: gate-settlement
+    domain: workflow
+    canonical_name: Atomic gate settlement
+    definition: A lease-fenced transaction that recomputes evidence from settled execution records and commits the gate observation, state, successor intents, receipt and recovery proof before exclusive expiry.
+    language: en
+    mappings:
+      - relation: represented_by
+        target_kind: file
+        target: crates/workflow-runstore-sqlite/src/execution/controls.rs

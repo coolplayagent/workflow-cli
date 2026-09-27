@@ -29,8 +29,7 @@ fn links(items: &[ArtifactLink]) -> Result<()> {
     }
     Ok(())
 }
-pub fn validate(r: &Request) -> Result<()> {
-    let p = &r.policy;
+pub fn validate_policy(p: &Policy) -> Result<()> {
     if p.schema_version != 1 || !version(&p.identity) || !(1..=64).contains(&p.requirements.len()) {
         return Err(invalid(
             "policy requires version 1, exact identity and 1..64 requirements",
@@ -62,6 +61,12 @@ pub fn validate(r: &Request) -> Result<()> {
             ));
         }
     }
+    to_message(p)?;
+    Ok(())
+}
+pub fn validate(r: &Request) -> Result<()> {
+    validate_policy(&r.policy)?;
+    let ids: BTreeSet<_> = r.policy.requirements.iter().map(|q| &q.id).collect();
     let t = &r.target;
     if !identifier(&t.run_id)
         || !valid_digest(&t.run_digest)

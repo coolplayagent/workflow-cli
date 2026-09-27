@@ -3,12 +3,9 @@ use workflow_artifact_local::LocalArtifactStore;
 use workflow_artifacts::{
     ArtifactLink, ArtifactReader, ArtifactRef, Error, ErrorCode, Producer, Result,
 };
-use workflow_gates::{CheckOutcome, EvidenceSource, ExecutedCheck};
-use workflow_runstore::{
-    ExecutionAction, ExecutionStore, PreparedTask, RunStore, artifact_producer,
-};
+use workflow_gates::{EvidenceSource, ExecutedCheck};
+use workflow_runstore::{ExecutionAction, ExecutionStore, PreparedTask, RunStore, executed_check};
 use workflow_runstore_sqlite::SqliteRunStore;
-use workflow_worker::{AdapterOutcome, FailureClass, InvocationScope};
 
 pub(super) struct LocalEvidence {
     artifacts: LocalArtifactStore,
@@ -51,47 +48,10 @@ impl LocalEvidence {
                         let p = prepared
                             .get(&attempt_id)
                             .ok_or_else(|| invalid("missing prepared check"))?;
-                        let producer = artifact_producer(&p.request).map_err(invalid)?;
-                        let InvocationScope::Workflow { node_id, .. } = &p.request.scope else {
-                            return Err(invalid("workflow check required"));
-                        };
-                        let (outcome, evidence) = match result.outcome {
-                            AdapterOutcome::Succeeded { outputs, evidence } => {
-                                (CheckOutcome::Succeeded { outputs }, evidence)
-                            }
-                            AdapterOutcome::Failed {
-                                code,
-                                class,
-                                evidence,
-                                ..
-                            } => {
-                                let outcome = if class == FailureClass::Permanent {
-                                    CheckOutcome::Failed { code }
-                                } else {
-                                    CheckOutcome::Inconclusive { code }
-                                };
-                                (outcome, evidence)
-                            }
-                        };
                         checks.insert(
                             attempt_id,
-                            ExecutedCheck {
-                                producer,
-                                run_digest: before.run_digest.clone(),
-                                node_id: node_id.clone(),
-                                capability: p.request.capability.clone(),
-                                contract_digest: p.request.contract_digest.clone(),
-                                completed_at_unix_ms: result.completed_at_unix_ms,
-                                settled_at_unix_ms: at_unix_ms,
-                                outcome,
-                                evidence: evidence
-                                    .into_iter()
-                                    .map(|e| ArtifactLink {
-                                        artifact_id: e.artifact_id,
-                                        digest: e.digest,
-                                    })
-                                    .collect(),
-                            },
+                            executed_check(&before.run_digest, p, &result, at_unix_ms)
+                                .map_err(invalid)?,
                         );
                     }
                     _ => {}

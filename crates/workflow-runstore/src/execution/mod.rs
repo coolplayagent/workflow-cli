@@ -74,3 +74,66 @@ pub fn artifact_producer(
         input_digest: request.input_digest.clone(),
     })
 }
+
+/// Project a recovered, accepted worker observation for the evidence checker.
+/// The caller must verify the journal, request/grant/result and committed event first.
+pub fn executed_check(
+    run_digest: &str,
+    prepared: &PreparedTask,
+    result: &workflow_worker::WorkResult,
+    settled_at_unix_ms: u64,
+) -> Result<workflow_gates::ExecutedCheck> {
+    use workflow_gates::CheckOutcome;
+    use workflow_worker::{AdapterOutcome, FailureClass, InvocationScope};
+    let producer = artifact_producer(&prepared.request)?;
+    let InvocationScope::Workflow { node_id, .. } = &prepared.request.scope else {
+        return Err(Error::new(
+            ErrorCode::InvalidRequest,
+            "workflow check required",
+        ));
+    };
+    if producer.request_digest != result.request_digest {
+        return Err(Error::new(
+            ErrorCode::InvalidRequest,
+            "check request/result mismatch",
+        ));
+    }
+    let (outcome, evidence) = match &result.outcome {
+        AdapterOutcome::Succeeded { outputs, evidence } => (
+            CheckOutcome::Succeeded {
+                outputs: outputs.clone(),
+            },
+            evidence,
+        ),
+        AdapterOutcome::Failed {
+            code,
+            class,
+            evidence,
+            ..
+        } => (
+            if *class == FailureClass::Permanent {
+                CheckOutcome::Failed { code: code.clone() }
+            } else {
+                CheckOutcome::Inconclusive { code: code.clone() }
+            },
+            evidence,
+        ),
+    };
+    Ok(workflow_gates::ExecutedCheck {
+        producer,
+        run_digest: run_digest.into(),
+        node_id: node_id.clone(),
+        capability: prepared.request.capability.clone(),
+        contract_digest: prepared.request.contract_digest.clone(),
+        completed_at_unix_ms: result.completed_at_unix_ms,
+        settled_at_unix_ms,
+        outcome,
+        evidence: evidence
+            .iter()
+            .map(|e| workflow_artifacts::ArtifactLink {
+                artifact_id: e.artifact_id.clone(),
+                digest: e.digest.clone(),
+            })
+            .collect(),
+    })
+}
