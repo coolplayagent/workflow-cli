@@ -6,6 +6,8 @@ license.workspace = true
 rust-version.workspace = true
 
 [dependencies]
+workflow-artifacts = { path = "../workflow-artifacts" }
+workflow-gates = { path = "../workflow-gates" }
 serde.workspace = true
 serde_json.workspace = true
 schemars.workspace = true

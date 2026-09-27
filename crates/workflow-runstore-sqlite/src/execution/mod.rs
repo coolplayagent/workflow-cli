@@ -2,6 +2,7 @@ use crate::recovery::Recovered;
 use crate::*;
 use rusqlite::{OptionalExtension, params};
 mod controls;
+pub(crate) mod gates;
 mod leases;
 mod proof;
 mod tasks;
@@ -77,6 +78,33 @@ pub(crate) fn read(
         })?;
         chain = digest(&(chain, hash))?;
         records.push(record);
+    }
+    // Every protected gate event needs exactly one fenced execution proof.
+    let gate_events: std::collections::BTreeSet<_> = r
+        .events
+        .iter()
+        .filter(|e| {
+            matches!(
+                e.event.kind,
+                workflow_kernel::EventKind::GateEvaluated { .. }
+            )
+        })
+        .map(|e| e.event.event_id.as_str())
+        .collect();
+    let gate_proofs: Vec<_> = records
+        .iter()
+        .filter_map(|r| match &r.action {
+            ExecutionAction::GateChecked { event_id, .. } => Some(event_id.as_str()),
+            _ => None,
+        })
+        .collect();
+    if gate_proofs.len() != gate_events.len()
+        || gate_proofs
+            .into_iter()
+            .collect::<std::collections::BTreeSet<_>>()
+            != gate_events
+    {
+        return Err(corrupt("gate events and fenced execution proofs differ"));
     }
     if count != number(authority.sequence)? || chain != expected {
         return Err(corrupt("execution journal disagrees with its head"));

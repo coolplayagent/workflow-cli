@@ -12,6 +12,8 @@ pub struct BundleSpec {
     pub root: VersionRef,
     pub workflows: Vec<Workflow>,
     pub capabilities: Vec<CapabilityDescriptor>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub postconditions: Vec<crate::Postcondition>,
 }
 #[derive(Clone, Debug)]
 pub struct CompiledBundle {
@@ -29,6 +31,17 @@ pub(crate) fn workflow_key(w: &Workflow) -> String {
 }
 impl CompiledBundle {
     pub fn compile(mut spec: BundleSpec) -> Result<Self> {
+        // Bound new recursive policy types before encoding in-process bundles.
+        if spec.postconditions.len() > 256 {
+            return Err(Error::new(
+                ErrorCode::InvalidBundle,
+                "at most 256 postconditions",
+            ));
+        }
+        for gate in &spec.postconditions {
+            workflow_gates::validate_policy(&gate.policy)
+                .map_err(|e| Error::new(ErrorCode::InvalidBundle, e.message))?;
+        }
         workflow_worker::to_message(&spec)?;
         if spec.schema_version != 1
             || spec.workflows.is_empty()
@@ -180,6 +193,7 @@ impl CompiledBundle {
                 }
             }
         }
+        crate::postconditions::validate(&spec, &workflows, &capabilities)?;
         // Remove leaves. Any remaining dependency is a recursion cycle, including loop bodies.
         while !dependencies.is_empty() {
             let leaves: BTreeSet<_> = dependencies
@@ -198,6 +212,8 @@ impl CompiledBundle {
                 ds.retain(|d| !leaves.contains(d));
             }
         }
+        spec.postconditions
+            .sort_by_key(|g| (key(&g.workflow), g.node_id.clone()));
         spec.workflows.sort_by_key(workflow_key);
         spec.capabilities.sort_by_key(|d| key(&d.capability));
         let digest = workflow_worker::digest(&spec)?;

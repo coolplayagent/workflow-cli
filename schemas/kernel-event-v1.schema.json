@@ -1,5 +1,162 @@
 {
   "$defs": {
+    "ArtifactFinding": {
+      "additionalProperties": false,
+      "properties": {
+        "artifact": {
+          "$ref": "#/$defs/ArtifactLink"
+        },
+        "reason": {
+          "$ref": "#/$defs/Reason"
+        },
+        "verdict": {
+          "$ref": "#/$defs/Verdict"
+        }
+      },
+      "required": [
+        "artifact",
+        "verdict",
+        "reason"
+      ],
+      "type": "object"
+    },
+    "ArtifactLink": {
+      "additionalProperties": false,
+      "properties": {
+        "artifact_id": {
+          "type": "string"
+        },
+        "digest": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "artifact_id",
+        "digest"
+      ],
+      "type": "object"
+    },
+    "ArtifactType": {
+      "additionalProperties": false,
+      "properties": {
+        "content": {
+          "$ref": "#/$defs/ContentSchema"
+        },
+        "identity": {
+          "$ref": "#/$defs/VersionRef"
+        }
+      },
+      "required": [
+        "identity",
+        "content"
+      ],
+      "type": "object"
+    },
+    "ContentSchema": {
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "format": {
+              "const": "bytes",
+              "type": "string"
+            }
+          },
+          "required": [
+            "format"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "format": {
+              "const": "utf8",
+              "type": "string"
+            }
+          },
+          "required": [
+            "format"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "format": {
+              "const": "json",
+              "type": "string"
+            },
+            "value_type": {
+              "$ref": "#/$defs/ValueType"
+            }
+          },
+          "required": [
+            "format",
+            "value_type"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "Decision": {
+      "additionalProperties": false,
+      "properties": {
+        "artifacts": {
+          "items": {
+            "$ref": "#/$defs/ArtifactFinding"
+          },
+          "type": "array"
+        },
+        "checks": {
+          "items": {
+            "$ref": "#/$defs/Finding"
+          },
+          "type": "array"
+        },
+        "evaluated_at_unix_ms": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "expires_at_unix_ms": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "policy_digest": {
+          "type": "string"
+        },
+        "request_digest": {
+          "type": "string"
+        },
+        "schema_version": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "target_digest": {
+          "type": "string"
+        },
+        "verdict": {
+          "$ref": "#/$defs/Verdict"
+        }
+      },
+      "required": [
+        "schema_version",
+        "request_digest",
+        "policy_digest",
+        "target_digest",
+        "evaluated_at_unix_ms",
+        "verdict",
+        "checks",
+        "artifacts"
+      ],
+      "type": "object"
+    },
     "EventKind": {
       "oneOf": [
         {
@@ -83,6 +240,56 @@
         {
           "additionalProperties": false,
           "properties": {
+            "context_digest": {
+              "type": "string"
+            },
+            "evaluation": {
+              "$ref": "#/$defs/GateEvaluation"
+            },
+            "instance_id": {
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "type": {
+              "const": "gate_evaluated",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "instance_id",
+            "context_digest",
+            "evaluation"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "context_digest": {
+              "type": "string"
+            },
+            "instance_id": {
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "type": {
+              "const": "retry_gate",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "instance_id",
+            "context_digest"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
             "type": {
               "const": "advance_time",
               "type": "string"
@@ -107,6 +314,280 @@
           "type": "object"
         }
       ]
+    },
+    "Evidence": {
+      "additionalProperties": false,
+      "properties": {
+        "report": {
+          "$ref": "#/$defs/ArtifactLink"
+        },
+        "requirement_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "requirement_id",
+        "report"
+      ],
+      "type": "object"
+    },
+    "Finding": {
+      "additionalProperties": false,
+      "properties": {
+        "completed_at_unix_ms": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "expires_at_unix_ms": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "producer": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Producer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reason": {
+          "$ref": "#/$defs/Reason"
+        },
+        "report": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ArtifactLink"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "requirement_id": {
+          "type": "string"
+        },
+        "verdict": {
+          "$ref": "#/$defs/Verdict"
+        }
+      },
+      "required": [
+        "requirement_id",
+        "verdict",
+        "reason"
+      ],
+      "type": "object"
+    },
+    "GateEvaluation": {
+      "additionalProperties": false,
+      "properties": {
+        "decision": {
+          "$ref": "#/$defs/Decision"
+        },
+        "request": {
+          "$ref": "#/$defs/Request"
+        }
+      },
+      "required": [
+        "request",
+        "decision"
+      ],
+      "type": "object"
+    },
+    "Policy": {
+      "additionalProperties": false,
+      "properties": {
+        "identity": {
+          "$ref": "#/$defs/VersionRef"
+        },
+        "requirements": {
+          "items": {
+            "$ref": "#/$defs/Requirement"
+          },
+          "type": "array"
+        },
+        "schema_version": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "schema_version",
+        "identity",
+        "requirements"
+      ],
+      "type": "object"
+    },
+    "Producer": {
+      "additionalProperties": false,
+      "properties": {
+        "attempt_id": {
+          "type": "string"
+        },
+        "input_digest": {
+          "type": "string"
+        },
+        "node_instance_id": {
+          "type": "string"
+        },
+        "request_digest": {
+          "type": "string"
+        },
+        "run_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "run_id",
+        "node_instance_id",
+        "attempt_id",
+        "request_digest",
+        "input_digest"
+      ],
+      "type": "object"
+    },
+    "Reason": {
+      "enum": [
+        "passed",
+        "check_failed",
+        "check_inconclusive",
+        "missing_evidence",
+        "evidence_unavailable",
+        "type_mismatch",
+        "target_mismatch",
+        "unrecorded_evidence",
+        "producer_mismatch",
+        "tool_mismatch",
+        "invalid_time",
+        "expired",
+        "missing_boolean",
+        "artifact_unavailable"
+      ],
+      "type": "string"
+    },
+    "Request": {
+      "additionalProperties": false,
+      "properties": {
+        "evidence": {
+          "items": {
+            "$ref": "#/$defs/Evidence"
+          },
+          "type": "array"
+        },
+        "policy": {
+          "$ref": "#/$defs/Policy"
+        },
+        "target": {
+          "$ref": "#/$defs/Target"
+        }
+      },
+      "required": [
+        "policy",
+        "target",
+        "evidence"
+      ],
+      "type": "object"
+    },
+    "Requirement": {
+      "additionalProperties": false,
+      "properties": {
+        "capability": {
+          "$ref": "#/$defs/VersionRef"
+        },
+        "contract_digest": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "max_age_ms": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "node_id": {
+          "type": "string"
+        },
+        "pass_field": {
+          "description": "Required Boolean in the accepted worker output; artifact text is not a verdict.",
+          "type": "string"
+        },
+        "report_type": {
+          "$ref": "#/$defs/ArtifactType"
+        }
+      },
+      "required": [
+        "id",
+        "node_id",
+        "capability",
+        "contract_digest",
+        "report_type",
+        "pass_field",
+        "max_age_ms"
+      ],
+      "type": "object"
+    },
+    "SourceRevision": {
+      "additionalProperties": false,
+      "properties": {
+        "repository": {
+          "type": "string"
+        },
+        "revision": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "repository",
+        "revision"
+      ],
+      "type": "object"
+    },
+    "Target": {
+      "additionalProperties": false,
+      "properties": {
+        "action": {
+          "$ref": "#/$defs/VersionRef"
+        },
+        "artifacts": {
+          "items": {
+            "$ref": "#/$defs/ArtifactLink"
+          },
+          "type": "array"
+        },
+        "input_digest": {
+          "description": "Digest of the common inputs actually checked by each required task.",
+          "type": "string"
+        },
+        "run_digest": {
+          "type": "string"
+        },
+        "run_id": {
+          "type": "string"
+        },
+        "source_revision": {
+          "$ref": "#/$defs/SourceRevision"
+        }
+      },
+      "required": [
+        "run_id",
+        "run_digest",
+        "action",
+        "source_revision",
+        "input_digest",
+        "artifacts"
+      ],
+      "type": "object"
     },
     "TaskResult": {
       "oneOf": [
@@ -176,6 +657,124 @@
           "type": "object"
         }
       ]
+    },
+    "ValueType": {
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "const": "string",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "const": "boolean",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "const": "integer",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "const": "number",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "items": {
+              "$ref": "#/$defs/ValueType"
+            },
+            "type": {
+              "const": "array",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "items"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "fields": {
+              "additionalProperties": {
+                "$ref": "#/$defs/ValueType"
+              },
+              "type": "object"
+            },
+            "type": {
+              "const": "object",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "fields"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "Verdict": {
+      "enum": [
+        "PASS",
+        "FAIL",
+        "UNKNOWN"
+      ],
+      "type": "string"
+    },
+    "VersionRef": {
+      "additionalProperties": false,
+      "description": "Versions are immutable opaque release identifiers, never ranges or `latest`.",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "version"
+      ],
+      "type": "object"
     }
   },
   "$schema": "https://json-schema.org/draft/2020-12/schema",

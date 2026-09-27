@@ -5,7 +5,7 @@ mod model;
 mod validation;
 pub use evaluation::{evaluate, revalidate};
 pub use model::*;
-pub use validation::validate;
+pub use validation::{validate, validate_policy};
 use workflow_artifacts::{ArtifactReader, Producer};
 pub use workflow_artifacts::{Error, ErrorCode, Result, digest, parse_message, to_message};
 

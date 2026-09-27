@@ -99,7 +99,7 @@ cannot silently turn back into pending delivery.
 
 These checks detect corruption and divergence; a database owner able to rewrite
 records and hashes is outside this integrity boundary. Foreign/future schema/application changes
-are refused. Explicit `run migrate` upgrades schema 1/2 to 3 transactionally; see
+are refused. Explicit `run migrate` upgrades schema 1/2/3 to 4 transactionally; see
 the local execution guide. No repair-by-overwrite is implemented. Recovery currently
 replays bounded histories and retained checkpoint prefixes on reads, favoring
 integrity evidence over latency. It is not an optimized constant-time snapshot
@@ -155,3 +155,10 @@ have direct evidence.
 Schema 3 adds required artifact dependency verification for execution results.
 Supply `run --artifacts <store>` for runs with evidence; unconfigured or corrupt
 dependencies fail reads and mutations. See [typed artifacts](artifacts.md).
+
+Schema 4 protects [mandatory postconditions](runtime-postconditions.md). Recovery
+recomputes every gate decision from its historical execution prefix and retained
+artifacts. Raw gate events and manual gate receipts are rejected; runs containing
+postconditions also reject raw successful task events. Policy versions bind
+immutable content. Upgrade with the artifact reader when existing runs carry
+evidence, so dependency failures roll back the migration.

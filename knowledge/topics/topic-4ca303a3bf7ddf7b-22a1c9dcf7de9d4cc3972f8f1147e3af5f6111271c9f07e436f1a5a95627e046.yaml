@@ -4,6 +4,16 @@ topic:
   title: architecture
   description: Added by CLI source registration.
 sources:
+- id: artifact-contracts
+  topic: architecture
+  kind: doc
+  uri: docs/artifacts.md
+  source_scope: docs
+  read_policy: direct
+  write_policy: manual-review
+  status: active
+  version: 1
+  description: Typed artifact identity, provenance, durable local publication, impact and verified run evidence.
 - id: definition-authoring
   topic: architecture
   kind: doc
@@ -54,6 +64,16 @@ sources:
   status: active
   version: 1
   description: RunStore port, atomic SQLite state/event/outbox commits and verified recovery
+- id: runtime-postconditions
+  topic: architecture
+  kind: doc
+  uri: docs/runtime-postconditions.md
+  source_scope: docs
+  read_policy: direct
+  write_policy: manual-review
+  status: active
+  version: 1
+  description: Frozen mandatory task and terminal gates, fenced evidence decisions, UNKNOWN retry and bounded repair.
 - id: worker-protocol
   topic: architecture
   kind: doc
@@ -64,6 +84,16 @@ sources:
   status: active
   version: 1
   description: Capability descriptors, request-bound host grants, checked worker invocation and protocol limits
+- id: workflow-evidence-gates
+  topic: architecture
+  kind: doc
+  uri: docs/evidence-gates.md
+  source_scope: docs
+  read_policy: direct
+  write_policy: manual-review
+  status: active
+  version: 1
+  description: Portable evidence decisions, source authority and target revalidation
 route:
   topic: architecture
   source_order:
@@ -73,4 +103,7 @@ route:
   - kernel-semantics
   - run-store
   - local-execution
+  - artifact-contracts
+  - workflow-evidence-gates
+  - runtime-postconditions
   fallback: bounded-search

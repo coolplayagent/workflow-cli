@@ -317,6 +317,45 @@
                 "minimum": 0,
                 "type": "integer"
               },
+              "command_id": {
+                "type": "string"
+              },
+              "epoch": {
+                "format": "uint64",
+                "minimum": 0,
+                "type": "integer"
+              },
+              "event_id": {
+                "type": "string"
+              },
+              "event_revision": {
+                "format": "uint64",
+                "minimum": 0,
+                "type": "integer"
+              },
+              "type": {
+                "const": "gate_checked",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type",
+              "epoch",
+              "command_id",
+              "event_id",
+              "event_revision",
+              "at_unix_ms"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "at_unix_ms": {
+                "format": "uint64",
+                "minimum": 0,
+                "type": "integer"
+              },
               "epoch": {
                 "format": "uint64",
                 "minimum": 0,

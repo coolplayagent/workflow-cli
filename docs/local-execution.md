@@ -127,18 +127,20 @@ can race execution through the existing kernel revision checks.
 
 ## Explicit storage migration
 
-New databases use storage schema 3. Schema 1 or 2 databases from prior increments
+New databases use storage schema 4. Schema 1, 2 or 3 databases from prior increments
 must be upgraded explicitly:
 
 ```sh
-cargo run --locked -- run migrate /path/to/existing-runs.db
+cargo run --locked -- run --artifacts /path/to/artifacts migrate /path/to/existing-runs.db
 ```
 
 Migration creates the execution journal/empty authority heads for schema 1,
 preserves existing leases/attempts for schema 2, validates all existing runs and
-updates the version in one transaction. Schema 3 introduces required artifact
-verification; see the [artifact guide](artifacts.md). Corrupt old
-runs roll back the tables and version together. Running migrate again on schema 3
+updates the version in one transaction. Schema 3 introduced required artifact
+verification; schema 4 adds protected gate transitions. Evidence-bearing runs need
+`--artifacts` during migration; omit it only for runs without dependencies. Missing
+or corrupt dependencies roll back the version. Corrupt old runs roll back the
+tables and version together. Running migrate again on schema 4
 is harmless. Ordinary open/create never silently upgrades old data; foreign or
 future schemas are refused. Logical StartRun/worker/schema contracts remain v1.
 Take the repository's normal database backup before operational migration; this
@@ -166,3 +168,11 @@ with evidence require `run --artifacts <store>` on subsequent reads and mutation
 The artifact location is host configuration, and missing dependencies prevent a
 healthy recovery response. The built-in `run drive` does not automatically fabricate
 reports; it verifies evidence supplied by registered adapters through its store.
+
+## Mandatory postconditions
+
+`claim` and `drive` consume frozen gate commands under the current lease. Task
+settlement can leave the run awaiting a gate; inspect business state and decisions.
+A gate PASS commits its transition, receipt and proof atomically; UNKNOWN consumes
+one intent and waits for explicit `retry-gate`. See [runtime postconditions](runtime-postconditions.md)
+for bindings, evidence selection, repair bounds and protected event ingress.

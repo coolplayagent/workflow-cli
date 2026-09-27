@@ -4,8 +4,9 @@
 no SQLite, filesystem, worker SDK or kernel dependency. The local CLI implements
 the port using recovered RunStore execution records and verified artifacts.
 It returns **PASS**, **FAIL** or **UNKNOWN** for an exact proposed action and target.
-This R03 increment produces read-only observations. Kernel node/terminal
-postconditions, repair routing and effect authorization are subsequent increments.
+The standalone CLI produces read-only observations.
+[Mandatory runtime postconditions](runtime-postconditions.md) consume the checker
+inside fenced run transitions; external effect authorization remains open.
 
 ## Evaluate actual work
 
@@ -136,7 +137,7 @@ reports, changed actions/policies, decision tampering and schema parity. The
 in-memory port and local adapter use the same evaluator; no cloud transport or
 cloud identity acceptance is claimed.
 
-R03 remains open for mandatory node and terminal gates in immutable run bundles,
-bounded repair paths, action authorization/consumption, current-workspace
-verification, independent approval/exception authority, and the final acceptance
-manifest. R06 adds authenticated human responses and durable event waits.
+Mandatory task/terminal gates and declared bounded repair now use this checker
+through the [runtime integration](runtime-postconditions.md). R03 remains open for
+action authorization/consumption, current-workspace verification, independent
+approval/exception authority, and the final acceptance manifest. R06 adds authenticated human responses and durable event waits.

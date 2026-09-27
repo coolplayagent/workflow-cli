@@ -2,7 +2,7 @@
 name: workflow-run
 description: Create and inspect durable workflow-cli runs, submit trusted events, cancel with an expected revision, inspect the command outbox and verify storage recovery, and drive local read-only tasks with durable leases. Use for persistent workflow progress and explicit local execution; no background daemon remains.
 metadata:
-  version: "1.2.0"
+  version: "1.3.0"
 ---
 
 # Workflow run
@@ -14,14 +14,15 @@ source checkout or the Bazel binary; `bazel run` needs absolute file paths. Cons
 Choose the explicit run database from the user's task. `run init <db>` alone
 creates a store. Do not point it at a definition-registry database or silently
 initialize a different database after a query fails. Inspect the error and path.
-For schema 1 or 2, use the explicit `run migrate <db>` transaction when upgrading is
-within the task scope. A future/foreign schema must not be overwritten to make it open.
+For schema 1, 2 or 3, use the explicit `run --artifacts <store> migrate <db>`
+transaction to upgrade to schema 4 when within the task scope. Omit the reader only
+when existing runs have no artifact dependencies. A future/foreign schema must not be overwritten to make it open.
 
 Read `workflow schema run-start`, obtain exact definitions and descriptors from
 the task's catalog, and validate the bundle with `kernel check`. Use the intended
 run ID, typed inputs, logical start time and limits. `run start <db> <start.json>`
 atomically commits the seed/state/initial commands. Reusing the same run ID with a
-changed start is a conflict; workflow/capability versions also bind immutable
+changed start is a conflict; workflow/capability/gate-policy versions also bind immutable
 content within the store. Publish a new version for a legitimate content change.
 
 Use `run status <db> <id>`, `run history <db> <id> <after-revision> <limit>` and
@@ -87,3 +88,12 @@ to `run --artifacts <store> finish`. Use `run renew` before expiry when needed a
 replace the local lease token with its returned value. Release the current lease
 afterward. `run tick-due` observes due waits under the lease; `run attempt-failed`
 records an actual worker protocol error, never an invented business outcome.
+
+For a bundle with mandatory postconditions, read `docs/runtime-postconditions.md`.
+A settled task can still await its gate; inspect node decisions and run status.
+`claim`/`drive` computes gates from settled evidence. UNKNOWN is idle until an
+authorized explicit `run retry-gate <db> <run-id> <instance-id> <event-id>
+<expected-revision>`; retry retains the target and never reruns a checker. Inspect
+its cause first. Missing attachments on settled results cannot be added later.
+Raw successful task events for these runs, all raw gate events, and manual gate
+receipts are rejected. Use declared repair bounds and retain failure history.

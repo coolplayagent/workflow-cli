@@ -119,6 +119,12 @@ impl SqliteRunStore {
         hook: impl Fn(&str),
     ) -> Result<Committed> {
         workflow_worker::to_message(event)?;
+        if matches!(event.kind, workflow_kernel::EventKind::GateEvaluated { .. }) {
+            return Err(Error::new(
+                ErrorCode::InvalidRequest,
+                "gate observations must be computed by the fenced executor",
+            ));
+        }
         validate_id(&event.run_id)?;
         hook("before_transaction");
         let tx = self
@@ -126,6 +132,23 @@ impl SqliteRunStore {
             .transaction_with_behavior(TransactionBehavior::Immediate)
             .map_err(storage)?;
         let mut current = recover(&tx, &event.run_id, self.artifacts.as_deref())?;
+        if !current.engine.bundle().spec().postconditions.is_empty()
+            && matches!(
+                event.kind,
+                workflow_kernel::EventKind::TaskCompleted {
+                    result: workflow_kernel::TaskResult::Succeeded { .. },
+                    ..
+                } | workflow_kernel::EventKind::TaskReconciled {
+                    result: workflow_kernel::TaskResult::Succeeded { .. },
+                    ..
+                }
+            )
+        {
+            return Err(Error::new(
+                ErrorCode::InvalidRequest,
+                "gated runs require successful task results through fenced execution settlement",
+            ));
+        }
         let result = persist_event(&tx, &mut current, event, &hook)?;
         hook("before_commit");
         tx.commit().map_err(storage)?;
@@ -144,6 +167,14 @@ impl SqliteRunStore {
             .transaction_with_behavior(TransactionBehavior::Immediate)
             .map_err(storage)?;
         let current = recover(&tx, &receipt.run_id, self.artifacts.as_deref())?;
+        if current.outbox.iter().any(|e| {
+            e.command_id == receipt.command_id && matches!(e.command, Command::CheckGate { .. })
+        }) {
+            return Err(Error::new(
+                ErrorCode::InvalidRequest,
+                "gate commands are acknowledged only by the fenced executor",
+            ));
+        }
         let entry = persist_receipt(&tx, &current, receipt)?;
         tx.commit().map_err(storage)?;
         Ok(entry)
