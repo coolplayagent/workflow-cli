@@ -1,0 +1,15 @@
+{
+  "identity": { "id": "workflow.validation-report", "version": "1.0.0" },
+  "content": {
+    "format": "json",
+    "value_type": {
+      "type": "object",
+      "fields": {
+        "valid": { "type": "boolean" },
+        "definition_digest": { "type": "string" },
+        "diagnostics_count": { "type": "integer" },
+        "request_digest": { "type": "string" }
+      }
+    }
+  }
+}

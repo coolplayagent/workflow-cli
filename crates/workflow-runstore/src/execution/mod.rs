@@ -47,3 +47,30 @@ pub fn lease_deadline(now: u64, ttl: u64) -> Result<u64> {
     now.checked_add(ttl)
         .ok_or_else(|| Error::new(ErrorCode::InvalidRequest, "lease deadline overflow"))
 }
+
+/// Bind production provenance to the actual persisted worker request. The host
+/// separately supplies and attests the source checkout revision.
+pub fn artifact_producer(
+    request: &workflow_worker::WorkRequest,
+) -> Result<workflow_artifacts::Producer> {
+    request.validate_shape()?;
+    let workflow_worker::InvocationScope::Workflow {
+        run_id,
+        node_instance_id,
+        attempt_id,
+        ..
+    } = &request.scope
+    else {
+        return Err(Error::new(
+            ErrorCode::InvalidRequest,
+            "run artifact production requires a workflow request",
+        ));
+    };
+    Ok(workflow_artifacts::Producer {
+        run_id: run_id.clone(),
+        node_instance_id: node_instance_id.clone(),
+        attempt_id: attempt_id.clone(),
+        request_digest: workflow_worker::digest(request)?,
+        input_digest: request.input_digest.clone(),
+    })
+}

@@ -12,6 +12,8 @@ pub use workflow_kernel::{
 #[serde(rename_all = "snake_case")]
 pub enum ErrorCode {
     InvalidRequest,
+    ArtifactUnavailable,
+    ArtifactRejected,
     LeaseBusy,
     LeaseConflict,
     AttemptInProgress,
@@ -139,4 +141,17 @@ pub fn schema(kind: &str) -> Result<String> {
     };
     serde_json::to_string_pretty(&schema)
         .map_err(|e| Error::new(ErrorCode::InvalidRequest, e.to_string()))
+}
+
+impl From<workflow_artifacts::Error> for Error {
+    fn from(e: workflow_artifacts::Error) -> Self {
+        Self::new(
+            if e.code == workflow_artifacts::ErrorCode::NotFound {
+                ErrorCode::ArtifactUnavailable
+            } else {
+                ErrorCode::ArtifactRejected
+            },
+            e.message,
+        )
+    }
 }

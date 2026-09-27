@@ -11,3 +11,4 @@ serde.workspace = true
 workflow-runstore = { path = "../workflow-runstore" }
 workflow-kernel = { path = "../workflow-kernel" }
 workflow-worker = { path = "../workflow-worker" }
+workflow-artifacts = { path = "../workflow-artifacts" }

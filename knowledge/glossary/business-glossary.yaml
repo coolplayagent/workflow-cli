@@ -157,3 +157,30 @@ terms:
       - relation: represented_by
         target_kind: file
         target: crates/workflow-runstore-sqlite/src/execution/tasks.rs
+  - id: artifact-manifest
+    domain: workflow
+    canonical_name: Typed artifact manifest
+    definition: An immutable portable record binding exact content schema and digest to producer run, node instance, attempt, request and input digests, source revision, upstream artifact identities and retained run scope.
+    language: en
+    mappings:
+      - relation: represented_by
+        target_kind: file
+        target: crates/workflow-artifacts/src/model.rs
+  - id: artifact-publication
+    domain: workflow
+    canonical_name: Durable artifact publication
+    definition: A protocol that syncs content before committing its immutable manifest and catalog integrity head; process failure leaves an uncommitted orphan or a complete verified artifact reference.
+    language: en
+    mappings:
+      - relation: represented_by
+        target_kind: file
+        target: crates/workflow-artifact-local/src/writes.rs
+  - id: artifact-impact
+    domain: workflow
+    canonical_name: Artifact revalidation impact
+    definition: A read-only projection of retained downstream artifacts and their producers affected by replacing an exact upstream artifact; it preserves historical evidence and does not itself authorize recomputation.
+    language: en
+    mappings:
+      - relation: represented_by
+        target_kind: file
+        target: crates/workflow-artifact-local/src/lib.rs

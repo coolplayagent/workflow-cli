@@ -20,6 +20,9 @@ workflow-validator = { path = "../workflow-validator" }
 workflow-definitions = { path = "../workflow-definitions" }
 workflow-registry-sqlite = { path = "../workflow-registry-sqlite" }
 
+workflow-artifacts = { path = "../workflow-artifacts" }
+workflow-artifact-local = { path = "../workflow-artifact-local" }
+
 [[bin]]
 name = "workflow"
 path = "src/main.rs"

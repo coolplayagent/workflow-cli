@@ -83,7 +83,7 @@ This read of an already committed fact does not grant new ownership.
 | Cancellation before invocation | Settle unstarted read-only task cancellation and acknowledge its intent without invoking it. |
 | Cancellation while invocation is in progress | Retain a validated late result, while kernel cancellation determines business status. |
 | Uncertain effect/reconciliation command | Stop for a verified host reconciliation result; do not fabricate settlement. |
-| Nonempty artifact evidence | Reject until an ArtifactStore verifier is provided. |
+| Nonempty artifact evidence | Require the configured ArtifactReader to verify manifest, bytes, types, ancestors and exact producer/request/input identity; missing or corrupt dependencies reject. |
 
 Retries are bounded to three prepared attempts per command, including orphans and
 failed invocations. Drive stops on a worker/protocol error; another explicit drive
@@ -127,16 +127,18 @@ can race execution through the existing kernel revision checks.
 
 ## Explicit storage migration
 
-New databases use storage schema 2. Schema 1 databases from the RunStore increment
+New databases use storage schema 3. Schema 1 or 2 databases from prior increments
 must be upgraded explicitly:
 
 ```sh
 cargo run --locked -- run migrate /path/to/existing-runs.db
 ```
 
-Migration creates the execution journal and empty authority heads, validates all
-existing runs, and updates the schema version in one transaction. Corrupt old
-runs roll back the tables and version together. Running migrate again on schema 2
+Migration creates the execution journal/empty authority heads for schema 1,
+preserves existing leases/attempts for schema 2, validates all existing runs and
+updates the version in one transaction. Schema 3 introduces required artifact
+verification; see the [artifact guide](artifacts.md). Corrupt old
+runs roll back the tables and version together. Running migrate again on schema 3
 is harmless. Ordinary open/create never silently upgrades old data; foreign or
 future schemas are refused. Logical StartRun/worker/schema contracts remain v1.
 Take the repository's normal database backup before operational migration; this
@@ -152,8 +154,15 @@ event/state/execution writes, and before/after commit. Reopening recovers the en
 transaction and retries only an orphan. Migration preserves v1 runs and rolls back
 on corruption. Cargo and Bazel run the same tests.
 
-R02/R04/R08/R09 remain open for model/remote adapters, write-effect and artifact
-ledgers, pause/resume, autonomous dispatch, node parallelism, scheduling/fairness,
+R02/R04/R08/R09 remain open for model/remote adapters, write-effect
+ledgers, isolated workspaces, remote artifact adapters, pause/resume, autonomous
+dispatch, node parallelism, scheduling/fairness,
 cluster ownership, authenticated tenants, retention and backup/restore. These
 Linux process-crash checks establish no production throughput, power-loss, shared
 network filesystem, business-benefit or RPO/RTO claim.
+
+For a host-managed worker/report flow use `run acquire/claim/finish/release`. Runs
+with evidence require `run --artifacts <store>` on subsequent reads and mutations.
+The artifact location is host configuration, and missing dependencies prevent a
+healthy recovery response. The built-in `run drive` does not automatically fabricate
+reports; it verifies evidence supplied by registered adapters through its store.

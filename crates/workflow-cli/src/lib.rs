@@ -3,6 +3,7 @@ use serde::Serialize;
 use std::io::{Read, Write};
 use workflow_ir::{Diagnostic, Format, MAX_DOCUMENT_BYTES, Workflow};
 
+mod artifacts;
 mod kernel;
 mod registry;
 mod runs;
@@ -65,14 +66,20 @@ pub fn run(
         [] | ["help" | "--help" | "-h"] => write(
             stdout,
             &format!(
-                "{HELP}\n{}\n{}\n{}\n{}",
+                "{HELP}\n{}\n{}\n{}\n{}\n{}",
                 registry::HELP,
                 worker::HELP,
                 kernel::HELP,
-                runs::HELP
+                runs::HELP,
+                artifacts::HELP
             ),
             0,
         ),
+        args @ ["artifact", ..]
+        | args @ [
+            "schema",
+            "artifact-publish" | "artifact-ref" | "artifact-type",
+        ] => artifacts::run(args, stdout, stderr),
         args @ ["run", ..]
         | args @ [
             "schema",

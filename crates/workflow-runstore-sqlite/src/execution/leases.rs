@@ -15,11 +15,13 @@ impl SqliteRunStore {
         if app != APPLICATION_ID || !(1..=STORAGE_VERSION).contains(&version) {
             return Err(Error::new(
                 ErrorCode::UnsupportedStorage,
-                "only run store schema 1 or 2 can migrate",
+                "only run store schema 1, 2 or 3 can migrate",
             ));
         }
-        if version == 1 {
-            tx.execute_batch(SCHEMA).map_err(storage)?;
+        if version < STORAGE_VERSION {
+            if version == 1 {
+                tx.execute_batch(SCHEMA).map_err(storage)?;
+            }
             let ids = {
                 let mut q = tx
                     .prepare("SELECT run_id FROM runs ORDER BY run_id")
@@ -30,18 +32,23 @@ impl SqliteRunStore {
                     .map_err(storage)?
             };
             for id in &ids {
-                init_head(&tx, id)?;
+                if version == 1 {
+                    init_head(&tx, id)?;
+                }
             }
             tx.pragma_update(None, "user_version", STORAGE_VERSION)
                 .map_err(storage)?;
             for id in ids {
-                crate::recovery::recover(&tx, &id)?;
+                crate::recovery::recover(&tx, &id, None)?;
             }
         } else {
             check_version(&tx)?;
         }
         tx.commit().map_err(storage)?;
-        Ok(Self { connection })
+        Ok(Self {
+            connection,
+            artifacts: None,
+        })
     }
     pub(crate) fn acquire_lease(
         &mut self,
@@ -52,8 +59,8 @@ impl SqliteRunStore {
             .connection
             .transaction_with_behavior(TransactionBehavior::Immediate)
             .map_err(storage)?;
-        let r = crate::recovery::recover(&tx, &request.run_id)?;
-        let (mut a, _) = read(&tx, &r)?;
+        let r = crate::recovery::recover(&tx, &request.run_id, self.artifacts.as_deref())?;
+        let (mut a, _) = read(&tx, &r, self.artifacts.as_deref())?;
         let now = clock.now_unix_ms()?;
         if now < r.engine.snapshot().now_unix_ms {
             return Err(Error::new(
@@ -78,8 +85,8 @@ impl SqliteRunStore {
             .connection
             .transaction_with_behavior(TransactionBehavior::Immediate)
             .map_err(storage)?;
-        let r = crate::recovery::recover(&tx, &l.run_id)?;
-        let (mut a, _) = read(&tx, &r)?;
+        let r = crate::recovery::recover(&tx, &l.run_id, self.artifacts.as_deref())?;
+        let (mut a, _) = read(&tx, &r, self.artifacts.as_deref())?;
         let now = clock.now_unix_ms()?;
         live(&a, &r, l, now)?;
         let mut renewed = l.clone();
@@ -101,8 +108,8 @@ impl SqliteRunStore {
             .connection
             .transaction_with_behavior(TransactionBehavior::Immediate)
             .map_err(storage)?;
-        let r = crate::recovery::recover(&tx, &l.run_id)?;
-        let (mut a, _) = read(&tx, &r)?;
+        let r = crate::recovery::recover(&tx, &l.run_id, self.artifacts.as_deref())?;
+        let (mut a, _) = read(&tx, &r, self.artifacts.as_deref())?;
         let now = clock.now_unix_ms()?;
         live(&a, &r, l, now)?;
         append(
@@ -125,8 +132,8 @@ impl SqliteRunStore {
     ) -> Result<Page<ExecutionRecord, u64>> {
         validate_limit(limit)?;
         let tx = self.connection.transaction().map_err(storage)?;
-        let r = crate::recovery::recover(&tx, id)?;
-        let (_, records) = read(&tx, &r)?;
+        let r = crate::recovery::recover(&tx, id, self.artifacts.as_deref())?;
+        let (_, records) = read(&tx, &r, self.artifacts.as_deref())?;
         let mut items: Vec<_> = records
             .into_iter()
             .filter(|r| r.sequence > after)
