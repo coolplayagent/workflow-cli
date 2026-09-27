@@ -12,8 +12,16 @@ use workflow_runstore::*;
 
 pub struct SqliteRunStore {
     connection: Connection,
+    artifacts: Option<Box<dyn workflow_artifacts::ArtifactReader>>,
 }
 impl SqliteRunStore {
+    /// The reader verifies payload/type/provenance on result commit and recovery.
+    /// It must retain every committed artifact and never call back into this store.
+    pub fn with_artifacts(mut self, reader: Box<dyn workflow_artifacts::ArtifactReader>) -> Self {
+        self.artifacts = Some(reader);
+        self
+    }
+
     /// Initialize an empty database, or reopen this exact supported application schema.
     pub fn create(path: impl AsRef<Path>) -> Result<Self> {
         let mut connection = connect(
@@ -49,17 +57,26 @@ impl SqliteRunStore {
             check_version(&tx)?;
         }
         tx.commit().map_err(storage)?;
-        Ok(Self { connection })
+        Ok(Self {
+            connection,
+            artifacts: None,
+        })
     }
     pub fn open(path: impl AsRef<Path>) -> Result<Self> {
         let connection = connect(path.as_ref(), OpenFlags::SQLITE_OPEN_READ_WRITE)?;
         check_version(&connection)?;
-        Ok(Self { connection })
+        Ok(Self {
+            connection,
+            artifacts: None,
+        })
     }
     pub fn open_readonly(path: impl AsRef<Path>) -> Result<Self> {
         let connection = connect(path.as_ref(), OpenFlags::SQLITE_OPEN_READ_ONLY)?;
         check_version(&connection)?;
-        Ok(Self { connection })
+        Ok(Self {
+            connection,
+            artifacts: None,
+        })
     }
 }
 impl RunStore for SqliteRunStore {

@@ -2,7 +2,7 @@
 name: workflow-run
 description: Create and inspect durable workflow-cli runs, submit trusted events, cancel with an expected revision, inspect the command outbox and verify storage recovery, and drive local read-only tasks with durable leases. Use for persistent workflow progress and explicit local execution; no background daemon remains.
 metadata:
-  version: "1.1.0"
+  version: "1.2.0"
 ---
 
 # Workflow run
@@ -14,7 +14,7 @@ source checkout or the Bazel binary; `bazel run` needs absolute file paths. Cons
 Choose the explicit run database from the user's task. `run init <db>` alone
 creates a store. Do not point it at a definition-registry database or silently
 initialize a different database after a query fails. Inspect the error and path.
-For schema 1, use the explicit `run migrate <db>` transaction when upgrading is
+For schema 1 or 2, use the explicit `run migrate <db>` transaction when upgrading is
 within the task scope. A future/foreign schema must not be overwritten to make it open.
 
 Read `workflow schema run-start`, obtain exact definitions and descriptors from
@@ -40,8 +40,10 @@ observations. Do not infer task execution from an outbox command alone.
 A worker error stops the drive; a later explicit drive may retry read-only work,
 up to three attempts per command. Lease conflicts require inspecting ownership
 and waiting for release/expiry. Never edit epochs, reset budgets or fabricate a
-result. Write effects, uncertain reconciliation and artifact evidence need their
-separate verified host mechanisms. A release error can follow a committed task;
+result. Write effects, uncertain reconciliation need their separate verified host mechanisms. Artifact
+evidence requires a configured store: use `run --artifacts <store> <operation> ...`
+and the workflow-artifact Skill. That configuration is needed again for recovery
+queries; never remove evidence to make a missing dependency look successful. A release error can follow a committed task;
 read status/history before retrying.
 
 Pending work persists when the process exits. Repository examples under `examples/runs`
@@ -76,3 +78,12 @@ editing hashes or deleting recovery dependencies.
 Report the database, run ID/digest, revision, business status, pending intents and
 verification result. Distinguish committed progress from actual external work.
 Pause/resume, effect execution and backup/restore are not provided by this release.
+
+
+For an explicitly managed worker flow, acquire a lease with `run acquire`, persist
+the returned lease object, and obtain the request/grant through `run claim`.
+Dispatch the actual worker, publish any report, then pass the exact attempt/result
+to `run --artifacts <store> finish`. Use `run renew` before expiry when needed and
+replace the local lease token with its returned value. Release the current lease
+afterward. `run tick-due` observes due waits under the lease; `run attempt-failed`
+records an actual worker protocol error, never an invented business outcome.

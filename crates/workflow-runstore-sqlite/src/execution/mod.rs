@@ -29,7 +29,11 @@ pub(crate) fn init_head(c: &Connection, id: &str) -> Result<()> {
     .map_err(storage)?;
     Ok(())
 }
-pub(crate) fn read(c: &Connection, r: &Recovered) -> Result<(Authority, Vec<ExecutionRecord>)> {
+pub(crate) fn read(
+    c: &Connection,
+    r: &Recovered,
+    artifacts: Option<&dyn workflow_artifacts::ArtifactReader>,
+) -> Result<(Authority, Vec<ExecutionRecord>)> {
     let s = r.engine.snapshot();
     let id = &s.run_id;
     let (count, expected): (i64, String) = c
@@ -61,7 +65,16 @@ pub(crate) fn read(c: &Connection, r: &Recovered) -> Result<(Authority, Vec<Exec
         authority
             .apply(&record.action)
             .map_err(|e| corrupt(e.message))?;
-        proof::verify(r, &authority, &record.action).map_err(|e| corrupt(e.message))?;
+        proof::verify(r, &authority, &record.action, artifacts).map_err(|e| {
+            if matches!(
+                e.code,
+                ErrorCode::ArtifactUnavailable | ErrorCode::ArtifactRejected
+            ) {
+                e
+            } else {
+                corrupt(e.message)
+            }
+        })?;
         chain = digest(&(chain, hash))?;
         records.push(record);
     }

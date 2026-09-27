@@ -88,27 +88,56 @@ pub(super) fn prepare(
     })
 }
 pub(super) fn task_result(result: &workflow_worker::WorkResult) -> Result<TaskResult> {
-    match &result.outcome {
-        AdapterOutcome::Succeeded { outputs, evidence } if evidence.is_empty() => {
-            Ok(TaskResult::Succeeded {
-                outputs: outputs.clone(),
-            })
+    Ok(match &result.outcome {
+        AdapterOutcome::Succeeded { outputs, .. } => TaskResult::Succeeded {
+            outputs: outputs.clone(),
+        },
+        AdapterOutcome::Failed { code, class, .. } => {
+            if *class == workflow_worker::FailureClass::Cancelled {
+                TaskResult::Cancelled
+            } else {
+                TaskResult::Failed { code: code.clone() }
+            }
         }
-        AdapterOutcome::Failed {
-            code,
-            class,
-            evidence,
-            ..
-        } if evidence.is_empty() => Ok(if *class == workflow_worker::FailureClass::Cancelled {
-            TaskResult::Cancelled
-        } else {
-            TaskResult::Failed { code: code.clone() }
-        }),
-        _ => Err(Error::new(
-            ErrorCode::InvalidRequest,
-            "artifact evidence needs an ArtifactStore verifier; local executor accepts empty evidence only",
-        )),
+    })
+}
+pub(super) fn verify_artifacts(
+    result: &workflow_worker::WorkResult,
+    request: &WorkRequest,
+    reader: Option<&dyn workflow_artifacts::ArtifactReader>,
+) -> Result<()> {
+    let evidence = match &result.outcome {
+        AdapterOutcome::Succeeded { evidence, .. } | AdapterOutcome::Failed { evidence, .. } => {
+            evidence
+        }
+    };
+    if evidence.is_empty() {
+        return Ok(());
     }
+    let reader = reader.ok_or_else(|| {
+        Error::new(
+            ErrorCode::ArtifactUnavailable,
+            "run evidence requires a configured artifact store",
+        )
+    })?;
+    let producer = artifact_producer(request)?;
+    for e in evidence {
+        let artifact = reader.verify(&workflow_artifacts::ArtifactLink {
+            artifact_id: e.artifact_id.clone(),
+            digest: e.digest.clone(),
+        })?;
+        workflow_artifacts::validate_ref(&artifact)?;
+        if artifact.artifact_id != e.artifact_id
+            || artifact.digest != e.digest
+            || artifact.manifest.spec.producer != producer
+        {
+            return Err(Error::new(
+                ErrorCode::ArtifactRejected,
+                "artifact evidence belongs to another producer/request/input",
+            ));
+        }
+    }
+    Ok(())
 }
 pub(super) fn entry<'a>(r: &'a Recovered, id: &str) -> Result<&'a OutboxEntry> {
     r.outbox
@@ -138,7 +167,12 @@ fn stored_event<'a>(r: &'a Recovered, id: &str, revision: u64, now: u64) -> Resu
     }
     Ok(&record.event)
 }
-pub(super) fn verify(r: &Recovered, a: &Authority, action: &ExecutionAction) -> Result<()> {
+pub(super) fn verify(
+    r: &Recovered,
+    a: &Authority,
+    action: &ExecutionAction,
+    artifacts: Option<&dyn workflow_artifacts::ArtifactReader>,
+) -> Result<()> {
     match action {
         ExecutionAction::Prepared { attempt } => {
             let e = entry(r, &attempt.command_id)?;
@@ -165,6 +199,7 @@ pub(super) fn verify(r: &Recovered, a: &Authority, action: &ExecutionAction) -> 
             at_unix_ms,
         } => {
             let p = &a.attempts[attempt_id].prepared;
+            verify_artifacts(result, &p.request, artifacts)?;
             let e = entry(r, &p.command_id)?;
             let c = capability(r, e)?;
             workflow_worker::accept_result(&p.request, &p.grant, &c, result.clone(), *at_unix_ms)?;

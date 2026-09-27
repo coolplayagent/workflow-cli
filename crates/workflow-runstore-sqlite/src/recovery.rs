@@ -36,7 +36,11 @@ pub(crate) fn append_commands(
 }
 /// Read under one caller-owned transaction. Rebuild full history and independently
 /// restore the latest checkpoint plus tail. Verify every persisted command intent.
-pub(crate) fn recover(c: &Connection, id: &str) -> Result<Recovered> {
+pub(crate) fn recover(
+    c: &Connection,
+    id: &str,
+    artifacts: Option<&dyn workflow_artifacts::ArtifactReader>,
+) -> Result<Recovered> {
     validate_id(id)?;
     check_version(c)?;
     let (run_digest, bundle_digest, seed_json, seed_digest): (String, String, String, String) = c
@@ -244,7 +248,7 @@ pub(crate) fn recover(c: &Connection, id: &str) -> Result<Recovered> {
         outbox,
         checkpoint_revision,
     };
-    crate::execution::read(c, &recovered)?;
+    crate::execution::read(c, &recovered, artifacts)?;
     Ok(recovered)
 }
 pub(crate) fn write_checkpoint(c: &Connection, engine: &Engine) -> Result<()> {

@@ -87,6 +87,9 @@ request digest. `check-result` revalidates an independently received result with
 the current host grant and clock. An `AcceptedResult` is a validated observation,
 not an authoritative run completion or independently verified business result.
 The host must still verify artifact availability, gates and persisted ownership.
+The [local executor](local-execution.md) supplies durable ownership and result
+settlement; the [artifact reader](artifacts.md) validates manifest/content/type
+and exact producer/input bindings when configured on the RunStore.
 
 A grant cannot be reused for changed inputs, a different capability contract,
 deadline, trace, request ID, node instance, attempt or lease epoch. An identical
@@ -143,7 +146,9 @@ scope additionally carries definition digest, run ID, node ID, node instance,
 attempt and positive lease epoch. Results carry protocol version, request digest,
 completion timestamp, typed outputs or a declared error code/class, and artifact
 ID/digest references. Evidence references are syntax checked, not fetched or
-attested; they cannot be treated as verified artifacts solely from this result.
+attested by this worker; they cannot be treated as verified artifacts solely from
+this result. With the artifact contract, this digest identifies the manifest and
+its bound provenance/content, while the payload digest lives inside that manifest.
 
 Use `workflow schema capability`, `schema request`, `schema grant` and `schema
 result` for generated JSON Schemas. Runtime checks additionally enforce identity,
@@ -180,5 +185,6 @@ contract, not an OS sandbox against malicious adapter code.
 Failures must use a descriptor's declared code and matching class. Transient does
 not authorize automatic retry. Missing outputs, wrong types, undeclared outputs,
 invalid evidence, forged request identity and attempted transition fields fail
-result validation. No model adapter, provider credentials, durable effects,
-live lease fencing or effect executor is implemented by this increment. R01/R02/R04/R05 remain open for those parts.
+result validation. Durable leases and artifact verification are implemented by
+the separate host adapters linked above. Model adapters, provider credentials and
+the effect executor remain open work in R01/R02/R04/R05.

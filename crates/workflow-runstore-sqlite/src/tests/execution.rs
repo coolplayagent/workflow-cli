@@ -592,7 +592,7 @@ fn foreign_result_identity_and_unverified_artifacts_cannot_commit() {
             .finish_task(&lease, &p.attempt_id, &artifact, &clock)
             .unwrap_err()
             .code,
-        ErrorCode::InvalidRequest
+        ErrorCode::ArtifactUnavailable
     );
     assert_eq!(store.get(&s.run_id).unwrap(), before);
     assert!(store.history(&s.run_id, 0, 100).unwrap().items.is_empty());
@@ -604,4 +604,42 @@ fn foreign_result_identity_and_unverified_artifacts_cannot_commit() {
             .len(),
         2
     );
+}
+
+#[test]
+fn explicit_v2_migration_preserves_existing_lease_epochs_and_attempts() {
+    let db = Db::new();
+    let mut store = db.store();
+    let s = scenario("parallel-all");
+    store.start(&start(&s)).unwrap();
+    let clock = Time::new(1000);
+    let first = acquire(&mut store, &s.run_id, "first", &clock);
+    let p = claimed(&mut store, &first, &clock);
+    store
+        .connection
+        .pragma_update(None, "user_version", 2)
+        .unwrap();
+    drop(store);
+    assert!(SqliteRunStore::open(&db.path).is_err());
+    let mut store = SqliteRunStore::migrate(&db.path).unwrap();
+    assert_eq!(
+        store
+            .execution_history(&s.run_id, 0, 100)
+            .unwrap()
+            .items
+            .len(),
+        2
+    );
+    clock.set(1100);
+    let next = acquire(&mut store, &s.run_id, "second", &clock);
+    assert_eq!(next.epoch, 2);
+    assert_eq!(
+        store
+            .finish_task(&first, &p.attempt_id, &success(&p, 1000), &clock)
+            .unwrap_err()
+            .code,
+        ErrorCode::LeaseConflict
+    );
+    assert_eq!(claimed(&mut store, &next, &clock).number, 2);
+    store.verify(&s.run_id).unwrap();
 }

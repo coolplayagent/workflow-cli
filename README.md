@@ -10,7 +10,8 @@ belong in bindings rather than in the business graph.
 transactional definition registry, checked read-only capability invocation, a
 deterministic workflow kernel, and a transactional RunStore with event history,
 checkpoints and a command outbox. A local driver executes read-only tasks with
-durable leases, attempts and fenced result commits. Model/remote adapters and
+durable leases, attempts and fenced result commits. Typed artifact manifests bind
+content and provenance; result acceptance verifies their durable dependencies. Model/remote adapters and
 external effects follow the [issue roadmap](docs/roadmap.md). `validate` is a
 static check, not permission to execute a capability or proof of a successful run.
 
@@ -63,7 +64,9 @@ and checkpoint restore. The [workflow-run Skill](skills/workflow-run/SKILL.md) a
 [run storage guide](docs/run-store.md) cover `run start/status/event/cancel`, history
 and pending delivery. The [local execution guide](docs/local-execution.md) covers
 `run drive`, which calls built-in adapters and commits real results. No background
-timer service remains after the command exits.
+timer service remains after the command exits. The [workflow-artifact Skill](skills/workflow-artifact/SKILL.md)
+and [artifact guide](docs/artifacts.md) cover typed reports, provenance, integrity
+checks and their connection to fenced result submission.
 
 ```sh
 cargo run --locked -- kernel replay examples/kernel/review-approved.json
@@ -78,6 +81,7 @@ the CLI exits 0.
 
 - [Draft editing, semantic diff and immutable publication](docs/definition-registry.md)
 - [Capability contracts, worker protocol and host authority](docs/worker-protocol.md)
+- [Typed artifacts, provenance, atomic publication and evidence](docs/artifacts.md)
 - [Local execution, leases, attempts and migration](docs/local-execution.md)
 - [Durable run state, events, checkpoints and outbox](docs/run-store.md)
 - [Deterministic kernel, bundle checks and replay](docs/kernel-semantics.md)
@@ -104,6 +108,8 @@ checkpoint replay. RunStore tests force process termination around commit, race
 independent writers, inject SQLite disk-full/read-only failures and verify complete
 journal/checkpoint/outbox recovery. Execution tests race process ownership, fence
 expired attempts, kill result writers around commit and execute actual compiler
-capabilities through business decisions. `qualitygate.yaml` runs these
+capabilities through business decisions. Artifact tests interrupt uploads, reject
+corrupt/missing/type-conflicting evidence and preserve references across local
+export/import. `qualitygate.yaml` runs these
 four commands against its captured delivery snapshot. No business benefit or
 recovery SLA is claimed before the R15 benchmarks have been collected.

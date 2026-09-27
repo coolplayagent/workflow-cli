@@ -28,8 +28,8 @@ impl SqliteRunStore {
             .connection
             .transaction_with_behavior(TransactionBehavior::Immediate)
             .map_err(storage)?;
-        let mut r = crate::recovery::recover(&tx, &l.run_id)?;
-        let (mut a, _) = read(&tx, &r)?;
+        let mut r = crate::recovery::recover(&tx, &l.run_id, self.artifacts.as_deref())?;
+        let (mut a, _) = read(&tx, &r, self.artifacts.as_deref())?;
         let now = clock.now_unix_ms()?;
         live(&a, &r, l, now)?;
         let active = matches!(
@@ -83,8 +83,8 @@ impl SqliteRunStore {
             .connection
             .transaction_with_behavior(TransactionBehavior::Immediate)
             .map_err(storage)?;
-        let mut r = crate::recovery::recover(&tx, &l.run_id)?;
-        let (mut a, _) = read(&tx, &r)?;
+        let mut r = crate::recovery::recover(&tx, &l.run_id, self.artifacts.as_deref())?;
+        let (mut a, _) = read(&tx, &r, self.artifacts.as_deref())?;
         let now = clock.now_unix_ms()?;
         live(&a, &r, l, now)?;
         let Some(entry) = r.outbox.iter().find(|e| e.receipt.is_none()).cloned() else {

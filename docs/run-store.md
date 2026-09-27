@@ -99,7 +99,7 @@ cannot silently turn back into pending delivery.
 
 These checks detect corruption and divergence; a database owner able to rewrite
 records and hashes is outside this integrity boundary. Foreign/future schema/application changes
-are refused. Explicit `run migrate` upgrades schema 1 to 2 transactionally; see
+are refused. Explicit `run migrate` upgrades schema 1/2 to 3 transactionally; see
 the local execution guide. No repair-by-overwrite is implemented. Recovery currently
 replays bounded histories and retained checkpoint prefixes on reads, favoring
 integrity evidence over latency. It is not an optimized constant-time snapshot
@@ -148,6 +148,10 @@ it does not prove power-loss durability of arbitrary VFS/filesystems, shared
 network-disk multiwriter safety or disk-loss recovery. No RPO/RTO is claimed.
 Run leases, fenced result commits and bounded read-only retries are covered by
 the local execution guide. Pause/resume, general retry policy, autonomous timer
-service, effect ledger, artifact dependencies, backup/restore and retention remain
+service, effect ledger, remote artifact dependencies, backup/restore and retention remain
 open in R04/R05/R06/R07/R08. The issue stays open until those acceptance criteria
 have direct evidence.
+
+Schema 3 adds required artifact dependency verification for execution results.
+Supply `run --artifacts <store>` for runs with evidence; unconfigured or corrupt
+dependencies fail reads and mutations. See [typed artifacts](artifacts.md).

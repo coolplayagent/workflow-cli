@@ -51,7 +51,7 @@ impl SqliteRunStore {
                     "run ID already has a different immutable start",
                 ));
             }
-            let current = recover(&tx, &r.run_id)?;
+            let current = recover(&tx, &r.run_id, self.artifacts.as_deref())?;
             let snapshot = current.engine.snapshot().clone();
             tx.commit().map_err(storage)?;
             return Ok(Committed {
@@ -125,7 +125,7 @@ impl SqliteRunStore {
             .connection
             .transaction_with_behavior(TransactionBehavior::Immediate)
             .map_err(storage)?;
-        let mut current = recover(&tx, &event.run_id)?;
+        let mut current = recover(&tx, &event.run_id, self.artifacts.as_deref())?;
         let result = persist_event(&tx, &mut current, event, &hook)?;
         hook("before_commit");
         tx.commit().map_err(storage)?;
@@ -143,7 +143,7 @@ impl SqliteRunStore {
             .connection
             .transaction_with_behavior(TransactionBehavior::Immediate)
             .map_err(storage)?;
-        let current = recover(&tx, &receipt.run_id)?;
+        let current = recover(&tx, &receipt.run_id, self.artifacts.as_deref())?;
         let entry = persist_receipt(&tx, &current, receipt)?;
         tx.commit().map_err(storage)?;
         Ok(entry)

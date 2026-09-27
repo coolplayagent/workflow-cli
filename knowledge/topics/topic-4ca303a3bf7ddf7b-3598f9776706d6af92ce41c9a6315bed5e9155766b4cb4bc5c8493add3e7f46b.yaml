@@ -4,6 +4,16 @@ topic:
   title: architecture
   description: Added by CLI source registration.
 sources:
+- id: artifact-contracts
+  topic: architecture
+  kind: doc
+  uri: docs/artifacts.md
+  source_scope: docs
+  read_policy: direct
+  write_policy: manual-review
+  status: active
+  version: 1
+  description: Typed artifact identity, provenance, durable local publication, impact and verified run evidence.
 - id: definition-authoring
   topic: architecture
   kind: doc
@@ -34,6 +44,26 @@ sources:
   status: active
   version: 1
   description: Deterministic bundle compilation, workflow transitions, replay and durable host boundary
+- id: local-execution
+  topic: architecture
+  kind: doc
+  uri: docs/local-execution.md
+  source_scope: docs
+  read_policy: direct
+  write_policy: manual-review
+  status: active
+  version: 1
+  description: Local read-only execution, durable leases and attempts, atomic result settlement and storage migration.
+- id: run-store
+  topic: architecture
+  kind: doc
+  uri: docs/run-store.md
+  source_scope: docs
+  read_policy: direct
+  write_policy: manual-review
+  status: active
+  version: 1
+  description: RunStore port, atomic SQLite state/event/outbox commits and verified recovery
 - id: worker-protocol
   topic: architecture
   kind: doc
@@ -51,4 +81,7 @@ route:
   - definition-authoring
   - worker-protocol
   - kernel-semantics
+  - run-store
+  - local-execution
+  - artifact-contracts
   fallback: bounded-search

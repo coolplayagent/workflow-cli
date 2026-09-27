@@ -52,7 +52,7 @@ work to conceal the mismatch. Request regeneration requires fresh host context
 and remains subject to the task's existing authorization.
 
 Result validation checks the invocation contract. It does not commit a run,
-verify artifact existence, prove a business gate passed or ensure exactly-once
+verify artifact existence by itself, prove a business gate passed or ensure exactly-once
 execution. This release accepts only read-only capabilities; write declarations
 need the future durable effect executor. Do not describe an in-process timeout
 as hard cancellation of arbitrary Rust code.
@@ -62,3 +62,10 @@ remaining host-side verification. Stop at the requested invocation/integration;
 use workflow-run for requested durable state operations. Worker dispatch does not
 commit the run. `run drive` supplies durable ownership and atomic result settlement
 for local built-ins; use it when the task requires persistent workflow execution.
+
+
+For worker evidence, the workflow-artifact Skill publishes a typed manifest and
+returns its portable ID/manifest digest. Attach that exact link only to the actual
+producing request's result. The configured RunStore verifies bytes, lineage and
+producer/input identity on finish and recovery. Source-revision declarations and
+digests do not authenticate a producer or prove the report's business assertions.

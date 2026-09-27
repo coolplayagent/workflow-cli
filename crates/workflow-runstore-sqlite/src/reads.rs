@@ -8,7 +8,7 @@ impl SqliteRunStore {
         f: impl FnOnce(Recovered) -> Result<T>,
     ) -> Result<T> {
         let tx = self.connection.transaction().map_err(storage)?;
-        let result = f(recover(&tx, id)?)?;
+        let result = f(recover(&tx, id, self.artifacts.as_deref())?)?;
         tx.commit().map_err(storage)?;
         Ok(result)
     }
@@ -39,7 +39,7 @@ impl SqliteRunStore {
         };
         let mut items = vec![];
         for id in ids.into_iter().take(limit as usize) {
-            let r = recover(&tx, &id)?;
+            let r = recover(&tx, &id, self.artifacts.as_deref())?;
             let s = r.engine.snapshot();
             items.push(RunSummary {
                 run_id: s.run_id.clone(),
