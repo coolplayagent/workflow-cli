@@ -60,4 +60,5 @@ as hard cancellation of arbitrary Rust code.
 Report the exact capability/version, contract or request digest, outcome and any
 remaining host-side verification. Stop at the requested invocation/integration;
 use workflow-run for requested durable state operations. Worker dispatch does not
-commit the run; it still needs the host transaction and authority checks.
+commit the run. `run drive` supplies durable ownership and atomic result settlement
+for local built-ins; use it when the task requires persistent workflow execution.

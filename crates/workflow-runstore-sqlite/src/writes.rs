@@ -99,6 +99,7 @@ impl SqliteRunStore {
             params![r.run_id, digest(&"empty delivery journal")?],
         )
         .map_err(storage)?;
+        crate::execution::init_head(&tx, &r.run_id)?;
         hook("state_written");
         write_checkpoint(&tx, &engine)?;
         let mut commands = vec![];
@@ -125,48 +126,11 @@ impl SqliteRunStore {
             .transaction_with_behavior(TransactionBehavior::Immediate)
             .map_err(storage)?;
         let mut current = recover(&tx, &event.run_id)?;
-        let old_revision = current.engine.snapshot().revision;
-        let transition = current.engine.apply(event.clone())?;
-        if transition.duplicate {
-            let snapshot = current.engine.snapshot().clone();
-            tx.commit().map_err(storage)?;
-            return Ok(Committed {
-                snapshot,
-                transition,
-            });
-        }
-        tx.execute(
-            "INSERT INTO events(run_id,revision,event_id,document,digest) VALUES(?1,?2,?3,?4,?5)",
-            params![
-                event.run_id,
-                number(transition.revision)?,
-                event.event_id,
-                document(event)?,
-                digest(event)?
-            ],
-        )
-        .map_err(storage)?;
-        hook("event_written");
-        let changed=tx.execute("UPDATE heads SET revision=?2,snapshot=?3,state_digest=?4 WHERE run_id=?1 AND revision=?5",params![event.run_id,number(transition.revision)?,document(current.engine.snapshot())?,digest(current.engine.snapshot())?,number(old_revision)?]).map_err(storage)?;
-        if changed != 1 {
-            return Err(corrupt(
-                "head update did not affect exactly one expected revision",
-            ));
-        }
-        hook("state_written");
-        if transition.revision % 16 == 0 {
-            write_checkpoint(&tx, &current.engine)?;
-        }
-        let previous = current.outbox.len();
-        append_commands(&mut current.outbox, &current.engine, &transition)?;
-        write_commands(&tx, &current.outbox[previous..])?;
+        let result = persist_event(&tx, &mut current, event, &hook)?;
         hook("before_commit");
         tx.commit().map_err(storage)?;
         hook("after_commit");
-        Ok(Committed {
-            snapshot: current.engine.snapshot().clone(),
-            transition,
-        })
+        Ok(result)
     }
     pub(crate) fn acknowledge_delivery(
         &mut self,
@@ -180,61 +144,7 @@ impl SqliteRunStore {
             .transaction_with_behavior(TransactionBehavior::Immediate)
             .map_err(storage)?;
         let current = recover(&tx, &receipt.run_id)?;
-        let entry = current
-            .outbox
-            .iter()
-            .find(|e| e.command_id == receipt.command_id)
-            .ok_or_else(|| Error::new(ErrorCode::NotFound, "command not found in this run"))?;
-        if entry.command_digest != receipt.command_digest {
-            return Err(Error::new(
-                ErrorCode::ReceiptConflict,
-                "receipt command digest mismatch",
-            ));
-        }
-        if let Some(existing) = &entry.receipt {
-            if existing != receipt {
-                return Err(Error::new(
-                    ErrorCode::ReceiptConflict,
-                    "command already has a different immutable delivery receipt",
-                ));
-            }
-            let entry = entry.clone();
-            tx.commit().map_err(storage)?;
-            return Ok(entry);
-        }
-        if current
-            .outbox
-            .iter()
-            .any(|e| e.sequence < entry.sequence && e.receipt.is_none())
-        {
-            return Err(Error::new(
-                ErrorCode::DeliveryOrder,
-                "earlier commands must be acknowledged first",
-            ));
-        }
-        tx.execute(
-            "INSERT INTO receipts(run_id,sequence,document,digest) VALUES(?1,?2,?3,?4)",
-            params![
-                receipt.run_id,
-                number(entry.sequence)?,
-                document(receipt)?,
-                digest(receipt)?
-            ],
-        )
-        .map_err(storage)?;
-        let previous: String = tx
-            .query_row(
-                "SELECT chain_digest FROM delivery_heads WHERE run_id=?1",
-                [&receipt.run_id],
-                |r| r.get(0),
-            )
-            .map_err(storage)?;
-        let changed=tx.execute("UPDATE delivery_heads SET sequence=?2,chain_digest=?3 WHERE run_id=?1 AND sequence=?4",params![receipt.run_id,number(entry.sequence)?,digest(&(previous,digest(receipt)?))?,number(entry.sequence-1)?]).map_err(storage)?;
-        if changed != 1 {
-            return Err(corrupt("delivery head mismatch"));
-        }
-        let mut entry = entry.clone();
-        entry.receipt = Some(receipt.clone());
+        let entry = persist_receipt(&tx, &current, receipt)?;
         tx.commit().map_err(storage)?;
         Ok(entry)
     }
@@ -244,4 +154,122 @@ fn write_commands(c: &Connection, commands: &[OutboxEntry]) -> Result<()> {
         c.execute("INSERT INTO outbox(run_id,sequence,revision,command_index,command_id,document,digest) VALUES(?1,?2,?3,?4,?5,?6,?7)",params![e.run_id,number(e.sequence)?,number(e.revision)?,e.command_index,e.command_id,document(e)?,digest(e)?]).map_err(storage)?;
     }
     Ok(())
+}
+
+pub(crate) fn persist_event(
+    c: &Connection,
+    current: &mut crate::recovery::Recovered,
+    event: &Event,
+    hook: impl Fn(&str),
+) -> Result<Committed> {
+    let old_revision = current.engine.snapshot().revision;
+    let transition = current.engine.apply(event.clone())?;
+    if transition.duplicate {
+        let snapshot = current.engine.snapshot().clone();
+        return Ok(Committed {
+            snapshot,
+            transition,
+        });
+    }
+    c.execute(
+        "INSERT INTO events(run_id,revision,event_id,document,digest) VALUES(?1,?2,?3,?4,?5)",
+        params![
+            event.run_id,
+            number(transition.revision)?,
+            event.event_id,
+            document(event)?,
+            digest(event)?
+        ],
+    )
+    .map_err(storage)?;
+    hook("event_written");
+    let changed=c.execute("UPDATE heads SET revision=?2,snapshot=?3,state_digest=?4 WHERE run_id=?1 AND revision=?5",params![event.run_id,number(transition.revision)?,document(current.engine.snapshot())?,digest(current.engine.snapshot())?,number(old_revision)?]).map_err(storage)?;
+    if changed != 1 {
+        return Err(corrupt(
+            "head update did not affect exactly one expected revision",
+        ));
+    }
+    hook("state_written");
+    if transition.revision % 16 == 0 {
+        write_checkpoint(c, &current.engine)?;
+    }
+    let previous = current.outbox.len();
+    append_commands(&mut current.outbox, &current.engine, &transition)?;
+    write_commands(c, &current.outbox[previous..])?;
+    Ok(Committed {
+        snapshot: current.engine.snapshot().clone(),
+        transition,
+    })
+}
+
+pub(crate) fn persist_receipt(
+    c: &Connection,
+    current: &crate::recovery::Recovered,
+    receipt: &DeliveryReceipt,
+) -> Result<OutboxEntry> {
+    let entry = current
+        .outbox
+        .iter()
+        .find(|e| e.command_id == receipt.command_id)
+        .ok_or_else(|| Error::new(ErrorCode::NotFound, "command not found in this run"))?;
+    if entry.command_digest != receipt.command_digest {
+        return Err(Error::new(
+            ErrorCode::ReceiptConflict,
+            "receipt command digest mismatch",
+        ));
+    }
+    if let Some(existing) = &entry.receipt {
+        if existing != receipt {
+            return Err(Error::new(
+                ErrorCode::ReceiptConflict,
+                "command already has a different immutable delivery receipt",
+            ));
+        }
+        let entry = entry.clone();
+        return Ok(entry);
+    }
+    if current
+        .outbox
+        .iter()
+        .any(|e| e.sequence < entry.sequence && e.receipt.is_none())
+    {
+        return Err(Error::new(
+            ErrorCode::DeliveryOrder,
+            "earlier commands must be acknowledged first",
+        ));
+    }
+    c.execute(
+        "INSERT INTO receipts(run_id,sequence,document,digest) VALUES(?1,?2,?3,?4)",
+        params![
+            receipt.run_id,
+            number(entry.sequence)?,
+            document(receipt)?,
+            digest(receipt)?
+        ],
+    )
+    .map_err(storage)?;
+    let previous: String = c
+        .query_row(
+            "SELECT chain_digest FROM delivery_heads WHERE run_id=?1",
+            [&receipt.run_id],
+            |r| r.get(0),
+        )
+        .map_err(storage)?;
+    let changed = c
+        .execute(
+            "UPDATE delivery_heads SET sequence=?2,chain_digest=?3 WHERE run_id=?1 AND sequence=?4",
+            params![
+                receipt.run_id,
+                number(entry.sequence)?,
+                digest(&(previous, digest(receipt)?))?,
+                number(entry.sequence - 1)?
+            ],
+        )
+        .map_err(storage)?;
+    if changed != 1 {
+        return Err(corrupt("delivery head mismatch"));
+    }
+    let mut entry = entry.clone();
+    entry.receipt = Some(receipt.clone());
+    Ok(entry)
 }

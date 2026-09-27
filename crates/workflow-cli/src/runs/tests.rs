@@ -115,7 +115,7 @@ fn cancellation_is_durable_idempotent_and_does_not_claim_task_completion() {
 }
 #[test]
 fn generated_run_schemas_and_shipped_requests_match_the_contract() {
-    for kind in ["start", "receipt"] {
+    for kind in ["start", "receipt", "lease", "execution-record"] {
         let (code, actual) = invoke(&["schema", &format!("run-{kind}")]);
         assert_eq!(code, 0);
         let expected: Value = serde_json::from_slice(
@@ -138,4 +138,45 @@ fn generated_run_schemas_and_shipped_requests_match_the_contract() {
             .unwrap(),
     )
     .unwrap();
+}
+
+#[test]
+fn drive_executes_real_builtins_and_reports_business_failure_and_storage_errors() {
+    let dir = std::env::temp_dir().join(format!("workflow-drive-cli-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let db = dir.join("runs.db");
+    let db = db.to_str().unwrap();
+    assert_eq!(invoke(&["run", "init", db]).0, 0);
+    assert_eq!(invoke(&["run", "migrate", db]).0, 0);
+    for (name, status) in [("valid", "succeeded"), ("invalid", "failed")] {
+        let id = format!("inspect-{name}");
+        let path = base().join(format!("examples/execution/{name}-start.json"));
+        assert_eq!(invoke(&["run", "start", db, path.to_str().unwrap()]).0, 0);
+        let (code, report) = invoke(&["run", "drive", db, &id, "cli-test", "10"]);
+        assert_eq!(code, 0, "{report}");
+        assert_eq!(report["result"]["executed_tasks"], 1);
+        assert_eq!(report["result"]["snapshot"]["status"], status);
+        assert_eq!(
+            invoke(&["run", "drive", db, &id, "cli-test", "10"]).1["result"]["executed_tasks"],
+            0
+        );
+        let records = invoke(&["run", "execution-history", db, &id, "0", "100"]).1;
+        assert!(
+            records["result"]["items"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|r| r["action"]["type"] == "finished")
+        );
+        assert_eq!(invoke(&["run", "verify", db, &id]).0, 0);
+    }
+    let (code, error) = invoke(&["run", "drive", db, "missing", "cli-test", "10"]);
+    assert_eq!(code, 1);
+    assert_eq!(error["ok"], false);
+    assert_eq!(error["error"]["storage"]["code"], "not_found");
+    assert_eq!(
+        invoke(&["run", "drive", db, "inspect-valid", "cli-test", "0"]).0,
+        1
+    );
+    std::fs::remove_dir_all(dir).unwrap();
 }

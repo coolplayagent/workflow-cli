@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/workflow-ir", "crates/workflow-validator", "crates/workflow-cli", "crates/workflow-definitions", "crates/workflow-registry-sqlite", "crates/workflow-worker", "crates/workflow-builtin-capabilities", "crates/workflow-kernel", "crates/workflow-runstore", "crates/workflow-runstore-sqlite"]
+members = ["crates/workflow-ir", "crates/workflow-validator", "crates/workflow-cli", "crates/workflow-definitions", "crates/workflow-registry-sqlite", "crates/workflow-worker", "crates/workflow-builtin-capabilities", "crates/workflow-kernel", "crates/workflow-runstore", "crates/workflow-runstore-sqlite", "crates/workflow-runtime"]
 resolver = "2"
 
 [workspace.package]

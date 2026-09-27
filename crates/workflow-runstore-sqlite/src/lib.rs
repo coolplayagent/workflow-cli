@@ -1,6 +1,7 @@
-//! Transactional SQLite RunStore. No task dispatch, clock reads or model calls.
+//! Transactional SQLite run and execution authority. Adapter invocation stays in the host.
 mod bindings;
 mod db;
+mod execution;
 mod reads;
 mod recovery;
 mod writes;
@@ -39,6 +40,7 @@ impl SqliteRunStore {
                 ));
             }
             tx.execute_batch(SCHEMA).map_err(storage)?;
+            tx.execute_batch(execution::SCHEMA).map_err(storage)?;
             tx.pragma_update(None, "application_id", APPLICATION_ID)
                 .map_err(storage)?;
             tx.pragma_update(None, "user_version", STORAGE_VERSION)
@@ -103,3 +105,47 @@ impl RunStore for SqliteRunStore {
 }
 #[cfg(test)]
 mod tests;
+
+impl ExecutionStore for SqliteRunStore {
+    fn acquire(&mut self, r: &LeaseRequest, c: &dyn workflow_worker::Clock) -> Result<Lease> {
+        self.acquire_lease(r, c)
+    }
+    fn renew(&mut self, l: &Lease, ttl: u64, c: &dyn workflow_worker::Clock) -> Result<Lease> {
+        self.renew_lease(l, ttl, c)
+    }
+    fn release(&mut self, l: &Lease, c: &dyn workflow_worker::Clock) -> Result<()> {
+        self.release_lease(l, c)
+    }
+    fn tick_due(&mut self, l: &Lease, c: &dyn workflow_worker::Clock) -> Result<Option<Committed>> {
+        self.advance_due(l, c)
+    }
+    fn claim_next(&mut self, l: &Lease, c: &dyn workflow_worker::Clock) -> Result<Claimed> {
+        self.claim_owned(l, c)
+    }
+    fn finish_task(
+        &mut self,
+        l: &Lease,
+        id: &str,
+        r: &workflow_worker::WorkResult,
+        c: &dyn workflow_worker::Clock,
+    ) -> Result<Committed> {
+        self.finish_owned_task(l, id, r, c)
+    }
+    fn fail_task(
+        &mut self,
+        l: &Lease,
+        id: &str,
+        e: &workflow_worker::Error,
+        c: &dyn workflow_worker::Clock,
+    ) -> Result<()> {
+        self.fail_owned_task(l, id, e, c)
+    }
+    fn execution_history(
+        &mut self,
+        id: &str,
+        after: u64,
+        limit: u32,
+    ) -> Result<Page<ExecutionRecord, u64>> {
+        self.read_execution_history(id, after, limit)
+    }
+}

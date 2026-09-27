@@ -1,0 +1,17 @@
+[package]
+name = "workflow-runtime"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+serde.workspace = true
+workflow-runstore = { path = "../workflow-runstore" }
+workflow-worker = { path = "../workflow-worker" }
+
+[dev-dependencies]
+workflow-runstore-sqlite = { path = "../workflow-runstore-sqlite" }
+workflow-builtin-capabilities = { path = "../workflow-builtin-capabilities" }
+workflow-kernel = { path = "../workflow-kernel" }
+serde_json.workspace = true

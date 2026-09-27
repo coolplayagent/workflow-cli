@@ -3,8 +3,9 @@
 `workflow-runstore` defines the storage port. `workflow-runstore-sqlite` implements
 it with SQLite and an explicit Bazel library. The kernel still computes control
 flow without I/O; the store commits its state, accepted events and command intents.
-This increment supplies persistent progress and an inspectable outbox. It has no
-worker dispatcher, daemon, automatic timers or external effect executor.
+This port supplies persistent progress and an inspectable outbox. The separate
+[local executor](local-execution.md) adds read-only dispatch through durable leases
+and attempts. There is no background daemon or external effect executor.
 
 ## Local CLI example
 
@@ -97,8 +98,9 @@ match the separate delivery head/count/digest chain, so a missing final receipt
 cannot silently turn back into pending delivery.
 
 These checks detect corruption and divergence; a database owner able to rewrite
-records and hashes is outside this integrity boundary. Schema/application changes
-are refused; no migration or repair-by-overwrite is implemented. Recovery currently
+records and hashes is outside this integrity boundary. Foreign/future schema/application changes
+are refused. Explicit `run migrate` upgrades schema 1 to 2 transactionally; see
+the local execution guide. No repair-by-overwrite is implemented. Recovery currently
 replays bounded histories and retained checkpoint prefixes on reads, favoring
 integrity evidence over latency. It is not an optimized constant-time snapshot
 loader. Kernel event/frame/serialized-size budgets still apply, and long-running
@@ -116,12 +118,12 @@ is accepted; changed receipts reject. Acknowledgements follow sequence order.
 must durably deliver/register each intent before acknowledging it. Delivery can
 repeat after a lost acknowledgement, so the destination must deduplicate stable
 command IDs. Reading pending commands acquires **no lease**. Multiple readers
-must not be treated as authorized concurrent dispatchers. The future dispatcher
-must check live node ownership, preserve intent order (including execute/cancel
-pairs), establish attempts and effect identities, and validate/authenticate results
-before converting them into kernel events. A delivery receipt is neither a task
-result nor proof of an external effect. This release does not execute any outbox
-command, including write-capability declarations.
+must not be treated as authorized concurrent dispatchers. `run drive` obtains a
+run lease, preserves execute/cancel order, persists attempts and validates results
+through the execution port. Remote authentication and write-effect identities
+remain host work. A delivery receipt is neither a task
+result nor proof of an external effect. The local executor supports read-only work and persisted timer registration;
+write-capability declarations remain unsupported for execution.
 
 `run list` uses a lexical run-ID cursor; history uses exclusive revision cursors;
 outbox uses exclusive sequence cursors, with `all` or `pending`. Limits are 1–100.
@@ -144,7 +146,8 @@ and uncertain reconciliation.
 This is Linux process-crash and SQLite fault evidence on the tested filesystem;
 it does not prove power-loss durability of arbitrary VFS/filesystems, shared
 network-disk multiwriter safety or disk-loss recovery. No RPO/RTO is claimed.
-Attempts/leases/fencing, pause/resume, controlled retries, durable autonomous timer
+Run leases, fenced result commits and bounded read-only retries are covered by
+the local execution guide. Pause/resume, general retry policy, autonomous timer
 service, effect ledger, artifact dependencies, backup/restore and retention remain
 open in R04/R05/R06/R07/R08. The issue stays open until those acceptance criteria
 have direct evidence.

@@ -238,12 +238,14 @@ pub(crate) fn recover(c: &Connection, id: &str) -> Result<Recovered> {
     if delivery_sequence != number(receipt_sequence - 1)? || delivery_chain != chain {
         return Err(corrupt("delivery receipt journal differs from its head"));
     }
-    Ok(Recovered {
+    let recovered = Recovered {
         engine: full,
         events,
         outbox,
         checkpoint_revision,
-    })
+    };
+    crate::execution::read(c, &recovered)?;
+    Ok(recovered)
 }
 pub(crate) fn write_checkpoint(c: &Connection, engine: &Engine) -> Result<()> {
     let cp = engine.checkpoint()?;
