@@ -1,8 +1,8 @@
 schema_version: 4
 artifact_kind: map
 map_type: knowledge
-map_version: 11
-updated_at: unix:1790498994
+map_version: 12
+updated_at: unix:1790558671
 directories:
 - directory: domain
   purpose: Domain concepts, models, and business rules.
@@ -60,12 +60,13 @@ topics:
   - definition-semantics
   - kernel-semantics
   - local-execution
+  - model-execution
   - run-store
   - runtime-postconditions
   - worker-protocol
   - workflow-evidence-gates
-  ref: topics/topic-4ca303a3bf7ddf7b-7d50eaa21f47a8c888fc2b0f97a47f35b24ba0c34ab68eba78f80a118f236987.yaml
-  digest: 7d50eaa21f47a8c888fc2b0f97a47f35b24ba0c34ab68eba78f80a118f236987
+  ref: topics/topic-4ca303a3bf7ddf7b-e5e7084c6bb1bbbd4af4a0d1ca5226232ff38d8ed3df43480050366a5f92da8a.yaml
+  digest: e5e7084c6bb1bbbd4af4a0d1ca5226232ff38d8ed3df43480050366a5f92da8a
 - id: business-knowledge
   title: Business knowledge
   description: Version-controlled business domains, terminology, aliases, semantics, and technical mappings.
@@ -127,3 +128,7 @@ history:
     action: source.add
     actor: cli
     summary: Added source 'attempt-workspaces' to topic 'architecture'.
+  - version: 12
+    action: source.add
+    actor: cli
+    summary: Added source 'model-execution' to topic 'architecture'.

@@ -238,3 +238,21 @@ terms:
       - relation: represented_by
         target_kind: file
         target: crates/workflow-workspace-local/src/store.rs
+  - id: model-policy
+    domain: workflow
+    canonical_name: Bounded model policy
+    definition: An immutable task-local goal with exact task and read-only tool contracts and per-attempt call, context, response and output-token bounds; provider configuration remains a separate host binding.
+    language: en
+    mappings:
+      - relation: represented_by
+        target_kind: file
+        target: crates/workflow-models/src/policy.rs
+  - id: model-session-record
+    domain: workflow
+    canonical_name: Explicit model session record
+    definition: Request-bound visible proposals, tool observations, provider identifiers, reported usage and times whose deterministic replay validates the derived task outcome without resampling or granting state authority.
+    language: en
+    mappings:
+      - relation: represented_by
+        target_kind: file
+        target: crates/workflow-models/src/session.rs

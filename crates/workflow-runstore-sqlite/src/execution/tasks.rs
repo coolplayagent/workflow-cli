@@ -64,6 +64,7 @@ impl SqliteRunStore {
         let entry = proof::entry(&r, &p.command_id)?.clone();
         let capability = proof::capability(&r, &entry)?;
         workflow_worker::accept_result(&p.request, &p.grant, &capability, result.clone(), now)?;
+        proof::model_record(&r, &p.request, result)?;
         proof::verify_artifacts(result, &p.request, self.artifacts.as_deref())?;
         let Command::ExecuteTask {
             instance_id,

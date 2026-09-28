@@ -8,7 +8,7 @@ rust_library(
     srcs = glob(["src/**/*.rs"]),
     crate_root = "src/lib.rs",
     edition = "2024",
-    deps = ["//crates/workflow-gates:workflow_gates", "//crates/workflow-artifacts:workflow_artifacts", "//crates/workflow-runstore:workflow_runstore", "//crates/workflow-kernel:workflow_kernel", "//crates/workflow-worker:workflow_worker"] + all_crate_deps(normal = True),
+    deps = ["//crates/workflow-ir:workflow_ir", "//crates/workflow-models:workflow_models", "//crates/workflow-gates:workflow_gates", "//crates/workflow-artifacts:workflow_artifacts", "//crates/workflow-runstore:workflow_runstore", "//crates/workflow-kernel:workflow_kernel", "//crates/workflow-worker:workflow_worker"] + all_crate_deps(normal = True),
     proc_macro_deps = all_crate_deps(proc_macro = True),
     visibility = ["//visibility:public"],
 )
@@ -18,5 +18,5 @@ rust_test(
     size = "small",
     crate = ":workflow_runstore_sqlite",
     data = ["//:fixtures"],
-    deps = ["//crates/workflow-artifact-local:workflow_artifact_local", "//crates/workflow-builtin-capabilities:workflow_builtin_capabilities"],
+    deps = ["//crates/workflow-artifact-local:workflow_artifact_local", "//crates/workflow-builtin-capabilities:workflow_builtin_capabilities"] + all_crate_deps(normal_dev = True),
 )

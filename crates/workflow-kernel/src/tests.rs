@@ -47,6 +47,7 @@ fn spec(workflows: Vec<Workflow>) -> BundleSpec {
     }
     BundleSpec {
         postconditions: vec![],
+        model_policies: vec![],
         schema_version: 1,
         root,
         workflows,

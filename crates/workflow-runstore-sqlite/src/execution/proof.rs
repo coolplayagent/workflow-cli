@@ -57,7 +57,30 @@ pub(super) fn prepare(
         .checked_add(c.descriptor().timeout_ms)
         .ok_or_else(|| Error::new(ErrorCode::InvalidRequest, "task deadline overflow"))?
         .min(l.expires_at_unix_ms);
-    let request = WorkRequest::for_node(
+    let policy = match &w
+        .nodes
+        .iter()
+        .find(|n| n.id == *node_id)
+        .ok_or_else(|| corrupt("task node missing"))?
+        .kind
+    {
+        workflow_ir::NodeKind::Task {
+            policy: Some(reference),
+            ..
+        } => {
+            let p = r
+                .engine
+                .bundle()
+                .spec()
+                .model_policies
+                .iter()
+                .find(|p| &p.policy == reference)
+                .ok_or_else(|| corrupt("model policy missing"))?;
+            Some(workflow_models::Policy::new(p.clone())?.binding().clone())
+        }
+        _ => None,
+    };
+    let request = WorkRequest::for_node_with_policy(
         w,
         node_id,
         &c,
@@ -74,6 +97,7 @@ pub(super) fn prepare(
             attempt_id: id.clone(),
             lease_epoch: l.epoch,
         },
+        policy,
     )?;
     let grant = workflow_worker::ExecutionGrant::bind(&request)?;
     Ok(PreparedTask {
@@ -86,6 +110,24 @@ pub(super) fn prepare(
         request,
         grant,
     })
+}
+pub(super) fn model_record(
+    r: &Recovered,
+    request: &WorkRequest,
+    result: &workflow_worker::WorkResult,
+) -> Result<()> {
+    if let Some(binding) = &request.model_policy {
+        let p = r
+            .engine
+            .bundle()
+            .spec()
+            .model_policies
+            .iter()
+            .find(|p| p.policy == binding.policy)
+            .ok_or_else(|| corrupt("model policy missing"))?;
+        workflow_models::verify_result(&workflow_models::Policy::new(p.clone())?, request, result)?;
+    }
+    Ok(())
 }
 pub(super) fn task_result(result: &workflow_worker::WorkResult) -> Result<TaskResult> {
     Ok(match &result.outcome {
@@ -203,6 +245,7 @@ pub(super) fn verify(
             let e = entry(r, &p.command_id)?;
             let c = capability(r, e)?;
             workflow_worker::accept_result(&p.request, &p.grant, &c, result.clone(), *at_unix_ms)?;
+            model_record(r, &p.request, result)?;
             let Command::ExecuteTask { instance_id, .. } = e.command else {
                 unreachable!()
             };

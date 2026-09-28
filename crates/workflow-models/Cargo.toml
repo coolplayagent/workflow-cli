@@ -1,0 +1,14 @@
+[package]
+name = "workflow-models"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+schemars.workspace = true
+workflow-ir = { path = "../workflow-ir" }
+workflow-validator = { path = "../workflow-validator" }
+workflow-worker = { path = "../workflow-worker" }

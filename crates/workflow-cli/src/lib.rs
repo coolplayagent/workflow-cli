@@ -6,6 +6,7 @@ use workflow_ir::{Diagnostic, Format, MAX_DOCUMENT_BYTES, Workflow};
 mod artifacts;
 mod gates;
 mod kernel;
+mod models;
 mod registry;
 mod runs;
 mod worker;
@@ -68,17 +69,23 @@ pub fn run(
         [] | ["help" | "--help" | "-h"] => write(
             stdout,
             &format!(
-                "{HELP}\n{}\n{}\n{}\n{}\n{}\n{}\n{}",
+                "{HELP}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}",
                 registry::HELP,
                 worker::HELP,
                 kernel::HELP,
                 runs::HELP,
                 artifacts::HELP,
                 gates::HELP,
-                workspaces::HELP
+                workspaces::HELP,
+                models::HELP
             ),
             0,
         ),
+        args @ ["model", ..]
+        | args @ [
+            "schema",
+            "model-policy" | "model-proposal" | "model-record" | "model-http-binding",
+        ] => models::run(args, stdout, stderr),
         args @ ["workspace", ..]
         | args @ [
             "schema",

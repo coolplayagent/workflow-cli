@@ -1,4 +1,4 @@
-# Capability invocation and worker protocol 1
+# Capability invocation and worker protocols
 
 This R02 increment provides a working read-only capability boundary and the JSON
 contract a future local/remote worker host can reuse. It includes two actual
@@ -125,11 +125,16 @@ does not decide how the runtime will record a skipped node.
 
 ## Descriptor and wire contracts
 
-`capability list` advertises `protocol_versions: [1]`. Select a common version
-before dispatch. Version 1 accepts only protocol version 1; it rejects unknown
-fields and versions rather than silently downgrading. Breaking wire changes need
-a new protocol version. Descriptor schema version is separate and currently 1.
-The same ID/version cannot be registered twice in a worker. Contract changes must
+`capability list` advertises `protocol_versions: [1]` for direct built-ins.
+`model check-policy` advertises protocol 2 for model-policy execution. Requests,
+grants and results must agree on the version; protocol 2 requires a policy binding
+and execution record, while direct calls omit those fields. Unknown fields and
+versions are rejected. See [model execution](model-execution.md). The exported
+worker request/result schema files retain their historical filenames and describe
+both variants; version/field dependencies are also checked at runtime. Descriptor
+schema version is separate and currently 1. The same direct ID/version or the same
+ID/version/policy digest cannot be registered twice in a worker. Distinct policies
+may share one exact task contract. Contract changes must
 publish a new capability version; a mismatched digest is refused even if its
 ID/version spelling matches.
 

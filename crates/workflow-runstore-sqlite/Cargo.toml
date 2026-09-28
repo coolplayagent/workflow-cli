@@ -6,6 +6,8 @@ license.workspace = true
 rust-version.workspace = true
 
 [dependencies]
+workflow-ir = { path = "../workflow-ir" }
+workflow-models = { path = "../workflow-models" }
 workflow-gates = { path = "../workflow-gates" }
 rusqlite.workspace = true
 serde.workspace = true
@@ -15,5 +17,6 @@ workflow-worker = { path = "../workflow-worker" }
 workflow-artifacts = { path = "../workflow-artifacts" }
 
 [dev-dependencies]
+serde_json.workspace = true
 workflow-artifact-local = { path = "../workflow-artifact-local" }
 workflow-builtin-capabilities = { path = "../workflow-builtin-capabilities" }

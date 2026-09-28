@@ -514,6 +514,22 @@
         ],
         "type": "object"
       },
+      "ModelPolicyBinding": {
+        "additionalProperties": false,
+        "properties": {
+          "digest": {
+            "type": "string"
+          },
+          "policy": {
+            "$ref": "#/$defs/VersionRef"
+          }
+        },
+        "required": [
+          "policy",
+          "digest"
+        ],
+        "type": "object"
+      },
       "PreparedTask": {
         "additionalProperties": false,
         "properties": {
@@ -605,6 +621,16 @@
             "minimum": 0,
             "type": "integer"
           },
+          "model_policy": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/ModelPolicyBinding"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "protocol_version": {
             "format": "uint32",
             "minimum": 0,
@@ -641,6 +667,9 @@
             "format": "uint64",
             "minimum": 0,
             "type": "integer"
+          },
+          "model_record": {
+            "description": "Explicit model/tool decisions. The policy executor and durable host validate its schema."
           },
           "outcome": {
             "$ref": "#/$defs/AdapterOutcome"

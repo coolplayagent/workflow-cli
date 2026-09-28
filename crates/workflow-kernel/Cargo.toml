@@ -6,6 +6,7 @@ license.workspace = true
 rust-version.workspace = true
 
 [dependencies]
+workflow-models = { path = "../workflow-models" }
 workflow-artifacts = { path = "../workflow-artifacts" }
 workflow-gates = { path = "../workflow-gates" }
 serde.workspace = true

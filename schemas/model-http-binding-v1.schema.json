@@ -1,0 +1,45 @@
+{
+  "$defs": {
+    "Provider": {
+      "enum": [
+        "openai_responses",
+        "anthropic_messages"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "allow_loopback_http": {
+      "default": false,
+      "type": "boolean"
+    },
+    "api_key_env": {
+      "type": "string"
+    },
+    "endpoint": {
+      "type": "string"
+    },
+    "model": {
+      "type": "string"
+    },
+    "provider": {
+      "$ref": "#/$defs/Provider"
+    },
+    "schema_version": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    }
+  },
+  "required": [
+    "schema_version",
+    "provider",
+    "model",
+    "endpoint",
+    "api_key_env"
+  ],
+  "title": "HttpBinding",
+  "type": "object"
+}

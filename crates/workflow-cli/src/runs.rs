@@ -5,7 +5,7 @@ use std::io::{Read, Write};
 use workflow_runstore::*;
 use workflow_runstore_sqlite::SqliteRunStore;
 
-pub const HELP: &str = "DURABLE RUN STORAGE\n  workflow run init <db>\n  workflow run migrate <db>\n  workflow run start <db> <start.json>\n  workflow run drive <db> <run-id> <owner> <max-commands>\n  workflow run execution-history <db> <run-id> <after-sequence> <limit>\n  workflow run status <db> <run-id>\n  workflow run event <db> <event.json>\n  workflow run cancel <db> <run-id> <event-id> <expected-revision> <at-unix-ms>\n  workflow run list <db> <after-id|-> <limit>\n  workflow run history <db> <run-id> <after-revision> <limit>\n  workflow run outbox <db> <run-id> <after-sequence> <limit> <all|pending>\n  workflow run acknowledge <db> <receipt.json>\n  workflow run verify <db> <run-id>\n  workflow run acquire <db> <lease-request.json>\n  workflow run renew <db> <lease.json> <ttl-ms>\n  workflow run release <db> <lease.json>\n  workflow run claim <db> <lease.json>\n  workflow run tick-due <db> <lease.json>\n  workflow run retry-gate <db> <run-id> <instance-id> <event-id> <expected-revision>\n  workflow run finish <db> <lease.json> <attempt-id> <result.json>\n  workflow run attempt-failed <db> <lease.json> <attempt-id> <worker-error.json>\n  workflow run --artifacts <store> <operation> ...\n  workflow schema <run-start|run-receipt|run-lease|run-execution-record>\n\nOnly init creates a database. Mutations acknowledge after SQLite commit.\ndrive executes local read-only builtins with a durable run lease; max-commands is 1..100.\nTimers advance on drive; there is no background daemon. migrate explicitly upgrades v1/v2/v3 storage to v4.\nRuns with artifact evidence require --artifacts on reads and mutations; this location is not persisted.\nclaim/drive checks frozen postconditions; UNKNOWN waits for explicit retry-gate.\nRaw gate events/manual gate receipts and raw successes in gated runs are refused.\nOther events and delivery receipts are trusted host facts; delivery is not task success.\nExit 0 means committed/read successfully; inspect result.snapshot.status (mutations) or result.status (status).\nExit 1 means rejected request/transition/storage/execution; 2 means usage/input I/O/output failure.\n";
+pub const HELP: &str = "DURABLE RUN STORAGE\n  workflow run init <db>\n  workflow run migrate <db>\n  workflow run start <db> <start.json>\n  workflow run drive <db> <run-id> <owner> <max-commands>\n  workflow run drive-models <db> <run-id> <owner> <max-commands> <bindings.json>\n  workflow run execution-history <db> <run-id> <after-sequence> <limit>\n  workflow run status <db> <run-id>\n  workflow run event <db> <event.json>\n  workflow run cancel <db> <run-id> <event-id> <expected-revision> <at-unix-ms>\n  workflow run list <db> <after-id|-> <limit>\n  workflow run history <db> <run-id> <after-revision> <limit>\n  workflow run outbox <db> <run-id> <after-sequence> <limit> <all|pending>\n  workflow run acknowledge <db> <receipt.json>\n  workflow run verify <db> <run-id>\n  workflow run acquire <db> <lease-request.json>\n  workflow run renew <db> <lease.json> <ttl-ms>\n  workflow run release <db> <lease.json>\n  workflow run claim <db> <lease.json>\n  workflow run tick-due <db> <lease.json>\n  workflow run retry-gate <db> <run-id> <instance-id> <event-id> <expected-revision>\n  workflow run finish <db> <lease.json> <attempt-id> <result.json>\n  workflow run attempt-failed <db> <lease.json> <attempt-id> <worker-error.json>\n  workflow run --artifacts <store> <operation> ...\n  workflow schema <run-start|run-receipt|run-lease|run-execution-record>\n\nOnly init creates a database. Mutations acknowledge after SQLite commit.\ndrive executes local read-only builtins with a durable run lease; max-commands is 1..100.\nTimers advance on drive; there is no background daemon. migrate explicitly upgrades v1/v2/v3/v4 storage to v5.\nRuns with artifact evidence require --artifacts on reads and mutations; this location is not persisted.\nclaim/drive checks frozen postconditions; UNKNOWN waits for explicit retry-gate.\nRaw gate events/manual gate receipts and raw successes in gated runs are refused.\nOther events and delivery receipts are trusted host facts; delivery is not task success.\nExit 0 means committed/read successfully; inspect result.snapshot.status (mutations) or result.status (status).\nExit 1 means rejected request/transition/storage/execution; 2 means usage/input I/O/output failure.\n";
 fn read<T: DeserializeOwned>(p: &str) -> Result<T> {
     let mut bytes = vec![];
     std::fs::File::open(p)
@@ -53,7 +53,7 @@ fn execute(args: &[&str], artifacts: Option<&str>) -> Result<Value> {
                 db,
                 reader.map(|r| Box::new(r) as Box<dyn workflow_artifacts::ArtifactReader>),
             )?;
-            Ok(json!({"migrated":true,"storage_version":4}))
+            Ok(json!({"migrated":true,"storage_version":5}))
         }
         ["run", "execution-history", db, id, after, limit] => {
             report(open(db, artifacts)?.execution_history(id, number(after)?, number(limit)?)?)
@@ -196,6 +196,7 @@ fn drive(
     owner: &str,
     budget: &str,
     artifacts: Option<&str>,
+    models: Option<&str>,
 ) -> std::result::Result<Value, workflow_runtime::Error> {
     let max_commands = number(budget)?;
     let nonce = std::time::SystemTime::now()
@@ -208,9 +209,15 @@ fn drive(
         lease_ms: 120_000,
         max_commands,
     };
+    let mut store = open(db, artifacts)?;
+    let worker = if let Some(path) = models {
+        crate::models::worker(&store.bundle(id)?, path)?
+    } else {
+        workflow_builtin_capabilities::worker()?
+    };
     let result = workflow_runtime::drive(
-        &mut open(db, artifacts)?,
-        &workflow_builtin_capabilities::worker()?,
+        &mut store,
+        &worker,
         id,
         &options,
         &workflow_worker::SystemClock,
@@ -227,7 +234,10 @@ pub fn run(args: &[&str], stdout: &mut impl Write, stderr: &mut impl Write) -> i
         (args, None)
     };
     let outcome = if let ["run", "drive", db, id, owner, budget] = args {
-        drive(db, id, owner, budget, artifacts).map_err(|e| (e.message.clone(), json!(e)))
+        drive(db, id, owner, budget, artifacts, None).map_err(|e| (e.message.clone(), json!(e)))
+    } else if let ["run", "drive-models", db, id, owner, budget, file] = args {
+        drive(db, id, owner, budget, artifacts, Some(file))
+            .map_err(|e| (e.message.clone(), json!(e)))
     } else {
         execute(args, artifacts).map_err(|e| (e.message.clone(), json!(e)))
     };

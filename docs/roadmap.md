@@ -39,6 +39,12 @@ flowchart LR
     DB --> K
     RS --> K
     CLI --> K[workflow-kernel: deterministic transitions and replay]
+    K --> M[workflow-models: bounded policy execution and replay]
+    DB --> M
+    CLI --> M
+    CLI --> MH[workflow-model-http: provider wire adapters]
+    MH --> M
+    M --> W
     K --> W
     K --> V
     K --> IR
@@ -55,7 +61,7 @@ flowchart LR
     V --> IR
 ```
 
-These are independent Rust libraries with explicit Bazel targets. Future model and capability adapters will depend on stable contracts;
+These are independent Rust libraries with explicit Bazel targets. Model and capability adapters depend on stable contracts;
 the IR must remain free of those implementations. Cargo and Bazel compile the same
 source files and external dependency lock. Rust and Bazel versions are pinned.
 
@@ -68,8 +74,8 @@ completion of the workflow runtime.
 
 | Issues | Delivery |
 | --- | --- |
-| [R01 #2](https://github.com/coolplayagent/workflow-cli/issues/2) | Delivered: IR, static validation, decisions, examples, optimistic draft/node/edge CRUD, semantic diff, immutable publishing and history. Also delivered: deterministic control flow, capability/subworkflow bundle checks, immutable run binding and checkpoint replay. Next: durable host integration, model policy resolution and remaining full-runtime acceptance evidence. |
-| [R02 #4](https://github.com/coolplayagent/workflow-cli/issues/4) | Delivered: capability descriptors/adapter port, protocol 1 request/grant/result validation, standalone and node invocation of read-only compiler capabilities. Next: model adapters and replacement examples, authenticated remote transport, remaining execution ports and durable effect dispatch. |
+| [R01 #2](https://github.com/coolplayagent/workflow-cli/issues/2) | Delivered: IR, static validation, decisions, examples, optimistic draft/node/edge CRUD, semantic diff, immutable publishing and history. Also delivered: deterministic control flow, capability/subworkflow bundle checks, immutable run binding and checkpoint replay. Also delivered: frozen model policy resolution and local durable dispatch. Next: remaining full-runtime acceptance evidence. |
+| [R02 #4](https://github.com/coolplayagent/workflow-cli/issues/4) | Delivered: capability descriptors/adapter port, protocol 1 request/grant/result validation, standalone and node invocation of read-only compiler capabilities. Also delivered: bounded model/tool loop, protocol 2 policy/record binding, explicit record replay, OpenAI Responses/Anthropic Messages adapters and same-bundle replacement fixtures. Next: live provider evaluation, authenticated remote transport, remaining execution ports and durable effect dispatch. |
 | [R15 #3](https://github.com/coolplayagent/workflow-cli/issues/3) | Incremental deterministic invariant checks alongside modules; independent business baseline and fault experiments remain open. |
 | [R04 #5](https://github.com/coolplayagent/workflow-cli/issues/5), [R05 #6](https://github.com/coolplayagent/workflow-cli/issues/6) | Kernel state/event/command contracts and cancellation/reconciliation transitions delivered. Also delivered: RunStore port, SQLite atomic state/event/checkpoint/outbox commits, ordered delivery receipts, persistent CLI, CAS/crash/corruption/full-disk tests. Also delivered: run leases, epoch fencing, durable attempts, atomic result/event/receipt commits, bounded read-only retries and explicit storage migration; artifact evidence is verified before completion and during recovery. Next: pause/resume, autonomous dispatch/timers, effects, general retry policy, artifacts and backup/restore. |
 | [R07 #7](https://github.com/coolplayagent/workflow-cli/issues/7), [R11 #8](https://github.com/coolplayagent/workflow-cli/issues/8) | Delivered: typed artifact manifests, exact producer/input/source provenance, local atomic upload, retention-safe orphan cleanup, lineage/impact, portable local export/import and run evidence verification. Also delivered: attempt-bound workspace contracts, independent committed-file exports, current file observation, typed output capture and explicit merge policy. Next: automatic execution/gate workspace binding, sandboxing, resource/merge execution, authenticated remote storage and controlled invalidation; immutable versions and migrations. |
@@ -149,3 +155,15 @@ Concurrent process allocation, crash cleanup, object corruption and SQLite
 capacity tests exercise the failure boundary. Directory isolation is not an OS
 sandbox; automatic run/gate binding, shared-resource coordination, merging and
 remote authorization remain open.
+
+## R02 model policy increment evidence
+
+[Model execution](model-execution.md) defines the policy, provider binding, protocol 2
+and explicit replay boundary. The portable executor constrains tools and outputs;
+the provider adapter owns HTTP and credential lookup. Loopback HTTP tests run the
+same business bundle with both provider formats and actual compiler tools. Durable
+settlement rejects missing/tampered records, stale owners and raw success events;
+recovery makes no model calls and mandatory gates retain UNKNOWN for absent evidence.
+An actual schema 4 database was upgraded to 5 with identical snapshot/execution
+history and verified rejection by the old reader. No live provider, model-quality,
+exactly-once billing or run-wide monetary budget claim is made. R02 remains open.

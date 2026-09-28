@@ -75,6 +75,8 @@ pub trait RunStore {
     fn start(&mut self, request: &StartRun) -> Result<Committed>;
     fn apply(&mut self, event: &Event) -> Result<Committed>;
     fn get(&mut self, run_id: &str) -> Result<Snapshot>;
+    /// Frozen executable contracts for composing a worker; never replaces the stored binding.
+    fn bundle(&mut self, run_id: &str) -> Result<BundleSpec>;
     fn list(&mut self, after: Option<&str>, limit: u32) -> Result<Page<RunSummary, String>>;
     fn history(
         &mut self,

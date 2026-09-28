@@ -1,0 +1,8 @@
+{
+  "schema_version": 1,
+  "provider": "openai_responses",
+  "model": "HOST_SELECTED_MODEL",
+  "endpoint": "https://api.openai.com/v1/responses",
+  "api_key_env": "OPENAI_API_KEY",
+  "allow_loopback_http": false
+}

@@ -119,6 +119,12 @@ fn fixture_with_gates(valid: bool, attach: bool, max_age: u64, gated: bool) -> F
             digest: r.digest,
         });
     }
+    // Publish the shared child input once, before any child can read it.
+    std::fs::write(
+        db.dir.join("lease.json"),
+        workflow_worker::to_message(&lease).unwrap(),
+    )
+    .unwrap();
     Fixture {
         db,
         start,
@@ -670,11 +676,6 @@ fn gate_process_worker() {
     assert!(!matches!(claimed, Claimed::Task { .. }));
 }
 fn child(f: &Fixture) -> Process {
-    std::fs::write(
-        f.db.dir.join("lease.json"),
-        workflow_worker::to_message(&f.lease).unwrap(),
-    )
-    .unwrap();
     let mut p = Process::new(std::env::current_exe().unwrap());
     p.args([
         "--exact",
@@ -683,12 +684,17 @@ fn child(f: &Fixture) -> Process {
     ])
     .env("WORKFLOW_GATE_PROCESS", &f.db.dir)
     .stdout(Stdio::null())
-    .stderr(Stdio::null());
+    .stderr(Stdio::inherit());
     p
 }
-fn wait_file(path: &std::path::Path) {
+fn wait_file(path: &std::path::Path, child: &mut std::process::Child) {
     let start = Instant::now();
     while !path.exists() {
+        assert!(
+            child.try_wait().unwrap().is_none(),
+            "child exited before {}",
+            path.display()
+        );
         assert!(
             start.elapsed() < Duration::from_secs(15),
             "{}",
@@ -711,7 +717,7 @@ fn killed_gate_transactions_recover_before_or_after_a_complete_proof_and_never_r
             .env("WORKFLOW_GATE_KILL_PHASE", phase)
             .spawn()
             .unwrap();
-        wait_file(&f.db.dir.join("paused"));
+        wait_file(&f.db.dir.join("paused"), &mut p);
         p.kill().unwrap();
         p.wait().unwrap();
         let completed = f
@@ -760,8 +766,8 @@ fn concurrent_gate_drivers_serialize_each_decision_once() {
         .env("WORKFLOW_GATE_READY", "ready-b")
         .spawn()
         .unwrap();
-    wait_file(&f.db.dir.join("ready-a"));
-    wait_file(&f.db.dir.join("ready-b"));
+    wait_file(&f.db.dir.join("ready-a"), &mut a);
+    wait_file(&f.db.dir.join("ready-b"), &mut b);
     std::fs::write(f.db.dir.join("go"), b"go").unwrap();
     assert!(a.wait().unwrap().success());
     assert!(b.wait().unwrap().success());

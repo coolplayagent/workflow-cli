@@ -56,6 +56,22 @@
         }
       ]
     },
+    "ModelPolicyBinding": {
+      "additionalProperties": false,
+      "properties": {
+        "digest": {
+          "type": "string"
+        },
+        "policy": {
+          "$ref": "#/$defs/VersionRef"
+        }
+      },
+      "required": [
+        "policy",
+        "digest"
+      ],
+      "type": "object"
+    },
     "VersionRef": {
       "additionalProperties": false,
       "description": "Versions are immutable opaque release identifiers, never ranges or `latest`.",
@@ -99,6 +115,16 @@
       "format": "uint64",
       "minimum": 0,
       "type": "integer"
+    },
+    "model_policy": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ModelPolicyBinding"
+        },
+        {
+          "type": "null"
+        }
+      ]
     },
     "protocol_version": {
       "format": "uint32",

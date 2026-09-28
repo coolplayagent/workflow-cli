@@ -43,8 +43,9 @@ A bundle contains a root reference, workflow definitions and capability
 descriptors. Compilation checks every definition, exact ID/version references,
 task contracts, child input/return contracts and effect query/compensation
 references. Duplicate releases, missing bindings and recursive child/loop
-references are rejected. Model-policy tasks are explicitly rejected until a
-policy adapter exists; direct invocation cannot bypass their policy.
+references are rejected. Model-policy tasks resolve a frozen model policy and
+exact task/tool contracts from the bundle; direct invocation cannot bypass their
+policy. Provider execution is outside the reducer; see [model execution](model-execution.md).
 
 Successful terminal nodes in a workflow must declare identical **input**
 contracts. Their resolved inputs are the workflow's return values. A child or
@@ -139,7 +140,8 @@ identity, e.g. `(run_id, revision, command_index)`. It must also supply live lea
 fencing, authenticated event ingress and recoverable timer delivery. Replay must
 not dispatch historical commands. The [SQLite RunStore](run-store.md) implements
 atomic state/event/outbox commits and verified recovery; the [local executor](local-execution.md)
-adds run leases, fenced attempts and bounded read-only retries. Model policies and
-effect execution/compensation remain subsequent adapters. Kernel
+adds run leases, fenced attempts and bounded read-only retries. Model adapters
+produce explicit records checked by the durable host. Effect execution/compensation
+remains subsequent work. Kernel
 replay itself remains a pure calculation; neither layer claims exactly-once
 effects, business benefits or recovery SLAs.

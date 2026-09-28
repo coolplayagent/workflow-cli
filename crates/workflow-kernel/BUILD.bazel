@@ -8,7 +8,7 @@ rust_library(
     srcs = glob(["src/**/*.rs"]),
     crate_root = "src/lib.rs",
     edition = "2024",
-    deps = ["//crates/workflow-gates:workflow_gates", "//crates/workflow-artifacts:workflow_artifacts", "//crates/workflow-ir:workflow_ir", "//crates/workflow-validator:workflow_validator", "//crates/workflow-worker:workflow_worker"] + all_crate_deps(normal = True),
+    deps = ["//crates/workflow-models:workflow_models", "//crates/workflow-gates:workflow_gates", "//crates/workflow-artifacts:workflow_artifacts", "//crates/workflow-ir:workflow_ir", "//crates/workflow-validator:workflow_validator", "//crates/workflow-worker:workflow_worker"] + all_crate_deps(normal = True),
     proc_macro_deps = all_crate_deps(proc_macro = True),
     visibility = ["//visibility:public"],
 )

@@ -132,7 +132,8 @@ impl SqliteRunStore {
             .transaction_with_behavior(TransactionBehavior::Immediate)
             .map_err(storage)?;
         let mut current = recover(&tx, &event.run_id, self.artifacts.as_deref())?;
-        if !current.engine.bundle().spec().postconditions.is_empty()
+        if (!current.engine.bundle().spec().postconditions.is_empty()
+            || !current.engine.bundle().spec().model_policies.is_empty())
             && matches!(
                 event.kind,
                 workflow_kernel::EventKind::TaskCompleted {
@@ -146,7 +147,7 @@ impl SqliteRunStore {
         {
             return Err(Error::new(
                 ErrorCode::InvalidRequest,
-                "gated runs require successful task results through fenced execution settlement",
+                "gated/model-policy runs require successful task results through fenced execution settlement",
             ));
         }
         let result = persist_event(&tx, &mut current, event, &hook)?;
