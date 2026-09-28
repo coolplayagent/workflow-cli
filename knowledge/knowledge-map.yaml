@@ -1,8 +1,8 @@
 schema_version: 4
 artifact_kind: map
 map_type: knowledge
-map_version: 19
-updated_at: unix:1790585432
+map_version: 20
+updated_at: unix:1790588631
 directories:
 - directory: domain
   purpose: Domain concepts, models, and business rules.
@@ -56,6 +56,7 @@ topics:
   source_ids:
   - artifact-contracts
   - attempt-workspaces
+  - authenticated-authority
   - definition-authoring
   - definition-semantics
   - durable-effects
@@ -72,8 +73,8 @@ topics:
   - runtime-postconditions
   - worker-protocol
   - workflow-evidence-gates
-  ref: topics/topic-4ca303a3bf7ddf7b-50ee4c04b65d2d7c6756a5779583263f2fd3cf388fe76a21352dab7af34b0cdf.yaml
-  digest: 50ee4c04b65d2d7c6756a5779583263f2fd3cf388fe76a21352dab7af34b0cdf
+  ref: topics/topic-4ca303a3bf7ddf7b-9600b1cfba7b616e74456d7ddd58ce0414126b404c615620427cfc422f5e43a2.yaml
+  digest: 9600b1cfba7b616e74456d7ddd58ce0414126b404c615620427cfc422f5e43a2
 - id: business-knowledge
   title: Business knowledge
   description: Version-controlled business domains, terminology, aliases, semantics, and technical mappings.
@@ -89,12 +90,8 @@ topics:
   ref: topics/topic-247e2a0d6f43d185-fc2d5534a38a5ddc28536afa855ff77db8e2941ccaccbfa79f948ddcfaec2f7d.yaml
   digest: fc2d5534a38a5ddc28536afa855ff77db8e2941ccaccbfa79f948ddcfaec2f7d
 history:
-  omitted_through: 3
+  omitted_through: 4
   recent:
-  - version: 4
-    action: source.add
-    actor: cli
-    summary: Added source 'worker-protocol' to topic 'architecture'.
   - version: 5
     action: source.add
     actor: cli
@@ -155,3 +152,7 @@ history:
     action: source.add
     actor: cli
     summary: Added source 'postgres-authority' to topic 'architecture'.
+  - version: 20
+    action: source.add
+    actor: cli
+    summary: Added source 'authenticated-authority' to topic 'architecture'.

@@ -6,6 +6,7 @@ license.workspace = true
 
 [dependencies]
 postgres = "0.19.14"
+getrandom = "0.4.3"
 serde.workspace = true
 serde_json.workspace = true
 sha2.workspace = true

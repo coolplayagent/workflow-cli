@@ -7,6 +7,7 @@ use workflow_artifacts::ArtifactReader;
 use workflow_runstore::*;
 use workflow_runstore_sqlite::{RunImage, SqliteRunStore};
 use workflow_worker::Clock;
+pub mod access;
 mod ports;
 
 const SCHEMA: &str = include_str!("schema.sql");
@@ -204,22 +205,40 @@ impl PostgresRunStore {
         validate_id(id)?;
         let reader = self.reader();
         let mut tx = self.client.transaction().map_err(storage)?;
-        tx.batch_execute("SET LOCAL lock_timeout = '5s'; SET LOCAL statement_timeout = '30s'; SET LOCAL idle_in_transaction_session_timeout = '30s'; SET LOCAL synchronous_commit = on").map_err(storage)?;
+        Self::transaction_settings(&mut tx)?;
+        let (result, _, _) =
+            Self::change_in(&mut tx, &self.tenant, &self.project, reader, id, create, f)?;
+        tx.commit().map_err(storage)?;
+        Ok(result)
+    }
+    fn transaction_settings(tx: &mut Transaction<'_>) -> Result<()> {
+        tx.batch_execute("SET LOCAL lock_timeout = '5s'; SET LOCAL statement_timeout = '30s'; SET LOCAL idle_in_transaction_session_timeout = '30s'; SET LOCAL synchronous_commit = on").map_err(storage)
+    }
+    fn change_in<T>(
+        tx: &mut Transaction<'_>,
+        tenant: &str,
+        project: &str,
+        reader: Option<Box<dyn ArtifactReader>>,
+        id: &str,
+        create: bool,
+        f: impl FnOnce(&mut SqliteRunStore, &dyn Clock) -> Result<T>,
+    ) -> Result<(T, i64, i64)> {
+        validate_id(id)?;
         if create {
-            tx.execute("INSERT INTO workflow_authority.runs(tenant,project,run_id) VALUES($1,$2,$3) ON CONFLICT DO NOTHING", &[&self.tenant,&self.project,&id]).map_err(storage)?;
+            tx.execute("INSERT INTO workflow_authority.runs(tenant,project,run_id) VALUES($1,$2,$3) ON CONFLICT DO NOTHING", &[&tenant,&project,&id]).map_err(storage)?;
         }
-        let row = tx.query_opt("SELECT image,image_digest,generation FROM workflow_authority.runs WHERE tenant=$1 AND project=$2 AND run_id=$3 FOR UPDATE", &[&self.tenant,&self.project,&id]).map_err(storage)?.ok_or_else(|| Error::new(ErrorCode::NotFound,"run not found"))?;
+        let row = tx.query_opt("SELECT image,image_digest,generation FROM workflow_authority.runs WHERE tenant=$1 AND project=$2 AND run_id=$3 FOR UPDATE", &[&tenant,&project,&id]).map_err(storage)?.ok_or_else(|| Error::new(ErrorCode::NotFound,"run not found"))?;
         let generation: i64 = row.get(2);
         let bytes: Option<&[u8]> = row.get(0);
         let mut reducer = match bytes {
-            Some(_) => Self::checked_row(&mut tx, &self.tenant, &self.project, &row, id, reader)?,
+            Some(_) => Self::checked_row(tx, tenant, project, &row, id, reader)?,
             None if create && generation == 0 => SqliteRunStore::image_reducer(reader)?,
             None => return Err(corrupt("incomplete committed run image")),
         };
         let before = bytes.map(|_| reducer.get(id)).transpose()?;
         let (result, observed_at) = {
             let clock = DbClock {
-                transaction: RefCell::new(&mut tx),
+                transaction: RefCell::new(tx),
                 last: std::cell::Cell::new(0),
             };
             let result = f(&mut reducer, &clock)?;
@@ -231,9 +250,9 @@ impl PostgresRunStore {
         // Globally sorted keys give competing starts a consistent lock order.
         for binding in image.bindings()? {
             if create {
-                tx.execute("INSERT INTO workflow_authority.bindings(tenant,project,kind,id,version,digest) VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT DO NOTHING", &[&self.tenant,&self.project,&binding.kind,&binding.id,&binding.version,&binding.digest]).map_err(storage)?;
+                tx.execute("INSERT INTO workflow_authority.bindings(tenant,project,kind,id,version,digest) VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT DO NOTHING", &[&tenant,&project,&binding.kind,&binding.id,&binding.version,&binding.digest]).map_err(storage)?;
             }
-            let row = tx.query_opt("SELECT digest FROM workflow_authority.bindings WHERE tenant=$1 AND project=$2 AND kind=$3 AND id=$4 AND version=$5 FOR SHARE", &[&self.tenant,&self.project,&binding.kind,&binding.id,&binding.version]).map_err(storage)?;
+            let row = tx.query_opt("SELECT digest FROM workflow_authority.bindings WHERE tenant=$1 AND project=$2 AND kind=$3 AND id=$4 AND version=$5 FOR SHARE", &[&tenant,&project,&binding.kind,&binding.id,&binding.version]).map_err(storage)?;
             if row.as_ref().map(|r| r.get::<_, &str>(0)) != Some(binding.digest.as_str()) {
                 return Err(Error::new(
                     ErrorCode::BindingConflict,
@@ -259,15 +278,14 @@ impl PostgresRunStore {
         let upper = i64::try_from(upper).map_err(|_| corrupt("image deadline out of range"))?;
         // The deadline check occurs in PostgreSQL after serialization and binding
         // locks. No caller clock can extend the exclusive admission deadline.
-        let changed = tx.execute("WITH admission AS MATERIALIZED (SELECT floor(extract(epoch FROM clock_timestamp())*1000)::bigint AS at) UPDATE workflow_authority.runs SET image=$4,image_digest=$5,generation=generation+1 FROM admission WHERE tenant=$1 AND project=$2 AND run_id=$3 AND generation=$6 AND admission.at >= $7 AND admission.at < $8", &[&self.tenant,&self.project,&id,&bytes,&digest,&generation,&lower,&upper]).map_err(storage)?;
+        let changed = tx.execute("WITH admission AS MATERIALIZED (SELECT floor(extract(epoch FROM clock_timestamp())*1000)::bigint AS at) UPDATE workflow_authority.runs SET image=$4,image_digest=$5,generation=generation+1 FROM admission WHERE tenant=$1 AND project=$2 AND run_id=$3 AND generation=$6 AND admission.at >= $7 AND admission.at < $8", &[&tenant,&project,&id,&bytes,&digest,&generation,&lower,&upper]).map_err(storage)?;
         if changed != 1 {
             return Err(Error::new(
                 ErrorCode::LeaseConflict,
                 "authority changed or admission expired before database write",
             ));
         }
-        tx.commit().map_err(storage)?;
-        Ok(result)
+        Ok((result, lower, upper))
     }
 }
 
