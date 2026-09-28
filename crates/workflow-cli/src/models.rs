@@ -16,13 +16,16 @@ fn read<T: DeserializeOwned>(path: &str) -> Result<T> {
         .map_err(|_| Error::new(ErrorCode::InvalidMessage, "model input file I/O failed"))?;
     parse_message(&bytes)
 }
-#[derive(Deserialize)]
+#[derive(Clone, serde::Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
-struct Binding {
+pub(crate) struct Binding {
     policy: workflow_worker::ModelPolicyBinding,
     http: HttpBinding,
 }
 pub fn worker(bundle: &workflow_kernel::BundleSpec, path: &str) -> Result<Worker> {
+    bound_worker(bundle, &bindings(path)?, false)
+}
+pub(crate) fn bindings(path: &str) -> Result<Vec<Binding>> {
     let bindings: Vec<Binding> = read(path)?;
     if bindings.len() > 128 {
         return Err(Error::new(
@@ -31,8 +34,7 @@ pub fn worker(bundle: &workflow_kernel::BundleSpec, path: &str) -> Result<Worker
         ));
     }
     let mut seen = std::collections::BTreeSet::new();
-    let mut worker = workflow_builtin_capabilities::worker()?;
-    for b in bindings {
+    for b in &bindings {
         b.policy.validate()?;
         if !seen.insert(b.policy.digest.clone()) {
             return Err(Error::new(
@@ -40,16 +42,31 @@ pub fn worker(bundle: &workflow_kernel::BundleSpec, path: &str) -> Result<Worker
                 "duplicate model binding",
             ));
         }
+        HttpModel::new(b.http.clone())?;
+    }
+    Ok(bindings)
+}
+pub(crate) fn bound_worker(
+    bundle: &workflow_kernel::BundleSpec,
+    bindings: &[Binding],
+    allow_unused: bool,
+) -> Result<Worker> {
+    let mut seen = std::collections::BTreeSet::new();
+    let mut worker = workflow_builtin_capabilities::worker()?;
+    for b in bindings {
         let p = bundle
             .model_policies
             .iter()
-            .find(|p| p.policy == b.policy.policy)
-            .ok_or_else(|| {
-                Error::new(
-                    ErrorCode::InvalidBinding,
-                    "binding policy absent from run bundle",
-                )
-            })?;
+            .find(|p| p.policy == b.policy.policy);
+        let Some(p) = p else {
+            if allow_unused {
+                continue;
+            }
+            return Err(Error::new(
+                ErrorCode::InvalidBinding,
+                "binding policy absent from run bundle",
+            ));
+        };
         let policy = Policy::new(p.clone())?;
         if policy.binding() != &b.policy {
             return Err(Error::new(
@@ -57,9 +74,10 @@ pub fn worker(bundle: &workflow_kernel::BundleSpec, path: &str) -> Result<Worker
                 "host binding policy digest differs from frozen run",
             ));
         }
+        seen.insert(b.policy.digest.clone());
         worker.register(ModelCapability::new(
             policy,
-            Arc::new(HttpModel::new(b.http)?),
+            Arc::new(HttpModel::new(b.http.clone())?),
             workflow_builtin_capabilities::worker()?,
         )?)?;
     }

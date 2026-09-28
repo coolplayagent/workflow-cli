@@ -22,7 +22,7 @@ fn read<T: DeserializeOwned>(path: &str) -> Result<T> {
 fn value(v: impl Serialize) -> Result<Value> {
     serde_json::to_value(v).map_err(|e| err(ErrorCode::InvalidArchive, e))
 }
-fn summary(index: &BackupIndex) -> Value {
+pub(crate) fn summary(index: &BackupIndex) -> Value {
     json!({"verified": true, "digest": index.digest, "runs": index.manifest.runs.len(), "artifact_manifests": index.manifest.artifact_manifests, "files": index.manifest.files.len(), "bytes": index.manifest.files.values().map(|f| f.bytes).sum::<u64>(), "snapshot_started_at_unix_ms": index.manifest.created_at_unix_ms, "snapshot_completed_at_unix_ms": index.manifest.completed_at_unix_ms})
 }
 fn execute(args: &[&str]) -> Result<Value> {

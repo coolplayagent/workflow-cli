@@ -5,6 +5,7 @@ use workflow_ir::{Diagnostic, Format, MAX_DOCUMENT_BYTES, Workflow};
 
 mod artifacts;
 mod backups;
+mod daemon;
 mod gates;
 mod kernel;
 mod models;
@@ -70,7 +71,7 @@ pub fn run(
         [] | ["help" | "--help" | "-h"] => write(
             stdout,
             &format!(
-                "{HELP}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}",
+                "{HELP}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}",
                 registry::HELP,
                 worker::HELP,
                 kernel::HELP,
@@ -79,10 +80,14 @@ pub fn run(
                 gates::HELP,
                 workspaces::HELP,
                 models::HELP,
-                backups::HELP
+                backups::HELP,
+                daemon::HELP
             ),
             0,
         ),
+        args @ ["daemon", ..] | args @ ["schema", "daemon-config"] => {
+            daemon::run(args, stdout, stderr)
+        }
         args @ ["backup", ..]
         | args @ [
             "schema",
