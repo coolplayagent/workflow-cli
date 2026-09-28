@@ -414,6 +414,29 @@ pub(super) fn process(
 ) {
     let s = scenario("parallel-all");
     let clock = Time::new(1000);
+    if mode == "execution-pause" {
+        let snapshot = store.get(&s.run_id).unwrap();
+        store
+            .apply_internal(
+                &event(
+                    &snapshot,
+                    "pause",
+                    EventKind::Pause {
+                        reason: "maintenance".into(),
+                    },
+                ),
+                |at| {
+                    if at == phase {
+                        std::fs::write(dir.join(format!("ready-{slot}")), at).unwrap();
+                        loop {
+                            std::thread::sleep(Duration::from_millis(20));
+                        }
+                    }
+                },
+            )
+            .unwrap();
+        return;
+    }
     if mode == "execution-race" {
         std::fs::write(dir.join(format!("ready-{slot}")), "ready").unwrap();
         let deadline = Instant::now() + Duration::from_secs(20);
@@ -455,6 +478,157 @@ pub(super) fn process(
             }
         })
         .unwrap();
+}
+
+#[test]
+fn paused_admission_survives_restart_and_drains_only_already_prepared_work() {
+    let db = Db::new();
+    let mut store = db.store();
+    let s = scenario("parallel-all");
+    let before = store.start(&start(&s)).unwrap().snapshot;
+    let clock = Time::new(1000);
+    let lease = acquire(&mut store, &s.run_id, "one", &clock);
+    let attempt = claimed(&mut store, &lease, &clock);
+    let paused = store
+        .apply(&event(
+            &before,
+            "pause",
+            EventKind::Pause {
+                reason: "maintenance".into(),
+            },
+        ))
+        .unwrap();
+    clock.set(1001);
+    assert!(matches!(
+        store.claim_next(&lease, &clock).unwrap(),
+        Claimed::Idle
+    ));
+    store
+        .finish_task(
+            &lease,
+            &attempt.attempt_id,
+            &success(&attempt, 1001),
+            &clock,
+        )
+        .unwrap();
+    assert!(store.get(&s.run_id).unwrap().pause.is_some());
+    assert!(store.list(None, 10).unwrap().items[0].pause.is_some());
+    drop(store);
+    let mut store = SqliteRunStore::open(&db.path).unwrap();
+    assert!(matches!(
+        store.claim_next(&lease, &clock).unwrap(),
+        Claimed::Idle
+    ));
+    let snapshot = store.get(&s.run_id).unwrap();
+    let resume = event(
+        &snapshot,
+        "resume",
+        EventKind::Resume {
+            reason: "ready".into(),
+        },
+    );
+    store.apply(&resume).unwrap();
+    assert!(store.apply(&resume).unwrap().transition.duplicate);
+    // A competing caller holding the paused revision cannot resume twice.
+    let mut stale = event(
+        &paused.snapshot,
+        "stale-resume",
+        EventKind::Resume {
+            reason: "ready".into(),
+        },
+    );
+    stale.at_unix_ms = resume.at_unix_ms;
+    assert_eq!(
+        store.apply(&stale).unwrap_err().kernel_code,
+        Some(workflow_kernel::ErrorCode::RevisionConflict)
+    );
+    clock.set(1002);
+    let next = claimed(&mut store, &lease, &clock);
+    assert_ne!(next.command_id, attempt.command_id);
+    assert_eq!(next.number, 1);
+    store
+        .finish_task(&lease, &next.attempt_id, &success(&next, 1002), &clock)
+        .unwrap();
+    assert_eq!(store.get(&s.run_id).unwrap().status, RunStatus::Succeeded);
+    store.verify(&s.run_id).unwrap();
+}
+
+#[test]
+fn paused_wait_does_not_tick_and_resume_observes_expired_original_deadline() {
+    let db = Db::new();
+    let mut store = db.store();
+    let s = scenario("review-approved");
+    let before = store.start(&start(&s)).unwrap().snapshot;
+    store
+        .apply(&event(
+            &before,
+            "pause",
+            EventKind::Pause {
+                reason: "maintenance".into(),
+            },
+        ))
+        .unwrap();
+    let clock = Time::new(86401000);
+    let lease = acquire(&mut store, &s.run_id, "one", &clock);
+    assert!(store.tick_due(&lease, &clock).unwrap().is_none());
+    assert!(matches!(
+        store.claim_next(&lease, &clock).unwrap(),
+        Claimed::Idle
+    ));
+    let snapshot = store.get(&s.run_id).unwrap();
+    let mut resume = event(
+        &snapshot,
+        "resume",
+        EventKind::Resume {
+            reason: "ready".into(),
+        },
+    );
+    resume.at_unix_ms = 86401000;
+    assert_eq!(
+        store.apply(&resume).unwrap().snapshot.status,
+        RunStatus::Failed
+    );
+    store.verify(&s.run_id).unwrap();
+}
+
+#[test]
+fn killed_pause_writers_commit_a_whole_pause_or_no_pause_and_exact_retry_is_safe() {
+    for phase in [
+        "before_transaction",
+        "event_written",
+        "state_written",
+        "before_commit",
+        "after_commit",
+    ] {
+        let db = Db::new();
+        let mut store = db.store();
+        let s = scenario("parallel-all");
+        let before = store.start(&start(&s)).unwrap().snapshot;
+        let pause = event(
+            &before,
+            "pause",
+            EventKind::Pause {
+                reason: "maintenance".into(),
+            },
+        );
+        drop(store);
+        let mut writer = child(&db, "execution-pause", "one", phase);
+        wait_file(&db.dir.join("ready-one"), &mut writer);
+        writer.kill().unwrap();
+        assert!(!writer.wait().unwrap().success());
+        let mut store = SqliteRunStore::open(&db.path).unwrap();
+        let committed = phase == "after_commit";
+        let snapshot = store.get(&s.run_id).unwrap();
+        assert_eq!(snapshot.pause.is_some(), committed);
+        assert_eq!(snapshot.revision, if committed { 2 } else { 1 });
+        assert_eq!(
+            store.history(&s.run_id, 0, 100).unwrap().items.len(),
+            usize::from(committed)
+        );
+        assert_eq!(store.apply(&pause).unwrap().transition.duplicate, committed);
+        assert_eq!(store.get(&s.run_id).unwrap().revision, 2);
+        store.verify(&s.run_id).unwrap();
+    }
 }
 #[test]
 fn independent_processes_grant_exactly_one_owner_and_persist_the_fence() {

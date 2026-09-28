@@ -23,6 +23,7 @@ pub enum ErrorCode {
     RevisionConflict,
     EventConflict,
     TerminalRun,
+    RunPaused,
     InvalidTaskResult,
     UnknownInstance,
     InvalidSignal,

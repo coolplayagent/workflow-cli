@@ -51,7 +51,7 @@ impl SqliteRunStore {
                 } => d <= now,
                 _ => false,
             });
-        if !active || !due {
+        if !active || !due || r.engine.snapshot().pause.is_some() {
             tx.commit().map_err(storage)?;
             return Ok(None);
         }
@@ -96,6 +96,10 @@ impl SqliteRunStore {
         let (mut a, _) = read(&tx, &r, self.artifacts.as_deref())?;
         let now = clock.now_unix_ms()?;
         live(&a, &r, l, now)?;
+        if r.engine.snapshot().pause.is_some() {
+            tx.commit().map_err(storage)?;
+            return Ok(Claimed::Idle);
+        }
         let Some(entry) = r.outbox.iter().find(|e| e.receipt.is_none()).cloned() else {
             tx.commit().map_err(storage)?;
             return Ok(Claimed::Idle);

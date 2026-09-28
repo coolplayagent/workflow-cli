@@ -118,8 +118,12 @@ pub fn drive(
                 }
             }
         }
+        let snapshot = store.get(run_id)?;
+        if snapshot.pause.is_some() {
+            stop = "paused";
+        }
         Ok(DriveReport {
-            snapshot: store.get(run_id)?,
+            snapshot,
             processed_commands: processed,
             executed_tasks: executed,
             timer_transitions: timers,

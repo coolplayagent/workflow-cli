@@ -601,6 +601,40 @@
         {
           "additionalProperties": false,
           "properties": {
+            "reason": {
+              "type": "string"
+            },
+            "type": {
+              "const": "pause",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "reason"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "reason": {
+              "type": "string"
+            },
+            "type": {
+              "const": "resume",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "reason"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
             "instance_id": {
               "format": "uint64",
               "minimum": 0,

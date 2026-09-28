@@ -256,3 +256,12 @@ terms:
       - relation: represented_by
         target_kind: file
         target: crates/workflow-models/src/session.rs
+  - id: run-admission-pause
+    domain: workflow
+    canonical_name: Run admission pause
+    definition: A durable control that stops new work, timer advancement and successor activation while retaining pending intents and accepting outcomes of already prepared tasks; resume observes the original absolute deadlines.
+    language: en
+    mappings:
+      - relation: represented_by
+        target_kind: file
+        target: crates/workflow-kernel/src/engine/lifecycle.rs

@@ -217,6 +217,20 @@ pub(super) fn verify(
 ) -> Result<()> {
     match action {
         ExecutionAction::Prepared { attempt } => {
+            let paused = r
+                .events
+                .iter()
+                .take_while(|e| e.revision <= attempt.prepared_revision)
+                .filter_map(|e| match e.event.kind {
+                    EventKind::Pause { .. } => Some(true),
+                    EventKind::Resume { .. } | EventKind::Cancel => Some(false),
+                    _ => None,
+                })
+                .last()
+                .unwrap_or(false);
+            if paused {
+                return Err(corrupt("task preparation was admitted while paused"));
+            }
             let e = entry(r, &attempt.command_id)?;
             let l = a
                 .lease

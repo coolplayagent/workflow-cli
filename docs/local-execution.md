@@ -125,9 +125,48 @@ to bypass result checks. An external service must route worker results through t
 fenced execution port and authenticate its callers. Human signals/cancellation
 can race execution through the existing kernel revision checks.
 
+## Durable pause and resume
+
+Use the current revision from `run status` and a stable control identity:
+
+```sh
+workflow run pause runs.db run-id pause-1 7 1790559000000 'maintenance'
+workflow run status runs.db run-id
+workflow run resume runs.db run-id resume-1 8 1790559060000 'maintenance finished'
+```
+
+`pause` and `resume` commit kernel events and the snapshot in one transaction.
+The nonempty reason is at most 1024 bytes; do not place secrets in this audit
+field. `status` and `list` expose `pause.reason` and `pause.at_unix_ms` while paused;
+`status` remains `running`. Duplicate identical events return the current snapshot
+without repeating the control. A changed identity payload, stale revision, second
+pause, resume without a pause, or control after cancellation/termination is refused.
+On a lost response retry the exact ID, revision, time and reason.
+
+A pause stops new task and gate claims, timer advancement and automatic successor
+activation. `drive` releases its lease and returns `stop_reason: paused`, with no
+new capability/model calls. Existing prepared work can still execute and settle
+under its original lease and deadline. A pause is therefore an admission boundary,
+not a process suspension or rollback. Settled results and uncertainty remain in
+history; they cannot trigger new downstream work until resume. Pending commands
+and instance IDs are retained; completed work is never reissued by resume.
+
+Time stays absolute: pause does not extend wait, loop, lease, task or gate-evidence
+deadlines. Resume observes expired wait/loop deadlines before driving successors.
+A final task result may leave a run `running` with a pause until resume reduces the
+remaining control flow. Cancellation remains available while paused, clears the
+pause and performs the usual cancellation/reconciliation flow. Raw signal, gate,
+retry-gate and time events are refused while paused. Durable external event Inbox
+buffering and authenticated approval ingestion are separate pending increments.
+
+These controls use the trusted administrative host boundary described above;
+caller-supplied reasons are audit context, not authenticated actor identities.
+The tests cover checkpoint replay, result draining, no paused invocations, expired
+waits, stale resume conflicts and killed pause writers at five commit phases.
+
 ## Explicit storage migration
 
-New databases use storage schema 5. Schema 1, 2, 3 or 4 databases from prior increments
+New databases use storage schema 6. Schema 1, 2, 3, 4 or 5 databases from prior increments
 must be upgraded explicitly:
 
 ```sh
@@ -138,10 +177,11 @@ Migration creates the execution journal/empty authority heads for schema 1,
 preserves existing leases/attempts for schema 2, validates all existing runs and
 updates the version in one transaction. Schema 3 introduced required artifact
 verification; schema 4 adds protected gate transitions and schema 5 protects model
-policy records and immutable policy bindings. Evidence-bearing runs need
+policy records and immutable policy bindings. Schema 6 protects durable pause/resume
+admission semantics from older executors. Evidence-bearing runs need
 `--artifacts` during migration; omit it only for runs without dependencies. Missing
 or corrupt dependencies roll back the version. Corrupt old runs roll back the
-tables and version together. Running migrate again on schema 5
+tables and version together. Running migrate again on schema 6
 is harmless. Ordinary open/create never silently upgrades old data; foreign or
 future schemas are refused. Logical StartRun schema remains v1. Direct worker calls retain protocol 1;
 model-policy calls require protocol 2. See [model execution](model-execution.md).
@@ -159,7 +199,7 @@ transaction and retries only an orphan. Migration preserves v1 runs and rolls ba
 on corruption. Cargo and Bazel run the same tests.
 
 R02/R04/R08/R09 remain open for model/remote adapters, write-effect
-ledgers, isolated workspaces, remote artifact adapters, pause/resume, autonomous
+ledgers, isolated workspaces, remote artifact adapters, autonomous
 dispatch, node parallelism, scheduling/fairness,
 cluster ownership, authenticated tenants, retention and backup/restore. These
 Linux process-crash checks establish no production throughput, power-loss, shared

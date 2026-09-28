@@ -147,7 +147,7 @@ This is Linux process-crash and SQLite fault evidence on the tested filesystem;
 it does not prove power-loss durability of arbitrary VFS/filesystems, shared
 network-disk multiwriter safety or disk-loss recovery. No RPO/RTO is claimed.
 Run leases, fenced result commits and bounded read-only retries are covered by
-the local execution guide. Pause/resume, general retry policy, autonomous timer
+the local execution guide, including durable pause/resume controls. General retry policy, autonomous timer
 service, effect ledger, remote artifact dependencies, backup/restore and retention remain
 open in R04/R05/R06/R07/R08. The issue stays open until those acceptance criteria
 have direct evidence.

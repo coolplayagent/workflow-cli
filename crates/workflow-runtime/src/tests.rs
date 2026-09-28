@@ -10,6 +10,66 @@ use workflow_runstore::{RunStore, StartRun, Values};
 use workflow_runstore_sqlite::SqliteRunStore;
 use workflow_worker::{AdapterOutcome, CapabilityAdapter, CapabilityDescriptor, Invocation};
 static NEXT: AtomicU64 = AtomicU64::new(0);
+#[test]
+fn paused_driver_performs_no_capability_calls_and_resume_reuses_pending_intent() {
+    let path =
+        std::env::temp_dir().join(format!("workflow-runtime-pause-{}.db", std::process::id()));
+    let mut store = SqliteRunStore::create(&path).unwrap();
+    let snapshot = store.start(&request(true)).unwrap().snapshot;
+    store
+        .apply(&workflow_kernel::Event {
+            event_id: "pause".into(),
+            run_id: snapshot.run_id.clone(),
+            run_digest: snapshot.run_digest.clone(),
+            expected_revision: 1,
+            at_unix_ms: 1001,
+            kind: workflow_kernel::EventKind::Pause {
+                reason: "maintenance".into(),
+            },
+        })
+        .unwrap();
+    let calls = Arc::new(AtomicU64::new(0));
+    let mut worker = Worker::default();
+    worker
+        .register(Counted {
+            calls: calls.clone(),
+        })
+        .unwrap();
+    let mut options = DriveOptions {
+        owner: "local".into(),
+        acquisition_id: "paused".into(),
+        lease_ms: 1000,
+        max_commands: 10,
+    };
+    let report = drive(&mut store, &worker, "inspect", &options, &Time(1001)).unwrap();
+    assert_eq!(report.stop_reason, "paused");
+    assert_eq!(report.executed_tasks, 0);
+    assert_eq!(calls.load(Ordering::Relaxed), 0);
+    assert_eq!(report.snapshot.revision, 2);
+    store
+        .apply(&workflow_kernel::Event {
+            event_id: "resume".into(),
+            run_id: snapshot.run_id,
+            run_digest: snapshot.run_digest,
+            expected_revision: 2,
+            at_unix_ms: 1002,
+            kind: workflow_kernel::EventKind::Resume {
+                reason: "ready".into(),
+            },
+        })
+        .unwrap();
+    options.acquisition_id = "resumed".into();
+    let report = drive(&mut store, &worker, "inspect", &options, &Time(1002)).unwrap();
+    assert_eq!(report.executed_tasks, 1);
+    assert_eq!(calls.load(Ordering::Relaxed), 1);
+    assert_eq!(
+        report.snapshot.status,
+        workflow_kernel::RunStatus::Succeeded
+    );
+    store.verify("inspect").unwrap();
+    drop(store);
+    std::fs::remove_file(path).unwrap();
+}
 struct Time(u64);
 impl Clock for Time {
     fn now_unix_ms(&self) -> workflow_worker::Result<u64> {

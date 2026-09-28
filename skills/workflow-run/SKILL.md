@@ -1,8 +1,8 @@
 ---
 name: workflow-run
-description: Create and inspect durable workflow-cli runs, submit trusted events, cancel with an expected revision, inspect the command outbox and verify storage recovery, and drive local read-only tasks with durable leases. Use for persistent workflow progress and explicit local execution; no background daemon remains.
+description: Create and inspect durable workflow-cli runs, submit trusted events, pause, resume or cancel with an expected revision, inspect the command outbox and verify storage recovery, and drive local read-only tasks with durable leases. Use for persistent workflow progress and explicit local execution; no background daemon remains.
 metadata:
-  version: "1.5.0"
+  version: "1.6.0"
 ---
 
 # Workflow run
@@ -14,8 +14,8 @@ source checkout or the Bazel binary; `bazel run` needs absolute file paths. Cons
 Choose the explicit run database from the user's task. `run init <db>` alone
 creates a store. Do not point it at a definition-registry database or silently
 initialize a different database after a query fails. Inspect the error and path.
-For schema 1, 2, 3 or 4, use the explicit `run --artifacts <store> migrate <db>`
-transaction to upgrade to schema 5 when within the task scope. Omit the reader only
+For schema 1, 2, 3, 4 or 5, use the explicit `run --artifacts <store> migrate <db>`
+transaction to upgrade to schema 6 when within the task scope. Omit the reader only
 when existing runs have no artifact dependencies. A future/foreign schema must not be overwritten to make it open.
 
 Read `workflow schema run-start`, obtain exact definitions and descriptors from
@@ -57,6 +57,15 @@ approvals, effect receipts or reconciliation facts. Use a stable event ID and
 nondecreasing observed logical time. Reading the outbox does not grant a lease or
 permission to invoke an external capability.
 
+For requested pause/resume, use `run pause` or `run resume` with `<db> <id>
+<event-id> <revision> <at-unix-ms> <reason>`. Read current status/history first.
+Retain the exact arguments for safe retries after a lost reply. Pause stops new
+admission and successor activation while allowing existing prepared work to settle;
+it does not terminate running tools or extend any deadline. Inspect `result.pause`
+or `result.snapshot.pause` as well as status. `drive` reports `paused` and releases
+its lease. Resume observes expired wait/loop deadlines immediately. Signals while
+paused are refused; do not fabricate approval or silently discard a real callback.
+
 For requested cancellation, use `run cancel <db> <id> <event-id> <revision>
 <at-unix-ms>`. A cancelling status means issued work still needs a definite
 outcome. Cancellation cannot undo writes, and uncertain effects must be reconciled
@@ -78,7 +87,7 @@ editing hashes or deleting recovery dependencies.
 
 Report the database, run ID/digest, revision, business status, pending intents and
 verification result. Distinguish committed progress from actual external work.
-Pause/resume, effect execution and backup/restore are not provided by this release.
+Effect execution and backup/restore are not provided by this release.
 
 
 For an explicitly managed worker flow, acquire a lease with `run acquire`, persist
