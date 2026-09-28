@@ -17,6 +17,7 @@ pub use workflow_kernel::{
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ErrorCode {
+    Unauthorized,
     InvalidRequest,
     ArtifactUnavailable,
     ArtifactRejected,

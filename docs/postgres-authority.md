@@ -76,3 +76,8 @@ do not prove those deployment properties.
 
 Implementation references: [PostgreSQL row locking](https://www.postgresql.org/docs/17/explicit-locking.html)
 and the [Rust PostgreSQL client](https://docs.rs/postgres/0.19.14/postgres/struct.Client.html).
+
+The authenticated host application facade is documented in
+[Authenticated PostgreSQL authority](authenticated-authority.md). It derives
+scope/actor from database-backed bearer identity and authorizes operations in the
+same transaction as run changes. The raw `PostgresRunStore` API remains trusted.

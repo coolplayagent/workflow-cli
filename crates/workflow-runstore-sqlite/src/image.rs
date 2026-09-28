@@ -182,6 +182,15 @@ impl SqliteRunStore {
         }
         Ok(())
     }
+    /// Recover the immutable start time for authenticated start retries and
+    /// execution-authority replay. Never derives it from a caller timestamp.
+    pub fn started_at(&mut self, id: &str) -> Result<u64> {
+        let tx = self.connection.transaction().map_err(storage)?;
+        let recovered = crate::recovery::recover(&tx, id, self.artifacts.as_deref())?;
+        let started = recovered.engine.checkpoint()?.started_at_unix_ms;
+        tx.commit().map_err(storage)?;
+        Ok(started)
+    }
     pub fn export_image(&mut self, id: &str) -> Result<RunImage> {
         let tx = self.connection.transaction().map_err(storage)?;
         Self::check_single_run(&tx, id)?;
