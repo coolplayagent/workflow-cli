@@ -51,6 +51,8 @@ pub struct RunSummary {
     pub run_id: String,
     pub revision: u64,
     pub status: RunStatus,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pause: Option<workflow_kernel::Pause>,
     pub bundle_digest: String,
 }
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]

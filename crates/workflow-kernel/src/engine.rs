@@ -1,3 +1,4 @@
+mod lifecycle;
 mod postconditions;
 use crate::bundle::{key, workflow_key};
 use crate::*;
@@ -65,6 +66,7 @@ impl Engine {
             revision: 1,
             now_unix_ms: at,
             status: RunStatus::Running,
+            pause: None,
             frames: BTreeMap::new(),
             transition_count: 0,
             next_frame_id: 1,
@@ -162,13 +164,32 @@ impl Engine {
         next.state.now_unix_ms = event.at_unix_ms;
         // Cancellation is available even if an ordinary transition budget is exhausted.
         if matches!(event.kind, EventKind::Cancel) {
+            next.state.pause = None;
             next.state.status = RunStatus::Cancelling;
             next.cancel_frame(1, &mut commands)?;
+        } else if next.lifecycle(&event.kind)? {
+            if next.state.pause.is_none() {
+                next.expire(&mut commands)?;
+            }
         } else {
-            next.expire(&mut commands)?;
+            if next.state.pause.is_some() {
+                if !matches!(
+                    event.kind,
+                    EventKind::TaskCompleted { .. } | EventKind::TaskReconciled { .. }
+                ) {
+                    return Err(Error::new(
+                        ErrorCode::RunPaused,
+                        "run is paused; resume before advancing timers, signals or gates",
+                    ));
+                }
+            } else {
+                next.expire(&mut commands)?;
+            }
             next.handle(&event.kind, &mut commands)?;
         }
-        next.drive(&mut commands)?;
+        if next.state.pause.is_none() {
+            next.drive(&mut commands)?;
+        }
         next.state.revision = next
             .state
             .revision
@@ -509,7 +530,9 @@ impl Engine {
                 context_digest,
             } => self.retry_gate(*instance_id, context_digest, commands),
             EventKind::AdvanceTime => Ok(()),
-            EventKind::Cancel => unreachable!("handled before timers"),
+            EventKind::Cancel | EventKind::Pause { .. } | EventKind::Resume { .. } => {
+                unreachable!("handled before timers")
+            }
         }
     }
     fn task(

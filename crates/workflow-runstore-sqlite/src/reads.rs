@@ -45,6 +45,7 @@ impl SqliteRunStore {
                 run_id: s.run_id.clone(),
                 revision: s.revision,
                 status: s.status.clone(),
+                pause: s.pause.clone(),
                 bundle_digest: s.bundle_digest.clone(),
             });
         }

@@ -129,11 +129,21 @@ pub struct Snapshot {
     pub revision: u64,
     pub now_unix_ms: u64,
     pub status: RunStatus,
+    /// Durable admission pause. In-flight task observations remain recordable.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pause: Option<Pause>,
     pub frames: BTreeMap<u64, Frame>,
     pub transition_count: u64,
     pub next_frame_id: u64,
     pub next_instance_id: u64,
     pub next_token_sequence: u64,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Pause {
+    pub reason: String,
+    pub at_unix_ms: u64,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
@@ -147,6 +157,12 @@ pub enum TaskResult {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)]
 pub enum EventKind {
+    Pause {
+        reason: String,
+    },
+    Resume {
+        reason: String,
+    },
     TaskCompleted {
         instance_id: u64,
         result: TaskResult,

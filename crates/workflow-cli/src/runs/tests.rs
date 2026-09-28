@@ -1,5 +1,69 @@
 use super::*;
 #[test]
+fn pause_resume_cli_is_persistent_audited_and_compare_and_swap_protected() {
+    let dir = std::env::temp_dir().join(format!("workflow-run-pause-cli-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let db = dir.join("runs.db");
+    let db = db.to_str().unwrap();
+    let start = base().join("examples/runs/review-start.json");
+    assert_eq!(invoke(&["run", "init", db]).0, 0);
+    assert_eq!(invoke(&["run", "start", db, start.to_str().unwrap()]).0, 0);
+    let args = [
+        "run",
+        "pause",
+        db,
+        "demo-review-approved",
+        "pause-1",
+        "1",
+        "1001",
+        "maintenance",
+    ];
+    let (code, paused) = invoke(&args);
+    assert_eq!(code, 0);
+    assert_eq!(
+        paused["result"]["snapshot"]["pause"]["reason"],
+        "maintenance"
+    );
+    assert_eq!(invoke(&args).1["result"]["transition"]["duplicate"], true);
+    let resumed = invoke(&[
+        "run",
+        "resume",
+        db,
+        "demo-review-approved",
+        "resume-1",
+        "2",
+        "1002",
+        "ready",
+    ]);
+    assert_eq!(resumed.0, 0);
+    assert!(resumed.1["result"]["snapshot"].get("pause").is_none());
+    assert_eq!(
+        invoke(&[
+            "run",
+            "resume",
+            db,
+            "demo-review-approved",
+            "resume-stale",
+            "2",
+            "1002",
+            "ready"
+        ])
+        .0,
+        1
+    );
+    let history = invoke(&["run", "history", db, "demo-review-approved", "0", "100"]).1;
+    assert_eq!(
+        history["result"]["items"][0]["event"]["kind"]["type"],
+        "pause"
+    );
+    assert_eq!(
+        history["result"]["items"][1]["event"]["kind"]["type"],
+        "resume"
+    );
+    assert_eq!(invoke(&["run", "verify", db, "demo-review-approved"]).0, 0);
+    std::fs::remove_dir_all(dir).unwrap();
+}
+#[test]
 fn missing_database_queries_do_not_create_storage() {
     let path = std::env::temp_dir().join(format!("workflow-missing-run-db-{}", std::process::id()));
     let mut out = vec![];

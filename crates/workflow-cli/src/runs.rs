@@ -5,7 +5,7 @@ use std::io::{Read, Write};
 use workflow_runstore::*;
 use workflow_runstore_sqlite::SqliteRunStore;
 
-pub const HELP: &str = "DURABLE RUN STORAGE\n  workflow run init <db>\n  workflow run migrate <db>\n  workflow run start <db> <start.json>\n  workflow run drive <db> <run-id> <owner> <max-commands>\n  workflow run drive-models <db> <run-id> <owner> <max-commands> <bindings.json>\n  workflow run execution-history <db> <run-id> <after-sequence> <limit>\n  workflow run status <db> <run-id>\n  workflow run event <db> <event.json>\n  workflow run cancel <db> <run-id> <event-id> <expected-revision> <at-unix-ms>\n  workflow run list <db> <after-id|-> <limit>\n  workflow run history <db> <run-id> <after-revision> <limit>\n  workflow run outbox <db> <run-id> <after-sequence> <limit> <all|pending>\n  workflow run acknowledge <db> <receipt.json>\n  workflow run verify <db> <run-id>\n  workflow run acquire <db> <lease-request.json>\n  workflow run renew <db> <lease.json> <ttl-ms>\n  workflow run release <db> <lease.json>\n  workflow run claim <db> <lease.json>\n  workflow run tick-due <db> <lease.json>\n  workflow run retry-gate <db> <run-id> <instance-id> <event-id> <expected-revision>\n  workflow run finish <db> <lease.json> <attempt-id> <result.json>\n  workflow run attempt-failed <db> <lease.json> <attempt-id> <worker-error.json>\n  workflow run --artifacts <store> <operation> ...\n  workflow schema <run-start|run-receipt|run-lease|run-execution-record>\n\nOnly init creates a database. Mutations acknowledge after SQLite commit.\ndrive executes local read-only builtins with a durable run lease; max-commands is 1..100.\nTimers advance on drive; there is no background daemon. migrate explicitly upgrades v1/v2/v3/v4 storage to v5.\nRuns with artifact evidence require --artifacts on reads and mutations; this location is not persisted.\nclaim/drive checks frozen postconditions; UNKNOWN waits for explicit retry-gate.\nRaw gate events/manual gate receipts and raw successes in gated runs are refused.\nOther events and delivery receipts are trusted host facts; delivery is not task success.\nExit 0 means committed/read successfully; inspect result.snapshot.status (mutations) or result.status (status).\nExit 1 means rejected request/transition/storage/execution; 2 means usage/input I/O/output failure.\n";
+pub const HELP: &str = "DURABLE RUN STORAGE\n  workflow run init <db>\n  workflow run migrate <db>\n  workflow run start <db> <start.json>\n  workflow run drive <db> <run-id> <owner> <max-commands>\n  workflow run drive-models <db> <run-id> <owner> <max-commands> <bindings.json>\n  workflow run execution-history <db> <run-id> <after-sequence> <limit>\n  workflow run status <db> <run-id>\n  workflow run event <db> <event.json>\n  workflow run cancel <db> <run-id> <event-id> <expected-revision> <at-unix-ms>\n  workflow run <pause|resume> <db> <run-id> <event-id> <expected-revision> <at-unix-ms> <reason>\n  workflow run list <db> <after-id|-> <limit>\n  workflow run history <db> <run-id> <after-revision> <limit>\n  workflow run outbox <db> <run-id> <after-sequence> <limit> <all|pending>\n  workflow run acknowledge <db> <receipt.json>\n  workflow run verify <db> <run-id>\n  workflow run acquire <db> <lease-request.json>\n  workflow run renew <db> <lease.json> <ttl-ms>\n  workflow run release <db> <lease.json>\n  workflow run claim <db> <lease.json>\n  workflow run tick-due <db> <lease.json>\n  workflow run retry-gate <db> <run-id> <instance-id> <event-id> <expected-revision>\n  workflow run finish <db> <lease.json> <attempt-id> <result.json>\n  workflow run attempt-failed <db> <lease.json> <attempt-id> <worker-error.json>\n  workflow run --artifacts <store> <operation> ...\n  workflow schema <run-start|run-receipt|run-lease|run-execution-record>\n\nOnly init creates a database. Mutations acknowledge after SQLite commit.\ndrive executes local read-only builtins with a durable run lease; max-commands is 1..100.\nPause persists admission state; in-flight results may commit; resume preserves original deadlines.\nTimers advance on drive; there is no background daemon. migrate explicitly upgrades v1..v5 storage to v6.\nRuns with artifact evidence require --artifacts on reads and mutations; this location is not persisted.\nclaim/drive checks frozen postconditions; UNKNOWN waits for explicit retry-gate.\nRaw gate events/manual gate receipts and raw successes in gated runs are refused.\nOther events and delivery receipts are trusted host facts; delivery is not task success.\nExit 0 means committed/read successfully; inspect result.snapshot.status (mutations) or result.status (status).\nExit 1 means rejected request/transition/storage/execution; 2 means usage/input I/O/output failure.\n";
 fn read<T: DeserializeOwned>(p: &str) -> Result<T> {
     let mut bytes = vec![];
     std::fs::File::open(p)
@@ -53,7 +53,7 @@ fn execute(args: &[&str], artifacts: Option<&str>) -> Result<Value> {
                 db,
                 reader.map(|r| Box::new(r) as Box<dyn workflow_artifacts::ArtifactReader>),
             )?;
-            Ok(json!({"migrated":true,"storage_version":5}))
+            Ok(json!({"migrated":true,"storage_version":6}))
         }
         ["run", "execution-history", db, id, after, limit] => {
             report(open(db, artifacts)?.execution_history(id, number(after)?, number(limit)?)?)
@@ -160,6 +160,36 @@ fn execute(args: &[&str], artifacts: Option<&str>) -> Result<Value> {
                 kind: workflow_kernel::EventKind::Cancel,
             };
             report(store.apply(&event)?)
+        }
+        [
+            "run",
+            control @ ("pause" | "resume"),
+            db,
+            id,
+            event_id,
+            revision,
+            at,
+            reason,
+        ] => {
+            let mut store = open(db, artifacts)?;
+            let snapshot = store.get(id)?;
+            let kind = if *control == "pause" {
+                workflow_kernel::EventKind::Pause {
+                    reason: (*reason).into(),
+                }
+            } else {
+                workflow_kernel::EventKind::Resume {
+                    reason: (*reason).into(),
+                }
+            };
+            report(store.apply(&Event {
+                event_id: (*event_id).into(),
+                run_id: (*id).into(),
+                run_digest: snapshot.run_digest,
+                expected_revision: number(revision)?,
+                at_unix_ms: number(at)?,
+                kind,
+            })?)
         }
         ["run", "list", db, after, limit] => report(open(db, artifacts)?.list(
             if *after == "-" { None } else { Some(after) },
