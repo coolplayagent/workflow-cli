@@ -368,6 +368,26 @@
       ],
       "type": "object"
     },
+    "EffectBinding": {
+      "additionalProperties": false,
+      "properties": {
+        "node_id": {
+          "type": "string"
+        },
+        "policy": {
+          "$ref": "#/$defs/EffectPolicy"
+        },
+        "workflow": {
+          "$ref": "#/$defs/VersionRef"
+        }
+      },
+      "required": [
+        "workflow",
+        "node_id",
+        "policy"
+      ],
+      "type": "object"
+    },
     "EffectContract": {
       "oneOf": [
         {
@@ -422,10 +442,38 @@
         }
       ]
     },
+    "EffectPolicy": {
+      "additionalProperties": false,
+      "properties": {
+        "call_identity": {
+          "$ref": "#/$defs/VersionRef",
+          "description": "Service principal binding, not an authenticated human actor assertion."
+        },
+        "identity": {
+          "$ref": "#/$defs/VersionRef"
+        },
+        "retry": {
+          "$ref": "#/$defs/RetryPolicy"
+        },
+        "target": {
+          "$ref": "#/$defs/VersionRef",
+          "description": "Logical provider/resource boundary, resolved by the host without secrets."
+        }
+      },
+      "required": [
+        "identity",
+        "target",
+        "call_identity",
+        "retry"
+      ],
+      "type": "object"
+    },
     "FailureClass": {
       "enum": [
         "invalid_input",
         "permanent",
+        "permission_denied",
+        "business_rejected",
         "transient",
         "cancelled",
         "unknown_effect"
@@ -857,6 +905,39 @@
       ],
       "type": "object"
     },
+    "RetryPolicy": {
+      "additionalProperties": false,
+      "properties": {
+        "initial_backoff_ms": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "max_backoff_ms": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "max_calls": {
+          "description": "Includes queries and writes; persists across leases and process restarts.",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "total_write_ms": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "max_calls",
+        "initial_backoff_ms",
+        "max_backoff_ms",
+        "total_write_ms"
+      ],
+      "type": "object"
+    },
     "Route": {
       "oneOf": [
         {
@@ -1141,6 +1222,12 @@
     "capabilities": {
       "items": {
         "$ref": "#/$defs/CapabilityDescriptor"
+      },
+      "type": "array"
+    },
+    "effect_bindings": {
+      "items": {
+        "$ref": "#/$defs/EffectBinding"
       },
       "type": "array"
     },

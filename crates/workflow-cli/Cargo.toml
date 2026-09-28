@@ -6,6 +6,8 @@ license.workspace = true
 rust-version.workspace = true
 
 [dependencies]
+workflow-effect-http = { path = "../workflow-effect-http" }
+workflow-effects = { path = "../workflow-effects" }
 workflow-models = { path = "../workflow-models" }
 workflow-model-http = { path = "../workflow-model-http" }
 workflow-gates = { path = "../workflow-gates" }

@@ -21,7 +21,7 @@ impl SqliteRunStore {
         if app != APPLICATION_ID || !(1..=STORAGE_VERSION).contains(&version) {
             return Err(Error::new(
                 ErrorCode::UnsupportedStorage,
-                "only run store schema 1 through 7 can migrate",
+                "only run store schema 1 through 8 can migrate",
             ));
         }
         if version < STORAGE_VERSION {

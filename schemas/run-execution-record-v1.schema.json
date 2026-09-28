@@ -63,6 +63,448 @@
           }
         ]
       },
+      "CallKind": {
+        "enum": [
+          "write",
+          "query"
+        ],
+        "type": "string"
+      },
+      "CapabilityDescriptor": {
+        "additionalProperties": false,
+        "properties": {
+          "capability": {
+            "$ref": "#/$defs/VersionRef"
+          },
+          "effects": {
+            "$ref": "#/$defs/EffectContract"
+          },
+          "error_codes": {
+            "additionalProperties": {
+              "$ref": "#/$defs/FailureClass"
+            },
+            "type": "object"
+          },
+          "inputs": {
+            "additionalProperties": {
+              "$ref": "#/$defs/Field"
+            },
+            "type": "object"
+          },
+          "outputs": {
+            "additionalProperties": {
+              "$ref": "#/$defs/Field"
+            },
+            "type": "object"
+          },
+          "schema_version": {
+            "format": "uint32",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "skill": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/VersionRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "timeout_ms": {
+            "format": "uint64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "usage": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "schema_version",
+          "capability",
+          "inputs",
+          "outputs",
+          "timeout_ms",
+          "error_codes",
+          "effects",
+          "usage"
+        ],
+        "type": "object"
+      },
+      "EffectAttempt": {
+        "additionalProperties": false,
+        "properties": {
+          "attempt_id": {
+            "type": "string"
+          },
+          "deadline_unix_ms": {
+            "format": "uint64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "epoch": {
+            "format": "uint64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "intent": {
+            "$ref": "#/$defs/EffectIntent"
+          },
+          "issued_at_unix_ms": {
+            "format": "uint64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "kind": {
+            "$ref": "#/$defs/CallKind"
+          },
+          "number": {
+            "format": "uint32",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "prepared_revision": {
+            "format": "uint64",
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "intent",
+          "attempt_id",
+          "epoch",
+          "number",
+          "kind",
+          "prepared_revision",
+          "issued_at_unix_ms",
+          "deadline_unix_ms"
+        ],
+        "type": "object"
+      },
+      "EffectChange": {
+        "oneOf": [
+          {
+            "additionalProperties": false,
+            "properties": {
+              "attempt": {
+                "$ref": "#/$defs/EffectAttempt"
+              },
+              "request_digest": {
+                "type": "string"
+              },
+              "type": {
+                "const": "prepared",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type",
+              "attempt",
+              "request_digest"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "attempt_id": {
+                "type": "string"
+              },
+              "observation": {
+                "$ref": "#/$defs/Observation"
+              },
+              "operation_key": {
+                "type": "string"
+              },
+              "type": {
+                "const": "observed",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type",
+              "operation_key",
+              "attempt_id",
+              "observation"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "operation_key": {
+                "type": "string"
+              },
+              "reason": {
+                "type": "string"
+              },
+              "type": {
+                "const": "stopped",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type",
+              "operation_key",
+              "reason"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "operation_key": {
+                "type": "string"
+              },
+              "resolution": {
+                "$ref": "#/$defs/ManualResolution"
+              },
+              "type": {
+                "const": "resolved",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type",
+              "operation_key",
+              "resolution"
+            ],
+            "type": "object"
+          }
+        ]
+      },
+      "EffectContract": {
+        "oneOf": [
+          {
+            "additionalProperties": false,
+            "properties": {
+              "type": {
+                "const": "read_only",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "compensation": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/VersionRef"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "idempotency": {
+                "$ref": "#/$defs/Idempotency"
+              },
+              "query": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/VersionRef"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "type": {
+                "const": "write",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type",
+              "idempotency"
+            ],
+            "type": "object"
+          }
+        ]
+      },
+      "EffectIntent": {
+        "additionalProperties": false,
+        "properties": {
+          "capability": {
+            "$ref": "#/$defs/CapabilityDescriptor"
+          },
+          "command_digest": {
+            "type": "string"
+          },
+          "command_id": {
+            "type": "string"
+          },
+          "created_at_unix_ms": {
+            "format": "uint64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "input_digest": {
+            "type": "string"
+          },
+          "inputs": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "instance_id": {
+            "format": "uint64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "node_id": {
+            "type": "string"
+          },
+          "operation_key": {
+            "type": "string"
+          },
+          "policy": {
+            "$ref": "#/$defs/EffectPolicy"
+          },
+          "run_digest": {
+            "type": "string"
+          },
+          "run_id": {
+            "type": "string"
+          },
+          "schema_version": {
+            "format": "uint32",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "workflow": {
+            "$ref": "#/$defs/VersionRef"
+          }
+        },
+        "required": [
+          "schema_version",
+          "operation_key",
+          "run_id",
+          "run_digest",
+          "instance_id",
+          "workflow",
+          "node_id",
+          "command_id",
+          "command_digest",
+          "capability",
+          "inputs",
+          "input_digest",
+          "policy",
+          "created_at_unix_ms"
+        ],
+        "type": "object"
+      },
+      "EffectPolicy": {
+        "additionalProperties": false,
+        "properties": {
+          "call_identity": {
+            "$ref": "#/$defs/VersionRef",
+            "description": "Service principal binding, not an authenticated human actor assertion."
+          },
+          "identity": {
+            "$ref": "#/$defs/VersionRef"
+          },
+          "retry": {
+            "$ref": "#/$defs/RetryPolicy"
+          },
+          "target": {
+            "$ref": "#/$defs/VersionRef",
+            "description": "Logical provider/resource boundary, resolved by the host without secrets."
+          }
+        },
+        "required": [
+          "identity",
+          "target",
+          "call_identity",
+          "retry"
+        ],
+        "type": "object"
+      },
+      "EffectReceipt": {
+        "additionalProperties": false,
+        "properties": {
+          "intent_digest": {
+            "type": "string"
+          },
+          "operation_key": {
+            "type": "string"
+          },
+          "outputs": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "provider_receipt": {
+            "type": "string"
+          },
+          "resource_id": {
+            "type": "string"
+          },
+          "target": {
+            "$ref": "#/$defs/VersionRef"
+          }
+        },
+        "required": [
+          "operation_key",
+          "intent_digest",
+          "target",
+          "resource_id",
+          "provider_receipt",
+          "outputs"
+        ],
+        "type": "object"
+      },
+      "EffectRecord": {
+        "additionalProperties": false,
+        "properties": {
+          "at_unix_ms": {
+            "format": "uint64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "change": {
+            "$ref": "#/$defs/EffectChange"
+          },
+          "epoch": {
+            "format": "uint64",
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "epoch",
+          "at_unix_ms",
+          "change"
+        ],
+        "type": "object"
+      },
+      "EffectTransition": {
+        "additionalProperties": false,
+        "properties": {
+          "command_id": {
+            "type": "string"
+          },
+          "event_id": {
+            "type": "string"
+          },
+          "event_revision": {
+            "format": "uint64",
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "event_id",
+          "event_revision",
+          "command_id"
+        ],
+        "type": "object"
+      },
       "Error": {
         "additionalProperties": false,
         "properties": {
@@ -120,6 +562,33 @@
       },
       "ExecutionAction": {
         "oneOf": [
+          {
+            "additionalProperties": false,
+            "properties": {
+              "record": {
+                "$ref": "#/$defs/EffectRecord"
+              },
+              "transition": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/EffectTransition"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "type": {
+                "const": "effect",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type",
+              "record"
+            ],
+            "type": "object"
+          },
           {
             "additionalProperties": false,
             "properties": {
@@ -414,11 +883,69 @@
         "enum": [
           "invalid_input",
           "permanent",
+          "permission_denied",
+          "business_rejected",
           "transient",
           "cancelled",
           "unknown_effect"
         ],
         "type": "string"
+      },
+      "Field": {
+        "additionalProperties": false,
+        "properties": {
+          "required": {
+            "type": "boolean"
+          },
+          "value_type": {
+            "$ref": "#/$defs/ValueType"
+          }
+        },
+        "required": [
+          "value_type",
+          "required"
+        ],
+        "type": "object"
+      },
+      "Idempotency": {
+        "oneOf": [
+          {
+            "additionalProperties": false,
+            "properties": {
+              "mode": {
+                "const": "none",
+                "type": "string"
+              }
+            },
+            "required": [
+              "mode"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "mode": {
+                "const": "key",
+                "type": "string"
+              },
+              "retention_ms": {
+                "format": "uint64",
+                "minimum": 0,
+                "type": "integer"
+              },
+              "scope": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "mode",
+              "scope",
+              "retention_ms"
+            ],
+            "type": "object"
+          }
+        ]
       },
       "InvocationScope": {
         "oneOf": [
@@ -514,6 +1041,69 @@
         ],
         "type": "object"
       },
+      "ManualOutcome": {
+        "oneOf": [
+          {
+            "additionalProperties": false,
+            "properties": {
+              "receipt": {
+                "$ref": "#/$defs/EffectReceipt"
+              },
+              "status": {
+                "const": "applied",
+                "type": "string"
+              }
+            },
+            "required": [
+              "status",
+              "receipt"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "status": {
+                "const": "confirmed_not_applied",
+                "type": "string"
+              }
+            },
+            "required": [
+              "status"
+            ],
+            "type": "object"
+          }
+        ]
+      },
+      "ManualResolution": {
+        "additionalProperties": false,
+        "properties": {
+          "actor": {
+            "description": "Trusted local administrator annotation. Remote roles must be checked by\nan authenticated service; this string alone grants no authority.",
+            "type": "string"
+          },
+          "evidence": {
+            "type": "string"
+          },
+          "outcome": {
+            "$ref": "#/$defs/ManualOutcome"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "resolution_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "resolution_id",
+          "actor",
+          "reason",
+          "evidence",
+          "outcome"
+        ],
+        "type": "object"
+      },
       "ModelPolicyBinding": {
         "additionalProperties": false,
         "properties": {
@@ -529,6 +1119,84 @@
           "digest"
         ],
         "type": "object"
+      },
+      "Observation": {
+        "oneOf": [
+          {
+            "additionalProperties": false,
+            "properties": {
+              "receipt": {
+                "$ref": "#/$defs/EffectReceipt"
+              },
+              "status": {
+                "const": "applied",
+                "type": "string"
+              }
+            },
+            "required": [
+              "status",
+              "receipt"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "description": "Provider guarantees this invocation did not apply an effect. Timeouts,\ntransport errors and ambiguous HTTP 5xx must use Unknown instead.",
+            "properties": {
+              "class": {
+                "$ref": "#/$defs/FailureClass"
+              },
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "status": {
+                "const": "not_applied",
+                "type": "string"
+              }
+            },
+            "required": [
+              "status",
+              "code",
+              "class",
+              "message"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "description": "A query found nothing *at that instant*. It does not fence an old writer.",
+            "properties": {
+              "status": {
+                "const": "absent",
+                "type": "string"
+              }
+            },
+            "required": [
+              "status"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "reason": {
+                "type": "string"
+              },
+              "status": {
+                "const": "unknown",
+                "type": "string"
+              }
+            },
+            "required": [
+              "status",
+              "reason"
+            ],
+            "type": "object"
+          }
+        ]
       },
       "PreparedTask": {
         "additionalProperties": false,
@@ -577,6 +1245,132 @@
           "grant"
         ],
         "type": "object"
+      },
+      "RetryPolicy": {
+        "additionalProperties": false,
+        "properties": {
+          "initial_backoff_ms": {
+            "format": "uint64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "max_backoff_ms": {
+            "format": "uint64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "max_calls": {
+            "description": "Includes queries and writes; persists across leases and process restarts.",
+            "format": "uint32",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "total_write_ms": {
+            "format": "uint64",
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "max_calls",
+          "initial_backoff_ms",
+          "max_backoff_ms",
+          "total_write_ms"
+        ],
+        "type": "object"
+      },
+      "ValueType": {
+        "oneOf": [
+          {
+            "additionalProperties": false,
+            "properties": {
+              "type": {
+                "const": "string",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "type": {
+                "const": "boolean",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "type": {
+                "const": "integer",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "type": {
+                "const": "number",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "items": {
+                "$ref": "#/$defs/ValueType"
+              },
+              "type": {
+                "const": "array",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type",
+              "items"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "fields": {
+                "additionalProperties": {
+                  "$ref": "#/$defs/ValueType"
+                },
+                "type": "object"
+              },
+              "type": {
+                "const": "object",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type",
+              "fields"
+            ],
+            "type": "object"
+          }
+        ]
       },
       "VersionRef": {
         "additionalProperties": false,

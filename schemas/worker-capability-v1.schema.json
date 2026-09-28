@@ -58,6 +58,8 @@
       "enum": [
         "invalid_input",
         "permanent",
+        "permission_denied",
+        "business_rejected",
         "transient",
         "cancelled",
         "unknown_effect"

@@ -150,6 +150,12 @@ impl SqliteRunStore {
                 "gated/model-policy runs require successful task results through fenced execution settlement",
             ));
         }
+        if let workflow_kernel::EventKind::TaskCompleted { instance_id, .. }
+        | workflow_kernel::EventKind::TaskReconciled { instance_id, .. } = &event.kind
+            && let Some(entry) = current.outbox.iter().find(|e| matches!(e.command, Command::ExecuteTask { instance_id: i, .. } if i == *instance_id))
+                && crate::execution::effects::managed(&current, entry)? {
+                return Err(Error::new(ErrorCode::InvalidRequest, "managed write results require the fenced effect ledger"));
+        }
         let result = persist_event(&tx, &mut current, event, &hook)?;
         hook("before_commit");
         tx.commit().map_err(storage)?;
@@ -174,6 +180,17 @@ impl SqliteRunStore {
             return Err(Error::new(
                 ErrorCode::InvalidRequest,
                 "gate commands are acknowledged only by the fenced executor",
+            ));
+        }
+        if let Some(entry) = current
+            .outbox
+            .iter()
+            .find(|e| e.command_id == receipt.command_id)
+            && crate::execution::effects::managed(&current, entry)?
+        {
+            return Err(Error::new(
+                ErrorCode::InvalidRequest,
+                "managed write receipts require the fenced effect executor",
             ));
         }
         let entry = persist_receipt(&tx, &current, receipt)?;

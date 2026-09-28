@@ -1,4 +1,6 @@
 //! Durable run storage port. Adapters commit state, events and command intents atomically.
+mod effects;
+pub use effects::*;
 mod execution;
 mod inbox;
 mod model;
@@ -138,6 +140,10 @@ pub fn schema(kind: &str) -> Result<String> {
         "start" => schemars::schema_for!(StartRun),
         "receipt" => schemars::schema_for!(DeliveryReceipt),
         "signal" => schemars::schema_for!(SignalSubmission),
+        "effect-attempt" => schemars::schema_for!(workflow_effects::EffectAttempt),
+        "effect-reply" => schemars::schema_for!(workflow_effects::EffectReply),
+        "effect-observation" => schemars::schema_for!(workflow_effects::Observation),
+        "effect-resolution" => schemars::schema_for!(workflow_effects::ManualResolution),
         _ => {
             return Err(Error::new(
                 ErrorCode::InvalidRequest,

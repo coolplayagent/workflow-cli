@@ -105,6 +105,12 @@ impl SqliteRunStore {
             tx.commit().map_err(storage)?;
             return Ok(Claimed::Idle);
         };
+        if super::effects::managed(&r, &entry)? {
+            return Err(Error::new(
+                ErrorCode::UnsupportedEffect,
+                "managed write requires EffectStore::claim_effect",
+            ));
+        }
         let mut cancel_instance = None;
         match &entry.command {
             Command::CheckGate {

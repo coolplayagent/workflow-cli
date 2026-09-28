@@ -99,6 +99,7 @@ fn request(valid: bool) -> StartRun {
     let w = workflow_kernel::BundleSpec {
         postconditions: vec![],
         model_policies: vec![],
+        effect_bindings: vec![],
         schema_version: 1,
         root: serde_json::from_value(
             serde_json::json!({"id":"inspect-definition","version":"1.0.0"}),
@@ -237,6 +238,112 @@ fn storage_rejection_prevents_invocation_and_worker_errors_remain_retryable_obse
         workflow_kernel::RunStatus::Succeeded
     );
     store.verify("inspect").unwrap();
+    drop(store);
+    std::fs::remove_file(path).unwrap();
+}
+
+#[test]
+fn effect_driver_records_unknown_then_queries_without_repeating_the_write() {
+    use workflow_effects::{CallKind, EffectAdapter, EffectAttempt, EffectReceipt, Observation};
+    struct Provider {
+        writes: AtomicU64,
+        queries: AtomicU64,
+    }
+    impl EffectAdapter for Provider {
+        fn execute(
+            &self,
+            p: &EffectAttempt,
+            _: &dyn Clock,
+        ) -> workflow_worker::Result<Observation> {
+            match p.kind {
+                CallKind::Write => {
+                    self.writes.fetch_add(1, Ordering::Relaxed);
+                    Err(workflow_worker::Error::new(
+                        workflow_worker::ErrorCode::DeadlineExceeded,
+                        "response lost after provider commit",
+                    ))
+                }
+                CallKind::Query => {
+                    self.queries.fetch_add(1, Ordering::Relaxed);
+                    Ok(Observation::Applied {
+                        receipt: EffectReceipt {
+                            operation_key: p.intent.operation_key.clone(),
+                            intent_digest: workflow_effects::digest(&p.intent)?,
+                            target: p.intent.policy.target.clone(),
+                            resource_id: "release-1".into(),
+                            provider_receipt: "provider-query-receipt".into(),
+                            outputs: [("release_id".into(), "release-1".into())].into(),
+                        },
+                    })
+                }
+            }
+        }
+    }
+    let path = std::env::temp_dir().join(format!(
+        "workflow-runtime-effects-{}.db",
+        std::process::id()
+    ));
+    let mut store = SqliteRunStore::create(&path).unwrap();
+    let req: StartRun = workflow_worker::parse_message(
+        &std::fs::read(base().join("examples/runs/effect-release.json")).unwrap(),
+    )
+    .unwrap();
+    store.start(&req).unwrap();
+    let provider = Provider {
+        writes: AtomicU64::new(0),
+        queries: AtomicU64::new(0),
+    };
+    let mut options = DriveOptions {
+        owner: "runtime".into(),
+        acquisition_id: "first".into(),
+        lease_ms: 1000,
+        max_commands: 10,
+    };
+    let first = drive_with_effects(
+        &mut store,
+        &Worker::default(),
+        &provider,
+        &req.run_id,
+        &options,
+        &Time(1000),
+    )
+    .unwrap();
+    assert_eq!(first.effect_calls, 1);
+    assert_eq!(first.stop_reason, "effect_backoff");
+    drop(store);
+    let mut store = SqliteRunStore::open(&path).unwrap();
+    options.acquisition_id = "second".into();
+    let recovered = drive_with_effects(
+        &mut store,
+        &Worker::default(),
+        &provider,
+        &req.run_id,
+        &options,
+        &Time(1010),
+    )
+    .unwrap();
+    assert_eq!(
+        recovered.snapshot.status,
+        workflow_kernel::RunStatus::Succeeded
+    );
+    assert_eq!(recovered.effect_calls, 1);
+    options.acquisition_id = "third".into();
+    assert_eq!(
+        drive_with_effects(
+            &mut store,
+            &Worker::default(),
+            &provider,
+            &req.run_id,
+            &options,
+            &Time(1020)
+        )
+        .unwrap()
+        .effect_calls,
+        0
+    );
+    assert_eq!(provider.writes.load(Ordering::Relaxed), 1);
+    assert_eq!(provider.queries.load(Ordering::Relaxed), 1);
+    store.verify(&req.run_id).unwrap();
     drop(store);
     std::fs::remove_file(path).unwrap();
 }

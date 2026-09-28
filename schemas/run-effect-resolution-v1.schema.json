@@ -1,0 +1,120 @@
+{
+  "ok": true,
+  "result": {
+    "$defs": {
+      "EffectReceipt": {
+        "additionalProperties": false,
+        "properties": {
+          "intent_digest": {
+            "type": "string"
+          },
+          "operation_key": {
+            "type": "string"
+          },
+          "outputs": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "provider_receipt": {
+            "type": "string"
+          },
+          "resource_id": {
+            "type": "string"
+          },
+          "target": {
+            "$ref": "#/$defs/VersionRef"
+          }
+        },
+        "required": [
+          "operation_key",
+          "intent_digest",
+          "target",
+          "resource_id",
+          "provider_receipt",
+          "outputs"
+        ],
+        "type": "object"
+      },
+      "ManualOutcome": {
+        "oneOf": [
+          {
+            "additionalProperties": false,
+            "properties": {
+              "receipt": {
+                "$ref": "#/$defs/EffectReceipt"
+              },
+              "status": {
+                "const": "applied",
+                "type": "string"
+              }
+            },
+            "required": [
+              "status",
+              "receipt"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "status": {
+                "const": "confirmed_not_applied",
+                "type": "string"
+              }
+            },
+            "required": [
+              "status"
+            ],
+            "type": "object"
+          }
+        ]
+      },
+      "VersionRef": {
+        "additionalProperties": false,
+        "description": "Versions are immutable opaque release identifiers, never ranges or `latest`.",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "version"
+        ],
+        "type": "object"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "additionalProperties": false,
+    "properties": {
+      "actor": {
+        "description": "Trusted local administrator annotation. Remote roles must be checked by\nan authenticated service; this string alone grants no authority.",
+        "type": "string"
+      },
+      "evidence": {
+        "type": "string"
+      },
+      "outcome": {
+        "$ref": "#/$defs/ManualOutcome"
+      },
+      "reason": {
+        "type": "string"
+      },
+      "resolution_id": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "resolution_id",
+      "actor",
+      "reason",
+      "evidence",
+      "outcome"
+    ],
+    "title": "ManualResolution",
+    "type": "object"
+  }
+}

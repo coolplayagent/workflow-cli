@@ -41,6 +41,10 @@ pub enum Claimed {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)]
 pub enum ExecutionAction {
+    Effect {
+        record: Box<workflow_effects::EffectRecord>,
+        transition: Option<EffectTransition>,
+    },
     Acquired {
         lease: Lease,
     },
@@ -107,4 +111,12 @@ pub enum AttemptOutcome {
 pub struct AttemptState {
     pub prepared: PreparedTask,
     pub outcome: Option<AttemptOutcome>,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct EffectTransition {
+    pub event_id: String,
+    pub event_revision: u64,
+    pub command_id: String,
 }

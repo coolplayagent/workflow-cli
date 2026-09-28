@@ -1,8 +1,8 @@
 ---
 name: workflow-run
-description: Create and inspect durable workflow-cli runs, submit trusted events, pause, resume or cancel with an expected revision, inspect the command outbox and verify storage recovery, and drive local read-only tasks with durable leases. Use for persistent workflow progress and explicit local execution; no background daemon remains.
+description: Create and inspect durable workflow-cli runs, submit trusted events, pause, resume or cancel with an expected revision, inspect the command outbox and verify storage recovery, and drive read-only tasks or managed write effects with durable leases. Use for persistent workflow progress and explicit local execution; no background daemon remains.
 metadata:
-  version: "1.7.0"
+  version: "1.8.0"
 ---
 
 # Workflow run
@@ -14,15 +14,15 @@ source checkout or the Bazel binary; `bazel run` needs absolute file paths. Cons
 Choose the explicit run database from the user's task. `run init <db>` alone
 creates a store. Do not point it at a definition-registry database or silently
 initialize a different database after a query fails. Inspect the error and path.
-For schema 1, 2, 3, 4, 5 or 6, use the explicit `run --artifacts <store> migrate <db>`
-transaction to upgrade to schema 7 when within the task scope. Omit the reader only
+For schema 1, 2, 3, 4, 5, 6 or 7, use the explicit `run --artifacts <store> migrate <db>`
+transaction to upgrade to schema 8 when within the task scope. Omit the reader only
 when existing runs have no artifact dependencies. A future/foreign schema must not be overwritten to make it open.
 
 Read `workflow schema run-start`, obtain exact definitions and descriptors from
 the task's catalog, and validate the bundle with `kernel check`. Use the intended
 run ID, typed inputs, logical start time and limits. `run start <db> <start.json>`
 atomically commits the seed/state/initial commands. Reusing the same run ID with a
-changed start is a conflict; workflow/capability/gate-policy/model-policy versions also bind immutable
+changed start is a conflict; workflow/capability/gate-policy/model-policy/effect-policy versions also bind immutable
 content within the store. Publish a new version for a legitimate content change.
 
 Use `run status <db> <id>`, `run history <db> <id> <after-revision> <limit>` and
@@ -41,7 +41,7 @@ observations. Do not infer task execution from an outbox command alone.
 A worker error stops the drive; a later explicit drive may retry read-only work,
 up to three attempts per command. Lease conflicts require inspecting ownership
 and waiting for release/expiry. Never edit epochs, reset budgets or fabricate a
-result. Write effects, uncertain reconciliation need their separate verified host mechanisms. Artifact
+result. Managed write effects use the separate effect host described below. Artifact
 evidence requires a configured store: use `run --artifacts <store> <operation> ...`
 and the workflow-artifact Skill. That configuration is needed again for recovery
 queries; never remove evidence to make a missing dependency look successful. A release error can follow a committed task;
@@ -129,3 +129,26 @@ Reject/request-changes follow the declared rejected route. Paused messages are
 rechecked on resume. Future unallocated instances require their new target identity.
 The source label is not authentication: the local trusted administrator must verify
 the actual source/decision first. Never create a human approval from model text.
+
+## Managed write effects
+
+Read `docs/durable-effects.md` before dispatching a write. The workflow needs a
+frozen effect binding, exact descriptor and authorized host target/principal
+configuration. Use `run drive-effects <db> <id> <owner> <budget> <bindings.json>`
+only within the user's authorized effect scope. An optional model binding file
+after the effect binding file composes model steps in the same run. Binding IDs and digests are not
+authentication. Credentials stay in host environment/secret resolution.
+
+Inspect `run effects <db> <id> 0 100` and execution history. `effect_backoff` means
+wait until the retained deadline; `effect_uncertain` requires verified provider
+reconciliation. Never reissue a write manually to bypass an uncertain attempt,
+change its operation key or reset its budget. Query absence cannot fence an old
+writer; idempotency/retention belong to the target system. A cancellation retains
+actual effects and does not automatically compensate them.
+
+Low-level `effect-claim`, `effect-observe` and `effect-resolve` are trusted host
+operations. Submit only actual observations. Manual resolution needs a stable ID,
+actor annotation, reason and evidence; confirm non-application only after checking
+the provider and quiescing outstanding writers. This settles the task as cancelled
+and does not grant a new attempt. Do not fabricate receipts or authenticated actor
+claims. Automatic compensation remains separate work.

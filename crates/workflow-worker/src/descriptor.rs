@@ -10,6 +10,8 @@ use workflow_validator::{identifier, pinned_version};
 pub enum FailureClass {
     InvalidInput,
     Permanent,
+    PermissionDenied,
+    BusinessRejected,
     Transient,
     Cancelled,
     UnknownEffect,

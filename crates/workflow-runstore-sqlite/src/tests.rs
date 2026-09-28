@@ -481,6 +481,10 @@ fn process_worker() {
         execution::process(&mut store, dir, &mode, &slot, &phase);
         return;
     }
+    if mode.starts_with("effect-") {
+        effects::process(&mut store, dir, &mode, &slot, &phase);
+        return;
+    }
     if mode.starts_with("inbox-") {
         inbox::process(&mut store, dir, &mode, &slot, &phase);
         return;
@@ -717,3 +721,5 @@ mod gates;
 
 mod inbox;
 mod models;
+
+mod effects;
