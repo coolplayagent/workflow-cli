@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/workflow-ir", "crates/workflow-validator", "crates/workflow-cli", "crates/workflow-definitions", "crates/workflow-registry-sqlite", "crates/workflow-worker", "crates/workflow-builtin-capabilities", "crates/workflow-kernel", "crates/workflow-runstore", "crates/workflow-runstore-sqlite", "crates/workflow-runtime", "crates/workflow-artifacts", "crates/workflow-artifact-local", "crates/workflow-gates", "crates/workflow-workspaces", "crates/workflow-workspace-local"]
+members = ["crates/workflow-ir", "crates/workflow-validator", "crates/workflow-cli", "crates/workflow-definitions", "crates/workflow-registry-sqlite", "crates/workflow-worker", "crates/workflow-builtin-capabilities", "crates/workflow-kernel", "crates/workflow-runstore", "crates/workflow-runstore-sqlite", "crates/workflow-runtime", "crates/workflow-artifacts", "crates/workflow-artifact-local", "crates/workflow-gates", "crates/workflow-workspaces", "crates/workflow-workspace-local", "crates/workflow-models", "crates/workflow-model-http"]
 resolver = "2"
 
 [workspace.package]

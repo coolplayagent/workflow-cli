@@ -2,7 +2,7 @@
 name: workflow-run
 description: Create and inspect durable workflow-cli runs, submit trusted events, cancel with an expected revision, inspect the command outbox and verify storage recovery, and drive local read-only tasks with durable leases. Use for persistent workflow progress and explicit local execution; no background daemon remains.
 metadata:
-  version: "1.4.0"
+  version: "1.5.0"
 ---
 
 # Workflow run
@@ -14,15 +14,15 @@ source checkout or the Bazel binary; `bazel run` needs absolute file paths. Cons
 Choose the explicit run database from the user's task. `run init <db>` alone
 creates a store. Do not point it at a definition-registry database or silently
 initialize a different database after a query fails. Inspect the error and path.
-For schema 1, 2 or 3, use the explicit `run --artifacts <store> migrate <db>`
-transaction to upgrade to schema 4 when within the task scope. Omit the reader only
+For schema 1, 2, 3 or 4, use the explicit `run --artifacts <store> migrate <db>`
+transaction to upgrade to schema 5 when within the task scope. Omit the reader only
 when existing runs have no artifact dependencies. A future/foreign schema must not be overwritten to make it open.
 
 Read `workflow schema run-start`, obtain exact definitions and descriptors from
 the task's catalog, and validate the bundle with `kernel check`. Use the intended
 run ID, typed inputs, logical start time and limits. `run start <db> <start.json>`
 atomically commits the seed/state/initial commands. Reusing the same run ID with a
-changed start is a conflict; workflow/capability/gate-policy versions also bind immutable
+changed start is a conflict; workflow/capability/gate-policy/model-policy versions also bind immutable
 content within the store. Publish a new version for a legitimate content change.
 
 Use `run status <db> <id>`, `run history <db> <id> <after-revision> <limit>` and
@@ -103,3 +103,7 @@ with this actual prepared request. Its independent directory and typed capture
 are separate from run execution authority. Bind the real capability inputs to
 those files, then attach the capture references before settlement. The built-in
 driver does not automatically allocate workspaces or inspect them at gate time.
+
+For model-policy tasks, follow `skills/workflow-model/SKILL.md` and use
+`run drive-models` with exact host bindings. Model result settlement checks explicit
+records; raw task successes cannot bypass it. Recovery replays without model calls.

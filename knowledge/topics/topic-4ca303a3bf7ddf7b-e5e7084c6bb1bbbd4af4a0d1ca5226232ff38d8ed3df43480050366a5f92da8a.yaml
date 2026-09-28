@@ -14,6 +14,16 @@ sources:
   status: active
   version: 1
   description: Typed artifact identity, provenance, durable local publication, impact and verified run evidence.
+- id: attempt-workspaces
+  topic: architecture
+  kind: doc
+  uri: docs/workspaces.md
+  source_scope: docs
+  read_policy: direct
+  write_policy: manual-review
+  status: active
+  version: 1
+  description: Attempt workspace contracts, Git allocation, current observation and typed output capture
 - id: definition-authoring
   topic: architecture
   kind: doc
@@ -54,6 +64,16 @@ sources:
   status: active
   version: 1
   description: Local read-only execution, durable leases and attempts, atomic result settlement and storage migration.
+- id: model-execution
+  topic: architecture
+  kind: doc
+  uri: docs/model-execution.md
+  source_scope: docs
+  read_policy: direct
+  write_policy: manual-review
+  status: active
+  version: 1
+  description: Bounded model policies, provider bindings, explicit tool records and durable replay
 - id: run-store
   topic: architecture
   kind: doc
@@ -64,6 +84,16 @@ sources:
   status: active
   version: 1
   description: RunStore port, atomic SQLite state/event/outbox commits and verified recovery
+- id: runtime-postconditions
+  topic: architecture
+  kind: doc
+  uri: docs/runtime-postconditions.md
+  source_scope: docs
+  read_policy: direct
+  write_policy: manual-review
+  status: active
+  version: 1
+  description: Frozen mandatory task and terminal gates, fenced evidence decisions, UNKNOWN retry and bounded repair.
 - id: worker-protocol
   topic: architecture
   kind: doc
@@ -95,4 +125,7 @@ route:
   - local-execution
   - artifact-contracts
   - workflow-evidence-gates
+  - runtime-postconditions
+  - attempt-workspaces
+  - model-execution
   fallback: bounded-search

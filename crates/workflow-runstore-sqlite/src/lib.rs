@@ -80,6 +80,9 @@ impl SqliteRunStore {
     }
 }
 impl RunStore for SqliteRunStore {
+    fn bundle(&mut self, id: &str) -> Result<BundleSpec> {
+        self.read(id, |r| Ok(r.engine.bundle().spec().clone()))
+    }
     fn start(&mut self, r: &StartRun) -> Result<Committed> {
         self.start_internal(r, |_| {})
     }

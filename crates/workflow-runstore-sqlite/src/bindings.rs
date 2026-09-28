@@ -29,6 +29,18 @@ pub(crate) fn lock_bindings(c: &Connection, bundle: &CompiledBundle, create: boo
             create,
         )?;
     }
+    for policy in &bundle.spec().model_policies {
+        check(
+            c,
+            "model_policy",
+            &policy.policy.id,
+            &policy.policy.version,
+            &workflow_models::Policy::new(policy.clone())?
+                .binding()
+                .digest,
+            create,
+        )?;
+    }
     Ok(())
 }
 fn check(

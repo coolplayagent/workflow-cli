@@ -1,0 +1,623 @@
+{
+  "$defs": {
+    "Action": {
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "capability": {
+              "$ref": "#/$defs/VersionRef"
+            },
+            "inputs": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "summary": {
+              "type": "string"
+            },
+            "type": {
+              "const": "call",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "capability",
+            "inputs",
+            "summary"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "outputs": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "summary": {
+              "type": "string"
+            },
+            "type": {
+              "const": "complete",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "outputs",
+            "summary"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "AdapterOutcome": {
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "evidence": {
+              "items": {
+                "$ref": "#/$defs/EvidenceRef"
+              },
+              "type": "array"
+            },
+            "outputs": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "status": {
+              "const": "succeeded",
+              "type": "string"
+            }
+          },
+          "required": [
+            "status",
+            "outputs",
+            "evidence"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "class": {
+              "$ref": "#/$defs/FailureClass"
+            },
+            "code": {
+              "type": "string"
+            },
+            "evidence": {
+              "items": {
+                "$ref": "#/$defs/EvidenceRef"
+              },
+              "type": "array"
+            },
+            "message": {
+              "type": "string"
+            },
+            "status": {
+              "const": "failed",
+              "type": "string"
+            }
+          },
+          "required": [
+            "status",
+            "code",
+            "class",
+            "message",
+            "evidence"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "ErrorCode": {
+      "enum": [
+        "invalid_message",
+        "unsupported_protocol",
+        "invalid_descriptor",
+        "invalid_request",
+        "unauthorized",
+        "expired",
+        "digest_mismatch",
+        "invalid_input",
+        "invalid_output",
+        "missing_capability",
+        "duplicate_capability",
+        "unsupported_effect",
+        "invalid_binding",
+        "precondition_failed",
+        "invalid_result",
+        "adapter_panicked",
+        "deadline_exceeded",
+        "clock_error"
+      ],
+      "type": "string"
+    },
+    "EvidenceRef": {
+      "additionalProperties": false,
+      "properties": {
+        "artifact_id": {
+          "type": "string"
+        },
+        "digest": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "artifact_id",
+        "digest"
+      ],
+      "type": "object"
+    },
+    "FailureClass": {
+      "enum": [
+        "invalid_input",
+        "permanent",
+        "transient",
+        "cancelled",
+        "unknown_effect"
+      ],
+      "type": "string"
+    },
+    "InvocationScope": {
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "const": "standalone",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "attempt_id": {
+              "type": "string"
+            },
+            "definition_digest": {
+              "type": "string"
+            },
+            "lease_epoch": {
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "node_id": {
+              "type": "string"
+            },
+            "node_instance_id": {
+              "type": "string"
+            },
+            "run_id": {
+              "type": "string"
+            },
+            "type": {
+              "const": "workflow",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "definition_digest",
+            "run_id",
+            "node_id",
+            "node_instance_id",
+            "attempt_id",
+            "lease_epoch"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "ModelEvent": {
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "at_unix_ms": {
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "call_digest": {
+              "type": "string"
+            },
+            "response": {
+              "$ref": "#/$defs/Reply"
+            },
+            "type": {
+              "const": "replied",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "call_digest",
+            "at_unix_ms",
+            "response"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "at_unix_ms": {
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "request": {
+              "$ref": "#/$defs/WorkRequest"
+            },
+            "response": {
+              "$ref": "#/$defs/ToolReply"
+            },
+            "type": {
+              "const": "tool_finished",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "request",
+            "at_unix_ms",
+            "response"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "ModelFailure": {
+      "enum": [
+        "unavailable",
+        "invalid_response",
+        "refused",
+        "budget",
+        "deadline"
+      ],
+      "type": "string"
+    },
+    "ModelIdentity": {
+      "additionalProperties": false,
+      "properties": {
+        "adapter": {
+          "$ref": "#/$defs/VersionRef"
+        },
+        "binding_digest": {
+          "description": "Host binding fingerprint excludes credential values.",
+          "type": "string"
+        },
+        "model": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "adapter",
+        "model",
+        "binding_digest"
+      ],
+      "type": "object"
+    },
+    "ModelPolicyBinding": {
+      "additionalProperties": false,
+      "properties": {
+        "digest": {
+          "type": "string"
+        },
+        "policy": {
+          "$ref": "#/$defs/VersionRef"
+        }
+      },
+      "required": [
+        "policy",
+        "digest"
+      ],
+      "type": "object"
+    },
+    "ModelReply": {
+      "additionalProperties": false,
+      "properties": {
+        "proposal": {
+          "$ref": "#/$defs/Proposal"
+        },
+        "resolved_model": {
+          "type": "string"
+        },
+        "response_id": {
+          "type": "string"
+        },
+        "usage": {
+          "$ref": "#/$defs/Usage"
+        }
+      },
+      "required": [
+        "proposal",
+        "resolved_model",
+        "response_id",
+        "usage"
+      ],
+      "type": "object"
+    },
+    "Proposal": {
+      "additionalProperties": false,
+      "properties": {
+        "action": {
+          "$ref": "#/$defs/Action"
+        },
+        "protocol_version": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "protocol_version",
+        "action"
+      ],
+      "type": "object"
+    },
+    "Reply": {
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "reply": {
+              "$ref": "#/$defs/ModelReply"
+            },
+            "status": {
+              "const": "received",
+              "type": "string"
+            }
+          },
+          "required": [
+            "status",
+            "reply"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "failure": {
+              "$ref": "#/$defs/ModelFailure"
+            },
+            "status": {
+              "const": "failed",
+              "type": "string"
+            }
+          },
+          "required": [
+            "status",
+            "failure"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "ToolReply": {
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "result": {
+              "$ref": "#/$defs/WorkResult"
+            },
+            "status": {
+              "const": "received",
+              "type": "string"
+            }
+          },
+          "required": [
+            "status",
+            "result"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "error": {
+              "$ref": "#/$defs/ErrorCode"
+            },
+            "status": {
+              "const": "rejected",
+              "type": "string"
+            }
+          },
+          "required": [
+            "status",
+            "error"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "Usage": {
+      "additionalProperties": false,
+      "properties": {
+        "input_tokens": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "output_tokens": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        }
+      },
+      "type": "object"
+    },
+    "VersionRef": {
+      "additionalProperties": false,
+      "description": "Versions are immutable opaque release identifiers, never ranges or `latest`.",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "version"
+      ],
+      "type": "object"
+    },
+    "WorkRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "capability": {
+          "$ref": "#/$defs/VersionRef"
+        },
+        "contract_digest": {
+          "type": "string"
+        },
+        "deadline_unix_ms": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "input_digest": {
+          "type": "string"
+        },
+        "inputs": {
+          "additionalProperties": true,
+          "type": "object"
+        },
+        "issued_at_unix_ms": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "model_policy": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ModelPolicyBinding"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "protocol_version": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "request_id": {
+          "type": "string"
+        },
+        "scope": {
+          "$ref": "#/$defs/InvocationScope"
+        },
+        "trace_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "protocol_version",
+        "request_id",
+        "trace_id",
+        "scope",
+        "capability",
+        "contract_digest",
+        "inputs",
+        "input_digest",
+        "issued_at_unix_ms",
+        "deadline_unix_ms"
+      ],
+      "type": "object"
+    },
+    "WorkResult": {
+      "additionalProperties": false,
+      "properties": {
+        "completed_at_unix_ms": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "model_record": {
+          "description": "Explicit model/tool decisions. The policy executor and durable host validate its schema."
+        },
+        "outcome": {
+          "$ref": "#/$defs/AdapterOutcome"
+        },
+        "protocol_version": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "request_digest": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "protocol_version",
+        "request_digest",
+        "completed_at_unix_ms",
+        "outcome"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "deadline_unix_ms": {
+      "format": "uint64",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "events": {
+      "items": {
+        "$ref": "#/$defs/ModelEvent"
+      },
+      "type": "array"
+    },
+    "identity": {
+      "$ref": "#/$defs/ModelIdentity"
+    },
+    "outcome": {
+      "$ref": "#/$defs/AdapterOutcome"
+    },
+    "policy_digest": {
+      "type": "string"
+    },
+    "request_digest": {
+      "type": "string"
+    },
+    "schema_version": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    }
+  },
+  "required": [
+    "schema_version",
+    "request_digest",
+    "policy_digest",
+    "identity",
+    "deadline_unix_ms",
+    "events",
+    "outcome"
+  ],
+  "title": "ModelRecord",
+  "type": "object"
+}

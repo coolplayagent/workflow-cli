@@ -75,12 +75,56 @@
           }
         ]
       },
+      "Budget": {
+        "additionalProperties": false,
+        "properties": {
+          "context_bytes": {
+            "format": "uint32",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "model_calls": {
+            "format": "uint32",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "output_tokens_per_call": {
+            "format": "uint32",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "response_bytes": {
+            "format": "uint32",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "tool_calls": {
+            "format": "uint32",
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "model_calls",
+          "tool_calls",
+          "context_bytes",
+          "response_bytes",
+          "output_tokens_per_call"
+        ],
+        "type": "object"
+      },
       "BundleSpec": {
         "additionalProperties": false,
         "properties": {
           "capabilities": {
             "items": {
               "$ref": "#/$defs/CapabilityDescriptor"
+            },
+            "type": "array"
+          },
+          "model_policies": {
+            "items": {
+              "$ref": "#/$defs/PolicySpec"
             },
             "type": "array"
           },
@@ -763,6 +807,43 @@
           "schema_version",
           "identity",
           "requirements"
+        ],
+        "type": "object"
+      },
+      "PolicySpec": {
+        "additionalProperties": false,
+        "properties": {
+          "budget": {
+            "$ref": "#/$defs/Budget"
+          },
+          "goal": {
+            "type": "string"
+          },
+          "policy": {
+            "$ref": "#/$defs/VersionRef"
+          },
+          "schema_version": {
+            "format": "uint32",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "task": {
+            "$ref": "#/$defs/CapabilityDescriptor"
+          },
+          "tools": {
+            "items": {
+              "$ref": "#/$defs/CapabilityDescriptor"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "schema_version",
+          "policy",
+          "task",
+          "goal",
+          "tools",
+          "budget"
         ],
         "type": "object"
       },

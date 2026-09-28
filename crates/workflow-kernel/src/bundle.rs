@@ -14,6 +14,8 @@ pub struct BundleSpec {
     pub capabilities: Vec<CapabilityDescriptor>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub postconditions: Vec<crate::Postcondition>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub model_policies: Vec<workflow_models::PolicySpec>,
 }
 #[derive(Clone, Debug)]
 pub struct CompiledBundle {
@@ -32,15 +34,26 @@ pub(crate) fn workflow_key(w: &Workflow) -> String {
 impl CompiledBundle {
     pub fn compile(mut spec: BundleSpec) -> Result<Self> {
         // Bound new recursive policy types before encoding in-process bundles.
-        if spec.postconditions.len() > 256 {
+        if spec.postconditions.len() > 256 || spec.model_policies.len() > 128 {
             return Err(Error::new(
                 ErrorCode::InvalidBundle,
-                "at most 256 postconditions",
+                "at most 256 postconditions and 128 model policies",
             ));
         }
         for gate in &spec.postconditions {
             workflow_gates::validate_policy(&gate.policy)
                 .map_err(|e| Error::new(ErrorCode::InvalidBundle, e.message))?;
+        }
+        let mut policies = BTreeMap::new();
+        for p in &spec.model_policies {
+            let policy = workflow_models::Policy::new(p.clone())
+                .map_err(|e| Error::new(ErrorCode::InvalidBundle, e.message))?;
+            if policies.insert(key(&p.policy), policy).is_some() {
+                return Err(Error::new(
+                    ErrorCode::InvalidBundle,
+                    "duplicate model policy",
+                ));
+            }
         }
         workflow_worker::to_message(&spec)?;
         if spec.schema_version != 1
@@ -128,12 +141,6 @@ impl CompiledBundle {
             for node in &w.nodes {
                 match &node.kind {
                     NodeKind::Task { capability, policy } => {
-                        if policy.is_some() {
-                            return Err(Error::new(
-                                ErrorCode::UnsupportedPolicy,
-                                format!("{}.{} requires a model policy adapter", w.id, node.id),
-                            ));
-                        }
                         let d = capabilities
                             .get(&key(capability))
                             .ok_or_else(|| {
@@ -143,6 +150,32 @@ impl CompiledBundle {
                                 )
                             })?
                             .descriptor();
+                        if let Some(reference) = policy {
+                            let p = policies.get(&key(reference)).ok_or_else(|| {
+                                Error::new(
+                                    ErrorCode::UnsupportedPolicy,
+                                    "model policy missing from frozen bundle",
+                                )
+                            })?;
+                            if &p.spec().task != d {
+                                return Err(Error::new(
+                                    ErrorCode::ContractMismatch,
+                                    "model policy task differs from node capability",
+                                ));
+                            }
+                            for tool in &p.spec().tools {
+                                if capabilities
+                                    .get(&key(&tool.capability))
+                                    .map(|c| c.descriptor())
+                                    != Some(tool)
+                                {
+                                    return Err(Error::new(
+                                        ErrorCode::ContractMismatch,
+                                        "model policy tool differs from bundle capability",
+                                    ));
+                                }
+                            }
+                        }
                         if node.inputs != d.inputs || node.outputs != d.outputs {
                             return Err(Error::new(
                                 ErrorCode::ContractMismatch,
@@ -216,6 +249,7 @@ impl CompiledBundle {
             .sort_by_key(|g| (key(&g.workflow), g.node_id.clone()));
         spec.workflows.sort_by_key(workflow_key);
         spec.capabilities.sort_by_key(|d| key(&d.capability));
+        spec.model_policies.sort_by_key(|p| key(&p.policy));
         let digest = workflow_worker::digest(&spec)?;
         Ok(Self {
             workflows,

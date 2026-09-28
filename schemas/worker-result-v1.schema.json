@@ -96,6 +96,9 @@
       "minimum": 0,
       "type": "integer"
     },
+    "model_record": {
+      "description": "Explicit model/tool decisions. The policy executor and durable host validate its schema."
+    },
     "outcome": {
       "$ref": "#/$defs/AdapterOutcome"
     },

@@ -17,8 +17,10 @@ and exact targets. Frozen task and terminal postconditions require PASS before
 advancing; UNKNOWN waits for explicit retry and FAIL follows declared repair bounds.
 A separate CLI supports read-only evaluation/revalidation. Attempt workspace
 contracts and a local Linux/Git adapter allocate independent files, observe changes
-and capture typed outputs with exact provenance. Model/remote adapters and
-external effects follow the [issue roadmap](docs/roadmap.md). `validate` is a
+and capture typed outputs with exact provenance. Bounded model policies invoke allowed
+read-only tools through OpenAI Responses or Anthropic Messages host bindings, with
+explicit records checked during settlement and recovery. Authenticated remote
+execution and external effects follow the [issue roadmap](docs/roadmap.md). `validate` is a
 static check, not permission to execute a capability or proof of a successful run.
 
 ## Use
@@ -78,6 +80,8 @@ and decision revalidation. The [runtime postcondition guide](docs/runtime-postco
 covers frozen mandatory gates, durable UNKNOWN waits and bounded repair.
 The [workflow-workspace Skill](skills/workflow-workspace/SKILL.md) and [workspace guide](docs/workspaces.md)
 cover host-managed attempt directories and typed output capture.
+The [workflow-model Skill](skills/workflow-model/SKILL.md) and [model execution guide](docs/model-execution.md)
+cover frozen policies, provider replacement and explicit decision replay.
 
 ```sh
 cargo run --locked -- kernel replay examples/kernel/review-approved.json

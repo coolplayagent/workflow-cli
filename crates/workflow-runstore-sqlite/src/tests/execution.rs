@@ -36,6 +36,7 @@ fn claimed(store: &mut SqliteRunStore, lease: &Lease, clock: &dyn Clock) -> Prep
 }
 fn success(attempt: &PreparedTask, at: u64) -> WorkResult {
     WorkResult {
+        model_record: None,
         protocol_version: PROTOCOL_VERSION,
         request_digest: digest(&attempt.request).unwrap(),
         completed_at_unix_ms: at,
