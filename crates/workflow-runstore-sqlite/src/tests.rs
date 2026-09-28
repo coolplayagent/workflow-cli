@@ -481,6 +481,10 @@ fn process_worker() {
         execution::process(&mut store, dir, &mode, &slot, &phase);
         return;
     }
+    if mode.starts_with("inbox-") {
+        inbox::process(&mut store, dir, &mode, &slot, &phase);
+        return;
+    }
     let s = scenario("review-approved");
     if mode == "start" {
         store.start_internal(&start(&s), hook).unwrap();
@@ -711,4 +715,5 @@ mod execution;
 
 mod gates;
 
+mod inbox;
 mod models;

@@ -156,8 +156,8 @@ deadlines. Resume observes expired wait/loop deadlines before driving successors
 A final task result may leave a run `running` with a pause until resume reduces the
 remaining control flow. Cancellation remains available while paused, clears the
 pause and performs the usual cancellation/reconciliation flow. Raw signal, gate,
-retry-gate and time events are refused while paused. Durable external event Inbox
-buffering and authenticated approval ingestion are separate pending increments.
+retry-gate and time events are refused while paused. The [durable Inbox](event-inbox.md) buffers trusted callbacks during pauses;
+authenticated approval ingestion remains a separate increment.
 
 These controls use the trusted administrative host boundary described above;
 caller-supplied reasons are audit context, not authenticated actor identities.
@@ -166,7 +166,7 @@ waits, stale resume conflicts and killed pause writers at five commit phases.
 
 ## Explicit storage migration
 
-New databases use storage schema 6. Schema 1, 2, 3, 4 or 5 databases from prior increments
+New databases use storage schema 7. Schema 1, 2, 3, 4, 5 or 6 databases from prior increments
 must be upgraded explicitly:
 
 ```sh
@@ -178,10 +178,11 @@ preserves existing leases/attempts for schema 2, validates all existing runs and
 updates the version in one transaction. Schema 3 introduced required artifact
 verification; schema 4 adds protected gate transitions and schema 5 protects model
 policy records and immutable policy bindings. Schema 6 protects durable pause/resume
-admission semantics from older executors. Evidence-bearing runs need
+admission semantics from older executors; schema 7 adds durable Inbox matching.
+Evidence-bearing runs need
 `--artifacts` during migration; omit it only for runs without dependencies. Missing
 or corrupt dependencies roll back the version. Corrupt old runs roll back the
-tables and version together. Running migrate again on schema 6
+tables and version together. Running migrate again on schema 7
 is harmless. Ordinary open/create never silently upgrades old data; foreign or
 future schemas are refused. Logical StartRun schema remains v1. Direct worker calls retain protocol 1;
 model-policy calls require protocol 2. See [model execution](model-execution.md).

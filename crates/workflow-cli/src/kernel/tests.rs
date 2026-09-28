@@ -52,7 +52,7 @@ fn committed_scenarios_replay_to_expected_business_outcomes() {
 }
 #[test]
 fn generated_kernel_schemas_match_the_committed_contracts() {
-    for kind in ["bundle", "event", "scenario", "checkpoint"] {
+    for kind in ["bundle", "event", "scenario", "checkpoint", "signal"] {
         let (code, actual) = invoke(&["schema", &format!("kernel-{kind}")]);
         assert_eq!(code, 0);
         let expected: Value = serde_json::from_str(

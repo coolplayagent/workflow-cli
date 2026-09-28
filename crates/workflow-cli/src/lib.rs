@@ -102,12 +102,13 @@ pub fn run(
         args @ ["run", ..]
         | args @ [
             "schema",
-            "run-start" | "run-receipt" | "run-lease" | "run-execution-record",
+            "run-start" | "run-receipt" | "run-lease" | "run-execution-record" | "run-signal",
         ] => runs::run(args, stdout, stderr),
         args @ ["kernel", ..]
         | args @ [
             "schema",
-            "kernel-bundle" | "kernel-event" | "kernel-scenario" | "kernel-checkpoint",
+            "kernel-bundle" | "kernel-event" | "kernel-scenario" | "kernel-checkpoint"
+            | "kernel-signal",
         ] => kernel::run(args, stdout, stderr),
         args @ ["capability" | "worker", ..]
         | args @ ["schema", "capability" | "request" | "grant" | "result"] => {

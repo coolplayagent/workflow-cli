@@ -1,7 +1,9 @@
 //! Durable run storage port. Adapters commit state, events and command intents atomically.
 mod execution;
+mod inbox;
 mod model;
 pub use execution::*;
+pub use inbox::*;
 pub use model::*;
 use serde::{Deserialize, Serialize};
 pub use workflow_kernel::{
@@ -24,6 +26,7 @@ pub enum ErrorCode {
     StartConflict,
     BindingConflict,
     ReceiptConflict,
+    SignalConflict,
     DeliveryOrder,
     TransitionRejected,
     Busy,
@@ -134,10 +137,11 @@ pub fn schema(kind: &str) -> Result<String> {
         "execution-record" => schemars::schema_for!(ExecutionRecord),
         "start" => schemars::schema_for!(StartRun),
         "receipt" => schemars::schema_for!(DeliveryReceipt),
+        "signal" => schemars::schema_for!(SignalSubmission),
         _ => {
             return Err(Error::new(
                 ErrorCode::InvalidRequest,
-                "run schema must be start, receipt, lease or execution-record",
+                "run schema must be start, receipt, lease, execution-record or signal",
             ));
         }
     };

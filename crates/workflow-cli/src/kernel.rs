@@ -4,7 +4,7 @@ use serde_json::{Value, json};
 use std::io::{Read, Write};
 use workflow_kernel::*;
 
-pub const HELP: &str = "DETERMINISTIC KERNEL\n  workflow kernel check <bundle.json>\n  workflow kernel replay <scenario.json>\n  workflow kernel restore <bundle.json> <checkpoint.json>\n  workflow kernel apply <bundle.json> <checkpoint.json> <event.json>\n  workflow schema <kernel-bundle|kernel-event|kernel-scenario|kernel-checkpoint>\n\nReplay/apply only calculate state and commands; they never dispatch a task or persist a run.\nEvent results are trusted host facts, not an untrusted worker ingress.\nWrite returned checkpoints to a new path; output redirection must not overwrite inputs.\nExit 0: command evaluated (inspect snapshot.status); 1: rejected input/transition; 2: usage/I/O.\n";
+pub const HELP: &str = "DETERMINISTIC KERNEL\n  workflow kernel check <bundle.json>\n  workflow kernel replay <scenario.json>\n  workflow kernel restore <bundle.json> <checkpoint.json>\n  workflow kernel apply <bundle.json> <checkpoint.json> <event.json>\n  workflow schema <kernel-bundle|kernel-event|kernel-scenario|kernel-checkpoint|kernel-signal>\n\nReplay/apply only calculate state and commands; they never dispatch a task or persist a run.\nEvent results are trusted host facts, not an untrusted worker ingress.\nWrite returned checkpoints to a new path; output redirection must not overwrite inputs.\nExit 0: command evaluated (inspect snapshot.status); 1: rejected input/transition; 2: usage/I/O.\n";
 fn read<T: DeserializeOwned>(file: &str) -> Result<T> {
     let mut bytes = vec![];
     std::fs::File::open(file)

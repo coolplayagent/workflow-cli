@@ -162,6 +162,23 @@
         {
           "additionalProperties": false,
           "properties": {
+            "message": {
+              "$ref": "#/$defs/SignalMessage"
+            },
+            "type": {
+              "const": "receive_signal",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "message"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
             "reason": {
               "type": "string"
             },
@@ -571,6 +588,64 @@
       ],
       "type": "object"
     },
+    "SignalDecision": {
+      "enum": [
+        "approve",
+        "reject",
+        "request_changes"
+      ],
+      "type": "string"
+    },
+    "SignalMessage": {
+      "additionalProperties": false,
+      "description": "A host-verified observation. This type does not authenticate its source.",
+      "properties": {
+        "correlation_id": {
+          "type": "string"
+        },
+        "decision": {
+          "$ref": "#/$defs/SignalDecision"
+        },
+        "expires_at_unix_ms": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "message_id": {
+          "type": "string"
+        },
+        "outputs": {
+          "additionalProperties": true,
+          "type": "object"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "schema_version": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "source": {
+          "type": "string"
+        },
+        "target": {
+          "$ref": "#/$defs/WaitTarget"
+        }
+      },
+      "required": [
+        "schema_version",
+        "message_id",
+        "correlation_id",
+        "target",
+        "source",
+        "decision",
+        "reason",
+        "outputs",
+        "expires_at_unix_ms"
+      ],
+      "type": "object"
+    },
     "SourceRevision": {
       "additionalProperties": false,
       "properties": {
@@ -807,6 +882,32 @@
       "required": [
         "id",
         "version"
+      ],
+      "type": "object"
+    },
+    "WaitTarget": {
+      "additionalProperties": false,
+      "properties": {
+        "definition_digest": {
+          "type": "string"
+        },
+        "event": {
+          "type": "string"
+        },
+        "input_digest": {
+          "type": "string"
+        },
+        "instance_id": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "instance_id",
+        "definition_digest",
+        "input_digest",
+        "event"
       ],
       "type": "object"
     }

@@ -1083,5 +1083,6 @@ fn declared_unknown_effect_errors_require_reconciliation_before_loop_retry() {
     );
 }
 
+mod inbox;
 mod lifecycle;
 mod postconditions;

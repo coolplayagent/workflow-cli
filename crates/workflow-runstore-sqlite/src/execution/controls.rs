@@ -74,7 +74,8 @@ impl SqliteRunStore {
                 at_unix_ms: now,
             },
         )?;
-        commit_guard(clock, l, now, l.expires_at_unix_ms)?;
+        let commit_at = commit_guard(clock, l, now, l.expires_at_unix_ms)?;
+        check_signal_admission(&committed.snapshot, commit_at)?;
         tx.commit().map_err(storage)?;
         Ok(Some(committed))
     }
@@ -154,7 +155,8 @@ impl SqliteRunStore {
                         },
                     )?;
                     hook("gate_written");
-                    commit_guard(clock, l, now, deadline)?;
+                    let commit_at = commit_guard(clock, l, now, deadline)?;
+                    check_signal_admission(&committed.snapshot, commit_at)?;
                     hook("before_commit");
                     tx.commit().map_err(storage)?;
                     hook("after_commit");
@@ -273,7 +275,10 @@ impl SqliteRunStore {
                 at_unix_ms: now,
             },
         )?;
-        commit_guard(clock, l, now, l.expires_at_unix_ms)?;
+        let commit_at = commit_guard(clock, l, now, l.expires_at_unix_ms)?;
+        if event_revision.is_some() {
+            check_signal_admission(r.engine.snapshot(), commit_at)?;
+        }
         tx.commit().map_err(storage)?;
         Ok(Claimed::Handled {
             command_id: entry.command_id,
