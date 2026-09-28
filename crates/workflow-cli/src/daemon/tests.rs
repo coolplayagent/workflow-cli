@@ -125,13 +125,42 @@ fn daemon_recovers_parallel_loop_and_branch_work_then_wakes_on_callback_and_time
     let c = config(&d);
     let mut store = workflow_runstore_sqlite::SqliteRunStore::create(&c.database).unwrap();
     for id in ["approved", "rejected"] {
-        store.start(&request(id, 30000)).unwrap();
+        store.start(&request(id, 120000)).unwrap();
     }
     let mut child = start(&c);
-    wait(|| {
-        store.waits("approved", 0, 100).unwrap().items.len() == 1
-            && store.waits("rejected", 0, 100).unwrap().items.len() == 1
-    });
+    // This is an observation budget, not a workflow deadline. The two real
+    // builtin runs share CPU with every other Bazel target on small CI hosts.
+    // Fail immediately on exited service or failed business state; retain live
+    // diagnostics if progress stalls instead of reporting only "timed out".
+    let until = Instant::now() + Duration::from_secs(60);
+    loop {
+        assert!(
+            child.0.try_wait().unwrap().is_none(),
+            "daemon exited during setup"
+        );
+        let states: Vec<_> = ["approved", "rejected"]
+            .into_iter()
+            .map(|id| store.get(id).unwrap())
+            .collect();
+        assert!(
+            states.iter().all(|s| s.status == RunStatus::Running),
+            "unexpected initial state: {states:?}"
+        );
+        if states.iter().all(|s| {
+            s.frames
+                .values()
+                .flat_map(|f| f.nodes.values())
+                .any(|n| matches!(n.state, workflow_kernel::NodeState::Waiting { .. }))
+        }) {
+            break;
+        }
+        assert!(
+            Instant::now() < until,
+            "daemon setup stalled: states={states:?}; service={:?}",
+            workflow_daemon_local::inspect(&c.control_directory)
+        );
+        std::thread::sleep(Duration::from_millis(100));
+    }
     assert_eq!(finished(&mut store, "approved"), 2);
     // Create the timer only after the CPU-intensive builtin setup has finished.
     // This seed starts directly at a wait, so observing it does not race task work.
