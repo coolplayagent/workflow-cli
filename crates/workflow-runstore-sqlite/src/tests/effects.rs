@@ -815,6 +815,7 @@ fn loop_instances_use_distinct_effect_keys_and_restart_preserves_each_receipt() 
     let mut scenario = scenario("repair-third-round");
     for d in &mut scenario.bundle.capabilities {
         d.effects = EffectContract::Write {
+            irreversible: false,
             idempotency: Idempotency::Key {
                 scope: "loop-action".into(),
                 retention_ms: 60000,
@@ -831,6 +832,8 @@ fn loop_instances_use_distinct_effect_keys_and_restart_preserves_each_receipt() 
                     .bundle
                     .effect_bindings
                     .push(workflow_effects::EffectBinding {
+                        depends_on: vec![],
+                        compensates: None,
                         workflow: workflow_ir::VersionRef {
                             id: w.id.clone(),
                             version: w.version.clone(),
@@ -1014,6 +1017,7 @@ fn due_workflow_deadlines_block_new_writes_and_expiry_during_intent_commit_rolls
         }
         for d in &mut scenario.bundle.capabilities {
             d.effects = EffectContract::Write {
+                irreversible: false,
                 idempotency: Idempotency::Key {
                     scope: "bounded-loop".into(),
                     retention_ms: 60000,
@@ -1030,6 +1034,8 @@ fn due_workflow_deadlines_block_new_writes_and_expiry_during_intent_commit_rolls
                         .bundle
                         .effect_bindings
                         .push(workflow_effects::EffectBinding {
+                            depends_on: vec![],
+                            compensates: None,
                             workflow: workflow_ir::VersionRef {
                                 id: w.id.clone(),
                                 version: w.version.clone(),

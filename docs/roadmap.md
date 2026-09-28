@@ -32,9 +32,16 @@ flowchart LR
     K --> A
     A --> IR
     A --> V
-    CLI --> RT[workflow-runtime: local read-only driver]
+    CLI --> RT[workflow-runtime: explicit local driver]
     RT --> RS
     RT --> W
+    RT --> E[workflow-effects: deterministic write and compensation ledger]
+    DB --> E
+    K --> E
+    CLI --> EH[workflow-effect-http: gateway adapter]
+    EH --> E
+    E --> W
+    E --> IR
     DB --> RS
     DB --> K
     RS --> K
@@ -75,9 +82,9 @@ completion of the workflow runtime.
 | Issues | Delivery |
 | --- | --- |
 | [R01 #2](https://github.com/coolplayagent/workflow-cli/issues/2) | Delivered: IR, static validation, decisions, examples, optimistic draft/node/edge CRUD, semantic diff, immutable publishing and history. Also delivered: deterministic control flow, capability/subworkflow bundle checks, immutable run binding and checkpoint replay. Also delivered: frozen model policy resolution and local durable dispatch. Next: remaining full-runtime acceptance evidence. |
-| [R02 #4](https://github.com/coolplayagent/workflow-cli/issues/4) | Delivered: capability descriptors/adapter port, protocol 1 request/grant/result validation, standalone and node invocation of read-only compiler capabilities. Also delivered: bounded model/tool loop, protocol 2 policy/record binding, explicit record replay, OpenAI Responses/Anthropic Messages adapters and same-bundle replacement fixtures. Next: live provider evaluation, authenticated remote transport, remaining execution ports and authenticated remote transport. Durable effect dispatch and HTTP gateway query recovery are implemented; ordered compensation remains pending. |
+| [R02 #4](https://github.com/coolplayagent/workflow-cli/issues/4) | Delivered: capability descriptors/adapter port, protocol 1 request/grant/result validation, standalone and node invocation of read-only compiler capabilities. Also delivered: bounded model/tool loop, protocol 2 policy/record binding, explicit record replay, OpenAI Responses/Anthropic Messages adapters and same-bundle replacement fixtures. Next: live provider evaluation, authenticated remote transport and remaining execution ports. Durable effect dispatch, HTTP gateway query recovery and explicit ordered compensation are implemented. |
 | [R15 #3](https://github.com/coolplayagent/workflow-cli/issues/3) | Incremental deterministic invariant checks alongside modules; independent business baseline and fault experiments remain open. |
-| [R04 #5](https://github.com/coolplayagent/workflow-cli/issues/5), [R05 #6](https://github.com/coolplayagent/workflow-cli/issues/6) | Kernel state/event/command contracts and cancellation/reconciliation transitions delivered. Also delivered: RunStore port, SQLite atomic state/event/checkpoint/outbox commits, ordered delivery receipts, persistent CLI, CAS/crash/corruption/full-disk tests. Also delivered: run leases, epoch fencing, durable attempts, atomic result/event/receipt commits, bounded read-only retries and explicit storage migration; artifact evidence is verified before completion and during recovery. Also delivered: durable pause/resume admission, in-flight result draining and original-deadline recovery. Also delivered: frozen write policies, durable effect intent/receipt ledger, provider query recovery, bounded backoff, manual reconciliation and HTTP crash/duplicate tests. Next: explicit ordered compensation, distributed storage/transport, autonomous timers and backup/restore. |
+| [R04 #5](https://github.com/coolplayagent/workflow-cli/issues/5), [R05 #6](https://github.com/coolplayagent/workflow-cli/issues/6) | Kernel state/event/command contracts and cancellation/reconciliation transitions delivered. Also delivered: RunStore port, SQLite atomic state/event/checkpoint/outbox commits, ordered delivery receipts, persistent CLI, CAS/crash/corruption/full-disk tests. Also delivered: run leases, epoch fencing, durable attempts, atomic result/event/receipt commits, bounded read-only retries and explicit storage migration; artifact evidence is verified before completion and during recovery. Also delivered: durable pause/resume admission, in-flight result draining and original-deadline recovery. Also delivered: frozen write policies, durable effect intent/receipt ledger, provider query recovery, bounded backoff, manual reconciliation and HTTP crash/duplicate tests. Also delivered: explicit ordered compensation, original receipt binding, irreversible contracts and durable manual takeover after failed undo. Next: distributed storage/transport, autonomous timers and backup/restore. |
 | [R07 #7](https://github.com/coolplayagent/workflow-cli/issues/7), [R11 #8](https://github.com/coolplayagent/workflow-cli/issues/8) | Delivered: typed artifact manifests, exact producer/input/source provenance, local atomic upload, retention-safe orphan cleanup, lineage/impact, portable local export/import and run evidence verification. Also delivered: attempt-bound workspace contracts, independent committed-file exports, current file observation, typed output capture and explicit merge policy. Next: automatic execution/gate workspace binding, sandboxing, resource/merge execution, authenticated remote storage and controlled invalidation; immutable versions and migrations. |
 | [R03 #10](https://github.com/coolplayagent/workflow-cli/issues/10), [R06 #11](https://github.com/coolplayagent/workflow-cli/issues/11) | Delivered: portable PASS/FAIL/UNKNOWN checker with exact policy/target/tool/input bindings, settled execution provenance and read-only CLI revalidation. Also delivered: frozen mandatory task/terminal postconditions, fenced decision commits and replay, durable UNKNOWN retry and declared bounded repair. Also delivered: durable callback Inbox, early/pause buffering, exact target/input matching and transactional deduplication. Next: effect authorization, current-workspace verification, authenticated approval policy and autonomous wakeups. |
 | [R08 #12](https://github.com/coolplayagent/workflow-cli/issues/12) | Delivered: explicit local read-only drive with real built-in capability results and durable pause/resume controls. Next: broader adapters, autonomous operation and backup/restore. |
@@ -109,9 +116,9 @@ full-disk/read-only failures never emit success. Checkpoint-plus-tail, complete
 history, current state and every outbox intent are compared during recovery.
 
 The [local execution guide](local-execution.md) adds run leases, attempts, epoch
-fencing, bounded read-only retry and atomic result settlement. Effect/artifact
-ledgers, autonomous timers, general retry policy, backup/restore and
-retention are still required before R04 closes. Process
+fencing, bounded read-only retry and atomic result settlement. Managed effect
+ledgers/retries and artifact verification have since been added. Autonomous timers,
+distributed storage, backup/restore and retention are still required before R04 closes. Process
 recovery evidence does not establish whole-disk disaster recovery or RPO/RTO.
 
 
@@ -175,3 +182,9 @@ implements explicit gateway dispatch, with both crates exported as Rust librarie
 for Cargo and Bazel. [The effect contract](durable-effects.md) describes tested
 local behavior and pending R05 acceptance. Tests prove fixture deduplication at
 the sandbox provider boundary; they do not establish global exactly-once effects.
+
+[Ordered compensation](ordered-compensation.md) adds explicit reverse business dependencies,
+original resource receipts, an irreversible flag and manual takeover after failed
+cleanup. Its provider-backed crash tests preserve completed compensations and
+query an interrupted final undo. These local fixtures do not complete cluster or
+authenticated action-policy acceptance.

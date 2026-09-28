@@ -1,5 +1,7 @@
 //! Durable effect protocol and deterministic ledger. No provider or database I/O.
+mod compensation;
 mod ledger;
+pub use compensation::compensation_key;
 mod model;
 pub use ledger::*;
 pub use model::*;
@@ -46,7 +48,7 @@ impl EffectIntent {
             || self.schema_version != 1
             || self.instance_id == 0
             || self.created_at_unix_ms == 0
-            || self.operation_key != operation_key(&self.run_digest, self.instance_id)?
+            || self.operation_key != self.expected_key()?
             || self.input_digest != digest(&self.inputs)?
             || !workflow_validator::identifier(&self.run_id)
             || !workflow_validator::identifier(&self.node_id)
@@ -58,6 +60,23 @@ impl EffectIntent {
             ));
         }
         reference(&self.workflow)?;
+        if self.dependencies.len() > 128
+            || self
+                .dependencies
+                .iter()
+                .any(|k| k == &self.operation_key || k.is_empty())
+            || self
+                .dependencies
+                .iter()
+                .collect::<std::collections::BTreeSet<_>>()
+                .len()
+                != self.dependencies.len()
+            || self.compensates.as_ref().is_some_and(|c| {
+                c.operation_key.is_empty() || c.operation_key != c.receipt.operation_key
+            })
+        {
+            return Err(invalid("invalid effect dependency/compensation references"));
+        }
         workflow_validator::validate_values(&self.capability.inputs, &self.inputs)
             .map_err(|e| invalid(&e.message))?;
         self.created_at_unix_ms
@@ -65,6 +84,14 @@ impl EffectIntent {
             .ok_or_else(|| invalid("effect deadline overflow"))?;
         workflow_worker::to_message(self)?;
         Ok(())
+    }
+    pub fn expected_key(&self) -> Result<String> {
+        match &self.compensates {
+            Some(original) => {
+                compensation_key(&original.operation_key, &self.capability.capability)
+            }
+            None => operation_key(&self.run_digest, self.instance_id),
+        }
     }
     pub fn write_deadline(&self) -> u64 {
         let total = self

@@ -1000,6 +1000,7 @@ fn an_all_join_treats_a_skipped_branch_as_neutral_when_another_succeeds() {
 fn unresolved_effect_query_contracts_reject_the_bundle() {
     let mut b = spec(vec![fixture("parallel-tests")]);
     b.capabilities[0].effects = EffectContract::Write {
+        irreversible: false,
         idempotency: workflow_worker::Idempotency::None,
         query: Some(VersionRef {
             id: "missing-query".into(),
@@ -1027,6 +1028,7 @@ fn declared_unknown_effect_errors_require_reconciliation_before_loop_retry() {
         .find(|c| c.capability.id == "coding.fix")
         .unwrap()
         .effects = EffectContract::Write {
+        irreversible: false,
         idempotency: workflow_worker::Idempotency::None,
         query: None,
         compensation: None,

@@ -273,6 +273,10 @@ impl CompiledBundle {
                 ));
             }
         }
+        crate::effects::validate(&spec, &workflows, &capabilities)?;
+        for b in &mut spec.effect_bindings {
+            b.depends_on.sort();
+        }
         crate::postconditions::validate(&spec, &workflows, &capabilities)?;
         // Remove leaves. Any remaining dependency is a recursion cycle, including loop bodies.
         while !dependencies.is_empty() {

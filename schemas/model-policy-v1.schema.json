@@ -132,6 +132,9 @@
             "idempotency": {
               "$ref": "#/$defs/Idempotency"
             },
+            "irreversible": {
+              "type": "boolean"
+            },
             "query": {
               "anyOf": [
                 {

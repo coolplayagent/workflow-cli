@@ -10,7 +10,7 @@ belong in bindings rather than in the business graph.
 transactional definition registry, checked read-only capability invocation, a
 deterministic workflow kernel, and a transactional RunStore with event history,
 checkpoints, a command outbox and a durable callback Inbox. Managed write tasks use
-a durable effect ledger with stable keys, query recovery and bounded retries. A local driver executes read-only tasks with
+a durable effect ledger with stable keys, query recovery, bounded retries and explicit ordered compensation. A local driver executes read-only tasks with
 durable leases, attempts and fenced result commits. Typed artifact manifests bind
 content and provenance; result acceptance verifies their durable dependencies.
 A portable evidence checker produces PASS/FAIL/UNKNOWN from settled execution records
@@ -21,7 +21,7 @@ contracts and a local Linux/Git adapter allocate independent files, observe chan
 and capture typed outputs with exact provenance. Bounded model policies invoke allowed
 read-only tools through OpenAI Responses or Anthropic Messages host bindings, with
 explicit records checked during settlement and recovery. Authenticated remote
-execution and external effects follow the [issue roadmap](docs/roadmap.md). `validate` is a
+execution and the remaining acceptance work follow the [issue roadmap](docs/roadmap.md). `validate` is a
 static check, not permission to execute a capability or proof of a successful run.
 
 ## Use
@@ -104,6 +104,7 @@ the CLI exits 0.
 - [Local execution, leases, attempts and migration](docs/local-execution.md)
 - [Durable event Inbox and callback matching](docs/event-inbox.md)
 - [Durable write effects and gateway protocol](docs/durable-effects.md)
+- [Ordered compensation and manual takeover](docs/ordered-compensation.md)
 - [Durable run state, events, checkpoints and outbox](docs/run-store.md)
 - [Deterministic kernel, bundle checks and replay](docs/kernel-semantics.md)
 - [IR and decision semantics](docs/definition-semantics.md)

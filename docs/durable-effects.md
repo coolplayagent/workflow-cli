@@ -156,8 +156,8 @@ No effect receipt, approval or authenticated actor may be fabricated.
 
 ## Storage and verified boundaries
 
-Storage schema 8 protects effect journal/policy semantics from older executors.
-`run migrate` explicitly upgrades schemas 1–7 and revalidates existing runs.
+Storage schema 9 protects effect journal/policy and compensation semantics from older executors.
+`run migrate` explicitly upgrades schemas 1–8 and revalidates existing runs.
 Ordinary open refuses a different version. Migration itself is not a backup.
 
 Tests cover an actual loopback HTTP gateway with a separate durable provider
@@ -169,9 +169,8 @@ uncertainty, pause/cancel races, stale commits, late truthful receipts and missi
 journal proofs. Real v7→v8 migration retains paused Inbox state and old readers
 refuse v8. These are bounded fixtures, not a production reliability measurement.
 
-Automatic ordered compensation, authenticated multi-tenant ingress, distributed
-RunStore/transport, mandatory action-specific approval/current-workspace checks,
-remote artifact access and backup/restore remain separate roadmap work. A
-capability compensation reference is not executed by this increment. A missing
-compensation reference means no automatic compensator has been declared; it is
-not proof that a business effect is reversible. R05 remains open.
+For declared reverse dependencies, original receipt binding, irreversible effects
+and manual takeover after a failed undo, see [ordered compensation](ordered-compensation.md).
+Authenticated multi-tenant ingress, distributed RunStore/transport, mandatory
+action-specific approval/current-workspace checks, remote artifact access and
+backup/restore remain separate roadmap work. R05 remains open.

@@ -2,7 +2,7 @@
 name: workflow-run
 description: Create and inspect durable workflow-cli runs, submit trusted events, pause, resume or cancel with an expected revision, inspect the command outbox and verify storage recovery, and drive read-only tasks or managed write effects with durable leases. Use for persistent workflow progress and explicit local execution; no background daemon remains.
 metadata:
-  version: "1.8.0"
+  version: "1.9.0"
 ---
 
 # Workflow run
@@ -14,8 +14,8 @@ source checkout or the Bazel binary; `bazel run` needs absolute file paths. Cons
 Choose the explicit run database from the user's task. `run init <db>` alone
 creates a store. Do not point it at a definition-registry database or silently
 initialize a different database after a query fails. Inspect the error and path.
-For schema 1, 2, 3, 4, 5, 6 or 7, use the explicit `run --artifacts <store> migrate <db>`
-transaction to upgrade to schema 8 when within the task scope. Omit the reader only
+For schema 1–8, use the explicit `run --artifacts <store> migrate <db>`
+transaction to upgrade to schema 9 when within the task scope. Omit the reader only
 when existing runs have no artifact dependencies. A future/foreign schema must not be overwritten to make it open.
 
 Read `workflow schema run-start`, obtain exact definitions and descriptors from
@@ -87,7 +87,7 @@ editing hashes or deleting recovery dependencies.
 
 Report the database, run ID/digest, revision, business status, pending intents and
 verification result. Distinguish committed progress from actual external work.
-Effect execution and backup/restore are not provided by this release.
+Backup/restore remains separate roadmap work.
 
 
 For an explicitly managed worker flow, acquire a lease with `run acquire`, persist
@@ -151,4 +151,13 @@ operations. Submit only actual observations. Manual resolution needs a stable ID
 actor annotation, reason and evidence; confirm non-application only after checking
 the provider and quiescing outstanding writers. This settles the task as cancelled
 and does not grant a new attempt. Do not fabricate receipts or authenticated actor
-claims. Automatic compensation remains separate work.
+claims.
+
+For compensation, read `docs/ordered-compensation.md`. Declare exact compensator
+versions, same-frame effect dependencies and an explicit business branch. The host
+binds the original Applied receipt and enforces reverse dependency order.
+`irreversible: true` prohibits a compensator. Inspect `needs_attention` separately
+from unknown outcomes; neither permits resetting a retry budget. Use actual
+authorized cleanup receipts for manual takeover. `confirmed_not_applied` on a
+compensator does not mark its original undone. A cancelled run alone is not proof
+of rollback; check the original effects and their `compensated_by` links.

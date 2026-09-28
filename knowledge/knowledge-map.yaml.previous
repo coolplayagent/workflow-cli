@@ -1,8 +1,8 @@
 schema_version: 4
 artifact_kind: map
 map_type: knowledge
-map_version: 13
-updated_at: unix:1790562835
+map_version: 14
+updated_at: unix:1790566009
 directories:
 - directory: domain
   purpose: Domain concepts, models, and business rules.
@@ -58,6 +58,7 @@ topics:
   - attempt-workspaces
   - definition-authoring
   - definition-semantics
+  - durable-effects
   - event-inbox
   - kernel-semantics
   - local-execution
@@ -66,8 +67,8 @@ topics:
   - runtime-postconditions
   - worker-protocol
   - workflow-evidence-gates
-  ref: topics/topic-4ca303a3bf7ddf7b-1b135a13b5d9a12edc042db8c0e384e4dddef94ea743847aaf7c1d10ab266d19.yaml
-  digest: 1b135a13b5d9a12edc042db8c0e384e4dddef94ea743847aaf7c1d10ab266d19
+  ref: topics/topic-4ca303a3bf7ddf7b-1285fc7692c9c4b50b2745d93361aa6f0a8a32e9a52fa75e26680be20fe9efde.yaml
+  digest: 1285fc7692c9c4b50b2745d93361aa6f0a8a32e9a52fa75e26680be20fe9efde
 - id: business-knowledge
   title: Business knowledge
   description: Version-controlled business domains, terminology, aliases, semantics, and technical mappings.
@@ -137,3 +138,7 @@ history:
     action: source.add
     actor: cli
     summary: Added source 'event-inbox' to topic 'architecture'.
+  - version: 14
+    action: source.add
+    actor: cli
+    summary: Added source 'durable-effects' to topic 'architecture'.

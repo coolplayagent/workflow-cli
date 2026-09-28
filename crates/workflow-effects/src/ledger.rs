@@ -8,6 +8,9 @@ pub fn decision(s: &EffectState, epoch: u64, now: u64, allow_write: bool) -> Dec
             return Decision::Done;
         }
         EffectStatus::Uncertain { reason } => return Decision::Manual(reason.clone()),
+        EffectStatus::NeedsAttention { code } => {
+            return Decision::Manual(format!("compensation rejected without applying: {code}"));
+        }
         EffectStatus::InFlight => {
             let previous = &s.calls.last().expect("ledger has a prepared call").attempt;
             if previous.epoch == epoch {
@@ -95,6 +98,9 @@ pub fn apply(ledger: &mut BTreeMap<String, EffectState>, r: &EffectRecord) -> Re
                 return Err(invalid("effect request digest mismatch"));
             }
             p.validate()?;
+            if p.kind == CallKind::Write {
+                crate::compensation::validate_admission(ledger, &p.intent)?;
+            }
             if p.epoch != r.epoch
                 || p.issued_at_unix_ms != r.at_unix_ms
                 || p.prepared_revision == 0
@@ -129,6 +135,7 @@ pub fn apply(ledger: &mut BTreeMap<String, EffectState>, r: &EffectRecord) -> Re
                     ));
                 }
                 EffectState {
+                    compensated_by: None,
                     intent: p.intent.clone(),
                     calls: vec![],
                     status: EffectStatus::InFlight,
@@ -210,6 +217,8 @@ pub fn apply(ledger: &mut BTreeMap<String, EffectState>, r: &EffectRecord) -> Re
                         && r.at_unix_ms < s.intent.write_deadline()
                     {
                         retry(&s, CallKind::Write, r.at_unix_ms)?
+                    } else if s.intent.compensates.is_some() {
+                        EffectStatus::NeedsAttention { code: code.clone() }
                     } else {
                         EffectStatus::Failed { code: code.clone() }
                     }
@@ -246,13 +255,34 @@ pub fn apply(ledger: &mut BTreeMap<String, EffectState>, r: &EffectRecord) -> Re
                     | EffectStatus::Failed { .. }
                     | EffectStatus::Cancelled
                     | EffectStatus::Uncertain { .. }
+                    | EffectStatus::NeedsAttention { .. }
             ) {
                 return Err(invalid("effect already settled or stopped"));
             }
-            // A host may stop admission conservatively, but cannot fabricate a
-            // known outcome or erase the outstanding calls.
-            s.status = EffectStatus::Uncertain {
-                reason: reason.clone(),
+            // Keep known failed compensation distinct from unknown effects when
+            // its retry window closes. An unresolved older write still forbids
+            // any inference of absence.
+            let writes: Vec<_> = s
+                .calls
+                .iter()
+                .filter(|c| c.attempt.kind == CallKind::Write)
+                .collect();
+            s.status = if s.intent.compensates.is_some()
+                && !writes.is_empty()
+                && writes
+                    .iter()
+                    .all(|c| matches!(c.observation, Some(Observation::NotApplied { .. })))
+            {
+                let Some(Observation::NotApplied { code, .. }) =
+                    &writes.last().unwrap().observation
+                else {
+                    unreachable!()
+                };
+                EffectStatus::NeedsAttention { code: code.clone() }
+            } else {
+                EffectStatus::Uncertain {
+                    reason: reason.clone(),
+                }
             };
             s
         }
@@ -261,11 +291,13 @@ pub fn apply(ledger: &mut BTreeMap<String, EffectState>, r: &EffectRecord) -> Re
                 .get(key)
                 .ok_or_else(|| invalid("effect missing"))?
                 .clone();
-            if !matches!(s.status, EffectStatus::Uncertain { .. })
-                || !workflow_validator::identifier(&m.resolution_id)
+            if !matches!(
+                s.status,
+                EffectStatus::Uncertain { .. } | EffectStatus::NeedsAttention { .. }
+            ) || !workflow_validator::identifier(&m.resolution_id)
             {
                 return Err(invalid(
-                    "manual resolution needs an uncertain effect and stable resolution ID",
+                    "manual resolution needs an unresolved effect and stable resolution ID",
                 ));
             }
             bounded_text(&m.actor, 128)?;
@@ -283,6 +315,18 @@ pub fn apply(ledger: &mut BTreeMap<String, EffectState>, r: &EffectRecord) -> Re
             s
         }
     };
+    if let (Some(original), EffectStatus::Applied { .. }) = (&next.intent.compensates, &next.status)
+    {
+        let source = ledger
+            .get_mut(&original.operation_key)
+            .ok_or_else(|| invalid("original compensated effect missing"))?;
+        if source.compensated_by.as_ref().is_some_and(|k| k != key) {
+            return Err(invalid(
+                "original effect already has a different completed compensation",
+            ));
+        }
+        source.compensated_by = Some(key.into());
+    }
     ledger.insert(key.into(), next);
     Ok(())
 }

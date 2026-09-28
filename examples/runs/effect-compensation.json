@@ -1,0 +1,625 @@
+{
+  "schema_version": 1,
+  "run_id": "demo-effect-compensation",
+  "bundle": {
+    "schema_version": 1,
+    "root": {
+      "id": "release-with-compensation",
+      "version": "1.0.0"
+    },
+    "workflows": [
+      {
+        "schema_version": 1,
+        "id": "release-with-compensation",
+        "version": "1.0.0",
+        "entry": "environment",
+        "inputs": {
+          "environment_name": {
+            "value_type": {
+              "type": "string"
+            },
+            "required": true
+          },
+          "release_name": {
+            "value_type": {
+              "type": "string"
+            },
+            "required": true
+          }
+        },
+        "nodes": [
+          {
+            "id": "environment",
+            "kind": {
+              "type": "task",
+              "capability": {
+                "id": "sandbox.environment-create",
+                "version": "1.0.0"
+              },
+              "policy": null
+            },
+            "inputs": {
+              "name": {
+                "value_type": {
+                  "type": "string"
+                },
+                "required": true
+              }
+            },
+            "outputs": {
+              "environment_id": {
+                "value_type": {
+                  "type": "string"
+                },
+                "required": true
+              }
+            },
+            "bindings": {
+              "name": {
+                "source": "workflow_input",
+                "field": "environment_name"
+              }
+            }
+          },
+          {
+            "id": "deploy",
+            "kind": {
+              "type": "task",
+              "capability": {
+                "id": "sandbox.deployment-create",
+                "version": "1.0.0"
+              },
+              "policy": null
+            },
+            "inputs": {
+              "environment_id": {
+                "value_type": {
+                  "type": "string"
+                },
+                "required": true
+              },
+              "release_name": {
+                "value_type": {
+                  "type": "string"
+                },
+                "required": true
+              }
+            },
+            "outputs": {
+              "deployment_id": {
+                "value_type": {
+                  "type": "string"
+                },
+                "required": true
+              }
+            },
+            "bindings": {
+              "environment_id": {
+                "source": "node_output",
+                "node": "environment",
+                "field": "environment_id"
+              },
+              "release_name": {
+                "source": "workflow_input",
+                "field": "release_name"
+              }
+            }
+          },
+          {
+            "id": "review",
+            "kind": {
+              "type": "wait",
+              "event": "release-approval",
+              "timeout_ms": 100
+            },
+            "inputs": {
+              "environment_id": {
+                "value_type": {
+                  "type": "string"
+                },
+                "required": true
+              },
+              "deployment_id": {
+                "value_type": {
+                  "type": "string"
+                },
+                "required": true
+              }
+            },
+            "bindings": {
+              "environment_id": {
+                "source": "node_output",
+                "node": "environment",
+                "field": "environment_id"
+              },
+              "deployment_id": {
+                "source": "node_output",
+                "node": "deploy",
+                "field": "deployment_id"
+              }
+            }
+          },
+          {
+            "id": "rollback",
+            "kind": {
+              "type": "join",
+              "mode": "any",
+              "remaining": "await"
+            }
+          },
+          {
+            "id": "undo_deploy",
+            "kind": {
+              "type": "task",
+              "capability": {
+                "id": "sandbox.deployment-delete",
+                "version": "1.0.0"
+              },
+              "policy": null
+            },
+            "inputs": {
+              "deployment_id": {
+                "value_type": {
+                  "type": "string"
+                },
+                "required": true
+              }
+            },
+            "outputs": {},
+            "bindings": {
+              "deployment_id": {
+                "source": "node_output",
+                "node": "deploy",
+                "field": "deployment_id"
+              }
+            }
+          },
+          {
+            "id": "undo_environment",
+            "kind": {
+              "type": "task",
+              "capability": {
+                "id": "sandbox.environment-delete",
+                "version": "1.0.0"
+              },
+              "policy": null
+            },
+            "inputs": {
+              "environment_id": {
+                "value_type": {
+                  "type": "string"
+                },
+                "required": true
+              }
+            },
+            "outputs": {},
+            "bindings": {
+              "environment_id": {
+                "source": "node_output",
+                "node": "environment",
+                "field": "environment_id"
+              }
+            }
+          },
+          {
+            "id": "delivered",
+            "kind": {
+              "type": "terminal",
+              "outcome": "succeeded"
+            },
+            "inputs": {
+              "environment_id": {
+                "value_type": {
+                  "type": "string"
+                },
+                "required": true
+              },
+              "deployment_id": {
+                "value_type": {
+                  "type": "string"
+                },
+                "required": true
+              }
+            },
+            "bindings": {
+              "environment_id": {
+                "source": "node_output",
+                "node": "environment",
+                "field": "environment_id"
+              },
+              "deployment_id": {
+                "source": "node_output",
+                "node": "deploy",
+                "field": "deployment_id"
+              }
+            }
+          },
+          {
+            "id": "rolled_back",
+            "kind": {
+              "type": "terminal",
+              "outcome": "cancelled"
+            }
+          }
+        ],
+        "edges": [
+          {
+            "id": "environment-next-deploy",
+            "from": "environment",
+            "to": "deploy",
+            "route": {
+              "type": "next"
+            }
+          },
+          {
+            "id": "deploy-next-review",
+            "from": "deploy",
+            "to": "review",
+            "route": {
+              "type": "next"
+            }
+          },
+          {
+            "id": "review-accepted-delivered",
+            "from": "review",
+            "to": "delivered",
+            "route": {
+              "type": "accepted"
+            }
+          },
+          {
+            "id": "review-rejected-rollback",
+            "from": "review",
+            "to": "rollback",
+            "route": {
+              "type": "rejected"
+            }
+          },
+          {
+            "id": "review-timed_out-rollback",
+            "from": "review",
+            "to": "rollback",
+            "route": {
+              "type": "timed_out"
+            }
+          },
+          {
+            "id": "rollback-next-undo_deploy",
+            "from": "rollback",
+            "to": "undo_deploy",
+            "route": {
+              "type": "next"
+            }
+          },
+          {
+            "id": "undo_deploy-next-undo_environment",
+            "from": "undo_deploy",
+            "to": "undo_environment",
+            "route": {
+              "type": "next"
+            }
+          },
+          {
+            "id": "undo_environment-next-rolled_back",
+            "from": "undo_environment",
+            "to": "rolled_back",
+            "route": {
+              "type": "next"
+            }
+          }
+        ]
+      }
+    ],
+    "capabilities": [
+      {
+        "schema_version": 1,
+        "capability": {
+          "id": "sandbox.environment-create",
+          "version": "1.0.0"
+        },
+        "inputs": {
+          "name": {
+            "value_type": {
+              "type": "string"
+            },
+            "required": true
+          }
+        },
+        "outputs": {
+          "environment_id": {
+            "value_type": {
+              "type": "string"
+            },
+            "required": true
+          }
+        },
+        "timeout_ms": 10000,
+        "error_codes": {
+          "retry": "transient",
+          "forbidden": "permission_denied"
+        },
+        "effects": {
+          "type": "write",
+          "idempotency": {
+            "mode": "key",
+            "scope": "sandbox.compensation",
+            "retention_ms": 3600000
+          },
+          "query": {
+            "id": "sandbox.operation-query",
+            "version": "1.0.0"
+          },
+          "compensation": {
+            "id": "sandbox.environment-delete",
+            "version": "1.0.0"
+          }
+        },
+        "usage": "Sandbox business operation through the effect protocol; honor intent dependencies, original receipt and stable idempotency key.",
+        "skill": null
+      },
+      {
+        "schema_version": 1,
+        "capability": {
+          "id": "sandbox.deployment-create",
+          "version": "1.0.0"
+        },
+        "inputs": {
+          "environment_id": {
+            "value_type": {
+              "type": "string"
+            },
+            "required": true
+          },
+          "release_name": {
+            "value_type": {
+              "type": "string"
+            },
+            "required": true
+          }
+        },
+        "outputs": {
+          "deployment_id": {
+            "value_type": {
+              "type": "string"
+            },
+            "required": true
+          }
+        },
+        "timeout_ms": 10000,
+        "error_codes": {
+          "retry": "transient",
+          "forbidden": "permission_denied"
+        },
+        "effects": {
+          "type": "write",
+          "idempotency": {
+            "mode": "key",
+            "scope": "sandbox.compensation",
+            "retention_ms": 3600000
+          },
+          "query": {
+            "id": "sandbox.operation-query",
+            "version": "1.0.0"
+          },
+          "compensation": {
+            "id": "sandbox.deployment-delete",
+            "version": "1.0.0"
+          }
+        },
+        "usage": "Sandbox business operation through the effect protocol; honor intent dependencies, original receipt and stable idempotency key.",
+        "skill": null
+      },
+      {
+        "schema_version": 1,
+        "capability": {
+          "id": "sandbox.deployment-delete",
+          "version": "1.0.0"
+        },
+        "inputs": {
+          "deployment_id": {
+            "value_type": {
+              "type": "string"
+            },
+            "required": true
+          }
+        },
+        "outputs": {},
+        "timeout_ms": 10000,
+        "error_codes": {
+          "retry": "transient",
+          "forbidden": "permission_denied"
+        },
+        "effects": {
+          "type": "write",
+          "idempotency": {
+            "mode": "key",
+            "scope": "sandbox.compensation",
+            "retention_ms": 3600000
+          },
+          "query": {
+            "id": "sandbox.operation-query",
+            "version": "1.0.0"
+          },
+          "compensation": null
+        },
+        "usage": "Sandbox business operation through the effect protocol; honor intent dependencies, original receipt and stable idempotency key.",
+        "skill": null
+      },
+      {
+        "schema_version": 1,
+        "capability": {
+          "id": "sandbox.environment-delete",
+          "version": "1.0.0"
+        },
+        "inputs": {
+          "environment_id": {
+            "value_type": {
+              "type": "string"
+            },
+            "required": true
+          }
+        },
+        "outputs": {},
+        "timeout_ms": 10000,
+        "error_codes": {
+          "retry": "transient",
+          "forbidden": "permission_denied"
+        },
+        "effects": {
+          "type": "write",
+          "idempotency": {
+            "mode": "key",
+            "scope": "sandbox.compensation",
+            "retention_ms": 3600000
+          },
+          "query": {
+            "id": "sandbox.operation-query",
+            "version": "1.0.0"
+          },
+          "compensation": null
+        },
+        "usage": "Sandbox business operation through the effect protocol; honor intent dependencies, original receipt and stable idempotency key.",
+        "skill": null
+      },
+      {
+        "schema_version": 1,
+        "capability": {
+          "id": "sandbox.operation-query",
+          "version": "1.0.0"
+        },
+        "inputs": {},
+        "outputs": {},
+        "timeout_ms": 10000,
+        "error_codes": {},
+        "effects": {
+          "type": "read_only"
+        },
+        "usage": "Provider-backed operation lookup through the effect query protocol.",
+        "skill": null
+      }
+    ],
+    "effect_bindings": [
+      {
+        "workflow": {
+          "id": "release-with-compensation",
+          "version": "1.0.0"
+        },
+        "node_id": "environment",
+        "policy": {
+          "identity": {
+            "id": "sandbox-compensation-policy",
+            "version": "1.0.0"
+          },
+          "target": {
+            "id": "sandbox-resources",
+            "version": "1.0.0"
+          },
+          "call_identity": {
+            "id": "sandbox-publisher",
+            "version": "1.0.0"
+          },
+          "retry": {
+            "max_calls": 6,
+            "initial_backoff_ms": 10,
+            "max_backoff_ms": 100,
+            "total_write_ms": 60000
+          }
+        }
+      },
+      {
+        "workflow": {
+          "id": "release-with-compensation",
+          "version": "1.0.0"
+        },
+        "node_id": "deploy",
+        "policy": {
+          "identity": {
+            "id": "sandbox-compensation-policy",
+            "version": "1.0.0"
+          },
+          "target": {
+            "id": "sandbox-resources",
+            "version": "1.0.0"
+          },
+          "call_identity": {
+            "id": "sandbox-publisher",
+            "version": "1.0.0"
+          },
+          "retry": {
+            "max_calls": 6,
+            "initial_backoff_ms": 10,
+            "max_backoff_ms": 100,
+            "total_write_ms": 60000
+          }
+        },
+        "depends_on": [
+          "environment"
+        ]
+      },
+      {
+        "workflow": {
+          "id": "release-with-compensation",
+          "version": "1.0.0"
+        },
+        "node_id": "undo_deploy",
+        "policy": {
+          "identity": {
+            "id": "sandbox-compensation-policy",
+            "version": "1.0.0"
+          },
+          "target": {
+            "id": "sandbox-resources",
+            "version": "1.0.0"
+          },
+          "call_identity": {
+            "id": "sandbox-publisher",
+            "version": "1.0.0"
+          },
+          "retry": {
+            "max_calls": 6,
+            "initial_backoff_ms": 10,
+            "max_backoff_ms": 100,
+            "total_write_ms": 60000
+          }
+        },
+        "compensates": "deploy"
+      },
+      {
+        "workflow": {
+          "id": "release-with-compensation",
+          "version": "1.0.0"
+        },
+        "node_id": "undo_environment",
+        "policy": {
+          "identity": {
+            "id": "sandbox-compensation-policy",
+            "version": "1.0.0"
+          },
+          "target": {
+            "id": "sandbox-resources",
+            "version": "1.0.0"
+          },
+          "call_identity": {
+            "id": "sandbox-publisher",
+            "version": "1.0.0"
+          },
+          "retry": {
+            "max_calls": 6,
+            "initial_backoff_ms": 10,
+            "max_backoff_ms": 100,
+            "total_write_ms": 60000
+          }
+        },
+        "depends_on": [
+          "undo_deploy"
+        ],
+        "compensates": "environment"
+      }
+    ]
+  },
+  "inputs": {
+    "environment_name": "candidate-env",
+    "release_name": "candidate-release"
+  },
+  "started_at_unix_ms": 1000
+}

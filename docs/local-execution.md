@@ -166,7 +166,7 @@ waits, stale resume conflicts and killed pause writers at five commit phases.
 
 ## Explicit storage migration
 
-New databases use storage schema 7. Schema 1, 2, 3, 4, 5 or 6 databases from prior increments
+New databases use storage schema 9. Schema 1–8 databases from prior increments
 must be upgraded explicitly:
 
 ```sh
@@ -179,10 +179,11 @@ updates the version in one transaction. Schema 3 introduced required artifact
 verification; schema 4 adds protected gate transitions and schema 5 protects model
 policy records and immutable policy bindings. Schema 6 protects durable pause/resume
 admission semantics from older executors; schema 7 adds durable Inbox matching.
+Schema 8 adds the managed effect journal; schema 9 protects ordered compensation.
 Evidence-bearing runs need
 `--artifacts` during migration; omit it only for runs without dependencies. Missing
 or corrupt dependencies roll back the version. Corrupt old runs roll back the
-tables and version together. Running migrate again on schema 7
+tables and version together. Running migrate again on schema 9
 is harmless. Ordinary open/create never silently upgrades old data; foreign or
 future schemas are refused. Logical StartRun schema remains v1. Direct worker calls retain protocol 1;
 model-policy calls require protocol 2. See [model execution](model-execution.md).
@@ -199,8 +200,8 @@ event/state/execution writes, and before/after commit. Reopening recovers the en
 transaction and retries only an orphan. Migration preserves v1 runs and rolls back
 on corruption. Cargo and Bazel run the same tests.
 
-R02/R04/R08/R09 remain open for model/remote adapters, write-effect
-ledgers, isolated workspaces, remote artifact adapters, autonomous
+R02/R04/R08/R09 remain open for authenticated remote adapters, automatic
+workspace binding and sandboxing, remote artifact adapters, autonomous
 dispatch, node parallelism, scheduling/fairness,
 cluster ownership, authenticated tenants, retention and backup/restore. These
 Linux process-crash checks establish no production throughput, power-loss, shared
@@ -227,4 +228,5 @@ intents and settle provider observations under the same run lease. CLI hosts use
 `run drive-effects`; ordinary `drive` continues to use read-only workers. See
 [durable effects](durable-effects.md) for stable keys, query recovery, bounded
 retry, manual reconciliation and provider fencing limits. Storage schema 8 adds
-these policies and journal records; explicit migration accepts schemas 1–7.
+these policies and journal records; schema 9 adds [ordered compensation](ordered-compensation.md).
+Explicit migration to schema 9 accepts schemas 1–8.

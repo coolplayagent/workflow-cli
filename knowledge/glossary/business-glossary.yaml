@@ -292,3 +292,12 @@ terms:
       - relation: represented_by
         target_kind: file
         target: crates/workflow-effects/src/model.rs
+  - id: ordered-effect-compensation
+    domain: workflow
+    canonical_name: Ordered effect compensation
+    definition: An explicitly routed write that binds its original Applied receipt and waits for dependent effects to be compensated; a confirmed undo marks the original while failed cleanup remains visible for manual takeover.
+    language: en
+    mappings:
+      - relation: represented_by
+        target_kind: file
+        target: crates/workflow-effects/src/compensation.rs

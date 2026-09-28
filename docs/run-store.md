@@ -5,7 +5,8 @@ it with SQLite and an explicit Bazel library. The kernel still computes control
 flow without I/O; the store commits its state, accepted events and command intents.
 This port supplies persistent progress and an inspectable outbox. The separate
 [local executor](local-execution.md) adds read-only dispatch through durable leases
-and attempts. There is no background daemon or external effect executor.
+and attempts. The [effect host](durable-effects.md) separately executes managed
+writes and [declared compensation](ordered-compensation.md). There is no background daemon.
 
 ## Local CLI example
 
@@ -147,8 +148,8 @@ This is Linux process-crash and SQLite fault evidence on the tested filesystem;
 it does not prove power-loss durability of arbitrary VFS/filesystems, shared
 network-disk multiwriter safety or disk-loss recovery. No RPO/RTO is claimed.
 Run leases, fenced result commits and bounded read-only retries are covered by
-the local execution guide, including durable pause/resume controls. General retry policy, autonomous timer
-service, effect ledger, remote artifact dependencies, backup/restore and retention remain
+the local execution guide, including durable pause/resume controls. Managed write retries and the effect ledger are covered by the effect guide.
+Autonomous timer service, remote artifact dependencies, backup/restore and retention remain
 open in R04/R05/R06/R07/R08. The issue stays open until those acceptance criteria
 have direct evidence.
 

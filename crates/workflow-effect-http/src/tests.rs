@@ -19,6 +19,8 @@ fn fixture() -> EffectAttempt {
     let run_digest = digest(&"http-test").unwrap();
     let inputs = serde_json::from_value(spec["inputs"].clone()).unwrap();
     let intent = EffectIntent {
+        dependencies: vec![],
+        compensates: None,
         schema_version: 1,
         operation_key: operation_key(&run_digest, 1).unwrap(),
         run_id: "http-test".into(),

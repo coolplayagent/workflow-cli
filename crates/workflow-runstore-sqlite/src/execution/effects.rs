@@ -38,7 +38,56 @@ pub(crate) fn managed(r: &Recovered, entry: &OutboxEntry) -> Result<bool> {
     }
     Ok(binding(r, original(r, entry)?)?.is_some())
 }
-fn intent(r: &Recovered, e: &OutboxEntry, now: u64) -> Result<EffectIntent> {
+fn node_key(r: &Recovered, frame_id: u64, node_id: &str) -> Result<String> {
+    let snapshot = r.engine.snapshot();
+    let frame = &snapshot.frames[&frame_id];
+    let binding = r
+        .engine
+        .bundle()
+        .spec()
+        .effect_bindings
+        .iter()
+        .find(|b| b.workflow == frame.workflow && b.node_id == node_id)
+        .ok_or_else(|| corrupt("managed effect node binding missing"))?;
+    if let Some(original) = &binding.compensates {
+        let original_key = operation_key(&snapshot.run_digest, frame.nodes[original].instance_id)?;
+        let workflow = r
+            .engine
+            .bundle()
+            .spec()
+            .workflows
+            .iter()
+            .find(|w| w.id == frame.workflow.id && w.version == frame.workflow.version)
+            .ok_or_else(|| corrupt("effect workflow missing"))?;
+        let node = workflow
+            .nodes
+            .iter()
+            .find(|n| n.id == node_id)
+            .ok_or_else(|| corrupt("effect node missing"))?;
+        let workflow_ir::NodeKind::Task { capability, .. } = &node.kind else {
+            return Err(corrupt("effect task required"));
+        };
+        Ok(workflow_effects::compensation_key(
+            &original_key,
+            capability,
+        )?)
+    } else {
+        Ok(operation_key(
+            &snapshot.run_digest,
+            frame.nodes[node_id].instance_id,
+        )?)
+    }
+}
+fn key_for(r: &Recovered, e: &OutboxEntry) -> Result<String> {
+    let Command::ExecuteTask {
+        frame_id, node_id, ..
+    } = &e.command
+    else {
+        return Err(corrupt("effect original command required"));
+    };
+    node_key(r, *frame_id, node_id)
+}
+fn intent(r: &Recovered, e: &OutboxEntry, now: u64, a: &Authority) -> Result<EffectIntent> {
     let Command::ExecuteTask {
         instance_id,
         frame_id,
@@ -65,9 +114,37 @@ fn intent(r: &Recovered, e: &OutboxEntry, now: u64) -> Result<EffectIntent> {
         .find(|d| &d.capability == capability)
         .ok_or_else(|| corrupt("effect capability missing"))?;
     let s = r.engine.snapshot();
+    let dependencies = binding
+        .depends_on
+        .iter()
+        .map(|n| node_key(r, *frame_id, n))
+        .collect::<Result<Vec<_>>>()?;
+    let compensates = if let Some(original) = &binding.compensates {
+        let key = node_key(r, *frame_id, original)?;
+        let source = a.effects.get(&key).ok_or_else(|| {
+            Error::new(
+                ErrorCode::TransitionRejected,
+                "original effect has no durable receipt",
+            )
+        })?;
+        let EffectStatus::Applied { receipt } = &source.status else {
+            return Err(Error::new(
+                ErrorCode::TransitionRejected,
+                "original effect was not confirmed applied",
+            ));
+        };
+        Some(workflow_effects::CompensationRef {
+            operation_key: key,
+            receipt: receipt.clone(),
+        })
+    } else {
+        None
+    };
     let result = EffectIntent {
+        dependencies,
+        compensates,
         schema_version: 1,
-        operation_key: operation_key(&s.run_digest, *instance_id)?,
+        operation_key: key_for(r, e)?,
         run_id: s.run_id.clone(),
         run_digest: s.run_digest.clone(),
         instance_id: *instance_id,
@@ -136,6 +213,9 @@ fn outcome(status: &EffectStatus) -> Option<TaskResult> {
         }),
         EffectStatus::Failed { code } => Some(TaskResult::Failed { code: code.clone() }),
         EffectStatus::Cancelled => Some(TaskResult::Cancelled),
+        EffectStatus::NeedsAttention { code } => Some(TaskResult::Uncertain {
+            reason: format!("compensation rejected without applying: {code}"),
+        }),
         EffectStatus::Uncertain { reason } => Some(TaskResult::Uncertain {
             reason: reason.clone(),
         }),
@@ -336,12 +416,11 @@ impl SqliteRunStore {
             return Ok(EffectClaim::Idle);
         }
         let original = original(&r, &pending)?.clone();
-        let candidate = intent(&r, &original, now)?;
+        let operation_key = key_for(&r, &original)?;
         let node = state(r.engine.snapshot(), &original)?;
         let allow_write = *node == NodeState::TaskReady;
         if node.terminal()
-            || (*node == NodeState::CancelRequested
-                && !a.effects.contains_key(&candidate.operation_key))
+            || (*node == NodeState::CancelRequested && !a.effects.contains_key(&operation_key))
         {
             let (event_id, event_revision, committed) = if node.terminal() {
                 (None, None, unchanged(&r, false))
@@ -382,7 +461,7 @@ impl SqliteRunStore {
         ) {
             return Err(corrupt("effect node is ineligible"));
         }
-        let existing = a.effects.get(&candidate.operation_key);
+        let existing = a.effects.get(&operation_key);
         let (frozen, number, plan) = if let Some(s) = existing {
             (
                 s.intent.clone(),
@@ -390,7 +469,11 @@ impl SqliteRunStore {
                 decision(s, l.epoch, now, allow_write),
             )
         } else {
-            (candidate, 1, Decision::Call(CallKind::Write))
+            (
+                intent(&r, &original, now, &a)?,
+                1,
+                Decision::Call(CallKind::Write),
+            )
         };
         match plan {
             Decision::Wait(not_before_unix_ms) => Ok(EffectClaim::Waiting { not_before_unix_ms }),
@@ -401,7 +484,10 @@ impl SqliteRunStore {
             Decision::Done => Err(corrupt("settled effect still has an active task")),
             Decision::Manual(reason) => {
                 let key = frozen.operation_key.clone();
-                if !matches!(a.effects[&key].status, EffectStatus::Uncertain { .. }) {
+                if !matches!(
+                    a.effects[&key].status,
+                    EffectStatus::Uncertain { .. } | EffectStatus::NeedsAttention { .. }
+                ) {
                     let record = EffectRecord {
                         epoch: l.epoch,
                         at_unix_ms: now,
@@ -542,7 +628,7 @@ pub(super) fn verify(
         .get(record.change.key())
         .ok_or_else(|| corrupt("effect proof has no ledger state"))?;
     let entry = proof::entry(r, &effect.intent.command_id)?;
-    if intent(r, entry, effect.intent.created_at_unix_ms)? != effect.intent {
+    if intent(r, entry, effect.intent.created_at_unix_ms, a)? != effect.intent {
         return Err(corrupt(
             "effect intent differs from frozen task/target/policy/input",
         ));
@@ -613,9 +699,9 @@ pub(super) fn verify(
 }
 pub(super) fn verify_handled(r: &Recovered, a: &Authority, entry: &OutboxEntry) -> Result<()> {
     let original = original(r, entry)?;
-    let candidate = intent(r, original, 1)?;
+    let operation_key = key_for(r, original)?;
     if !state(r.engine.snapshot(), original)?.terminal()
-        || a.effects.get(&candidate.operation_key).is_some_and(|s| {
+        || a.effects.get(&operation_key).is_some_and(|s| {
             !matches!(
                 s.status,
                 EffectStatus::Applied { .. }

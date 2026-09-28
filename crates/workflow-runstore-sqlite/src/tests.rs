@@ -481,6 +481,10 @@ fn process_worker() {
         execution::process(&mut store, dir, &mode, &slot, &phase);
         return;
     }
+    if mode == "compensation-crash" {
+        compensation::process(&mut store, dir, hook);
+        return;
+    }
     if mode.starts_with("effect-") {
         effects::process(&mut store, dir, &mode, &slot, &phase);
         return;
@@ -723,3 +727,5 @@ mod inbox;
 mod models;
 
 mod effects;
+
+mod compensation;

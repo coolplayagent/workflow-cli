@@ -72,6 +72,22 @@
         ],
         "type": "object"
       },
+      "CompensationRef": {
+        "additionalProperties": false,
+        "properties": {
+          "operation_key": {
+            "type": "string"
+          },
+          "receipt": {
+            "$ref": "#/$defs/EffectReceipt"
+          }
+        },
+        "required": [
+          "operation_key",
+          "receipt"
+        ],
+        "type": "object"
+      },
       "EffectContract": {
         "oneOf": [
           {
@@ -102,6 +118,9 @@
               },
               "idempotency": {
                 "$ref": "#/$defs/Idempotency"
+              },
+              "irreversible": {
+                "type": "boolean"
               },
               "query": {
                 "anyOf": [
@@ -138,10 +157,26 @@
           "command_id": {
             "type": "string"
           },
+          "compensates": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/CompensationRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "created_at_unix_ms": {
             "format": "uint64",
             "minimum": 0,
             "type": "integer"
+          },
+          "dependencies": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
           },
           "input_digest": {
             "type": "string"
@@ -220,6 +255,39 @@
           "target",
           "call_identity",
           "retry"
+        ],
+        "type": "object"
+      },
+      "EffectReceipt": {
+        "additionalProperties": false,
+        "properties": {
+          "intent_digest": {
+            "type": "string"
+          },
+          "operation_key": {
+            "type": "string"
+          },
+          "outputs": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "provider_receipt": {
+            "type": "string"
+          },
+          "resource_id": {
+            "type": "string"
+          },
+          "target": {
+            "$ref": "#/$defs/VersionRef"
+          }
+        },
+        "required": [
+          "operation_key",
+          "intent_digest",
+          "target",
+          "resource_id",
+          "provider_receipt",
+          "outputs"
         ],
         "type": "object"
       },
