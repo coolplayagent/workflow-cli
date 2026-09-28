@@ -1,8 +1,8 @@
 ---
 name: workflow-run
-description: Create and inspect durable workflow-cli runs, submit trusted events, pause, resume or cancel with an expected revision, inspect the command outbox and verify storage recovery, and drive read-only tasks or managed write effects with durable leases. Use for persistent workflow progress and explicit local execution; no background daemon remains.
+description: Create and inspect durable workflow-cli runs, submit trusted events, pause, resume or cancel with an expected revision, inspect the command outbox and verify storage recovery, and drive read-only tasks or managed write effects with durable leases. Use for persistent workflow progress, explicit local execution and optional unattended local daemon operation.
 metadata:
-  version: "1.10.0"
+  version: "1.11.0"
 ---
 
 # Workflow run
@@ -34,7 +34,8 @@ means the storage command succeeded, including a failed/cancelled business run.
 For authorized local read-only execution, use `run drive <db> <id> <owner>
 <max-commands>` with a budget of 1–100. This persists the lease/attempt, invokes
 built-in adapters and commits checked results. Inspect task counts and business
-status. It starts no background daemon: timers advance on the next explicit drive.
+status. A foreground drive starts no background process: timers advance on the next
+explicit drive or through an explicitly started local daemon.
 Use `run execution-history <db> <id> 0 <limit>` for lease, request, result and error
 observations. Do not infer task execution from an outbox command alone.
 `examples/execution` exercises real built-in validation and business decisions.
@@ -191,3 +192,24 @@ fill automatically. Known unresolved effects still block it. Inspect
 `pending_recovery` in the response: an exact duplicate of an older acknowledgement
 does not clear a later restore. This local annotation is not remote authentication.
 Restoring a database does not retire the source service or authorize two active copies.
+
+## Optional unattended local daemon
+
+Read `docs/local-daemon.md` and `schema daemon-config`. Use `daemon serve` with the
+explicit database, artifact path and private control directory; it remains in the
+foreground and can be supervised by the OS. Bindings load once at startup. Local
+builtins need no network, while configured model/effect adapters still may.
+
+Query `daemon status` at the exact control directory. Responsive control alone
+is not evidence of healthy storage: inspect last scan, active run and diagnostics.
+Stopped/unreachable service cannot promise timer advancement. A durable waiting
+run is not proof that a scheduler is running.
+
+`daemon stop` requests a generation-bound drain of one admitted drive. Continue
+checking until status says stopped before relocating files. Do not report the
+stop-request acknowledgement as completed shutdown or kill an unrelated/stale PID.
+Retain the existing run leases, pause state, effect uncertainty and recovery holds.
+
+For a portable export of the selected run database, use `run export <db> <new-directory>`
+with its artifact reader when required. This exports all runs in that database as
+the verified backup format; it does not retire the source or authorize a clone.

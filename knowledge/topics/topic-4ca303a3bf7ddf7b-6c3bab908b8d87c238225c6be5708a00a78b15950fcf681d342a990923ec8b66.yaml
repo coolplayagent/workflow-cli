@@ -44,6 +44,16 @@ sources:
   status: active
   version: 1
   description: Portable workflow definition and decision semantics.
+- id: durable-effects
+  topic: architecture
+  kind: doc
+  uri: docs/durable-effects.md
+  source_scope: docs
+  read_policy: direct
+  write_policy: manual-review
+  status: active
+  version: 1
+  description: Durable write intent and receipt ledger, bounded retries, provider query recovery and gateway contracts
 - id: event-inbox
   topic: architecture
   kind: doc
@@ -64,6 +74,36 @@ sources:
   status: active
   version: 1
   description: Deterministic bundle compilation, workflow transitions, replay and durable host boundary
+- id: local-acceptance
+  topic: architecture
+  kind: doc
+  uri: docs/local-acceptance.md
+  source_scope: docs
+  read_policy: direct
+  write_policy: manual-review
+  status: active
+  version: 1
+  description: R08 local acceptance checkers, isolated offline environment and exact failure boundaries
+- id: local-backup-recovery
+  topic: architecture
+  kind: doc
+  uri: docs/backup-recovery.md
+  source_scope: docs
+  read_policy: direct
+  write_policy: manual-review
+  status: active
+  version: 1
+  description: Verified local SQLite and artifact snapshots, fenced restores and post-backup effect reconciliation
+- id: local-daemon
+  topic: architecture
+  kind: doc
+  uri: docs/local-daemon.md
+  source_scope: docs
+  read_policy: direct
+  write_policy: manual-review
+  status: active
+  version: 1
+  description: Optional local daemon, live IPC status, generation-bound drain, offline scheduling and fault boundaries
 - id: local-execution
   topic: architecture
   kind: doc
@@ -84,6 +124,16 @@ sources:
   status: active
   version: 1
   description: Bounded model policies, provider bindings, explicit tool records and durable replay
+- id: ordered-compensation
+  topic: architecture
+  kind: doc
+  uri: docs/ordered-compensation.md
+  source_scope: docs
+  read_policy: direct
+  write_policy: manual-review
+  status: active
+  version: 1
+  description: Explicit effect dependencies, original receipt binding, reverse compensation order and manual takeover
 - id: run-store
   topic: architecture
   kind: doc
@@ -139,4 +189,9 @@ route:
   - attempt-workspaces
   - model-execution
   - event-inbox
+  - durable-effects
+  - ordered-compensation
+  - local-backup-recovery
+  - local-daemon
+  - local-acceptance
   fallback: bounded-search

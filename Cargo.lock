@@ -1576,6 +1576,7 @@ dependencies = [
  "workflow-artifacts",
  "workflow-backup-local",
  "workflow-builtin-capabilities",
+ "workflow-daemon-local",
  "workflow-definitions",
  "workflow-effect-http",
  "workflow-effects",
@@ -1592,6 +1593,15 @@ dependencies = [
  "workflow-worker",
  "workflow-workspace-local",
  "workflow-workspaces",
+]
+
+[[package]]
+name = "workflow-daemon-local"
+version = "0.1.0"
+dependencies = [
+ "libc",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

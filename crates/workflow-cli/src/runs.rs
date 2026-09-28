@@ -5,7 +5,7 @@ use std::io::{Read, Write};
 use workflow_runstore::*;
 use workflow_runstore_sqlite::SqliteRunStore;
 
-pub const HELP: &str = "DURABLE RUN STORAGE\n  workflow run init <db>\n  workflow run migrate <db>\n  workflow run start <db> <start.json>\n  workflow run drive <db> <run-id> <owner> <max-commands>\n  workflow run drive-models <db> <run-id> <owner> <max-commands> <bindings.json>\n  workflow run drive-effects <db> <run-id> <owner> <max-commands> <bindings.json> [model-bindings.json]\n  workflow run recovery <db> <run-id>\n  workflow run recovery-acknowledge <db> <run-id> <audit.json>\n  workflow run effect-import <db> <lease.json> <import.json>\n  workflow run effects <db> <run-id> <after-instance> <limit>\n  workflow run effect-claim <db> <lease.json>\n  workflow run effect-observe <db> <lease.json> <attempt-id> <observation.json>\n  workflow run effect-resolve <db> <lease.json> <operation-key> <resolution.json>\n  workflow run execution-history <db> <run-id> <after-sequence> <limit>\n  workflow run status <db> <run-id>\n  workflow run receive <db> <signal.json>\n  workflow run inbox <db> <run-id> <after-revision> <limit>\n  workflow run waits <db> <run-id> <after-instance> <limit>\n  workflow run event <db> <event.json>\n  workflow run cancel <db> <run-id> <event-id> <expected-revision> <at-unix-ms>\n  workflow run <pause|resume> <db> <run-id> <event-id> <expected-revision> <at-unix-ms> <reason>\n  workflow run list <db> <after-id|-> <limit>\n  workflow run history <db> <run-id> <after-revision> <limit>\n  workflow run outbox <db> <run-id> <after-sequence> <limit> <all|pending>\n  workflow run acknowledge <db> <receipt.json>\n  workflow run verify <db> <run-id>\n  workflow run acquire <db> <lease-request.json>\n  workflow run renew <db> <lease.json> <ttl-ms>\n  workflow run release <db> <lease.json>\n  workflow run claim <db> <lease.json>\n  workflow run tick-due <db> <lease.json>\n  workflow run retry-gate <db> <run-id> <instance-id> <event-id> <expected-revision>\n  workflow run finish <db> <lease.json> <attempt-id> <result.json>\n  workflow run attempt-failed <db> <lease.json> <attempt-id> <worker-error.json>\n  workflow run --artifacts <store> <operation> ...\n  workflow schema <run-start|run-receipt|run-lease|run-execution-record|run-signal>\n\nOnly init creates a database. Mutations acknowledge after SQLite commit.\ndrive executes local read-only builtins with a durable run lease; max-commands is 1..100.\nPause persists admission state; in-flight results may commit; resume preserves original deadlines.\nTimers advance on drive; there is no background daemon. migrate explicitly upgrades v1..v9 storage to v10.\nRuns with artifact evidence require --artifacts on reads and mutations; this location is not persisted.\nclaim/drive checks frozen postconditions; UNKNOWN waits for explicit retry-gate.\nRaw gate events/manual gate receipts and raw successes in gated runs are refused.\nInbox ingress is trusted host input; inspect entry.status: committed receipt does not mean applied approval.\nOther events and delivery receipts are trusted host facts; delivery is not task success.\nExit 0 means committed/read successfully; inspect result.snapshot.status (mutations) or result.status (status).\nExit 1 means rejected request/transition/storage/execution; 2 means usage/input I/O/output failure.\n";
+pub const HELP: &str = "DURABLE RUN STORAGE\n  workflow run init <db>\n  workflow run migrate <db>\n  workflow run export <db> <new-directory>\n  workflow run start <db> <start.json>\n  workflow run drive <db> <run-id> <owner> <max-commands>\n  workflow run drive-models <db> <run-id> <owner> <max-commands> <bindings.json>\n  workflow run drive-effects <db> <run-id> <owner> <max-commands> <bindings.json> [model-bindings.json]\n  workflow run recovery <db> <run-id>\n  workflow run recovery-acknowledge <db> <run-id> <audit.json>\n  workflow run effect-import <db> <lease.json> <import.json>\n  workflow run effects <db> <run-id> <after-instance> <limit>\n  workflow run effect-claim <db> <lease.json>\n  workflow run effect-observe <db> <lease.json> <attempt-id> <observation.json>\n  workflow run effect-resolve <db> <lease.json> <operation-key> <resolution.json>\n  workflow run execution-history <db> <run-id> <after-sequence> <limit>\n  workflow run status <db> <run-id>\n  workflow run receive <db> <signal.json>\n  workflow run inbox <db> <run-id> <after-revision> <limit>\n  workflow run waits <db> <run-id> <after-instance> <limit>\n  workflow run event <db> <event.json>\n  workflow run cancel <db> <run-id> <event-id> <expected-revision> <at-unix-ms>\n  workflow run <pause|resume> <db> <run-id> <event-id> <expected-revision> <at-unix-ms> <reason>\n  workflow run list <db> <after-id|-> <limit>\n  workflow run history <db> <run-id> <after-revision> <limit>\n  workflow run outbox <db> <run-id> <after-sequence> <limit> <all|pending>\n  workflow run acknowledge <db> <receipt.json>\n  workflow run verify <db> <run-id>\n  workflow run acquire <db> <lease-request.json>\n  workflow run renew <db> <lease.json> <ttl-ms>\n  workflow run release <db> <lease.json>\n  workflow run claim <db> <lease.json>\n  workflow run tick-due <db> <lease.json>\n  workflow run retry-gate <db> <run-id> <instance-id> <event-id> <expected-revision>\n  workflow run finish <db> <lease.json> <attempt-id> <result.json>\n  workflow run attempt-failed <db> <lease.json> <attempt-id> <worker-error.json>\n  workflow run --artifacts <store> <operation> ...\n  workflow schema <run-start|run-receipt|run-lease|run-execution-record|run-signal>\n\nOnly init creates a database. Mutations acknowledge after SQLite commit.\ndrive executes local read-only builtins with a durable run lease; max-commands is 1..100.\nPause persists admission state; in-flight results may commit; resume preserves original deadlines.\nTimers advance on drive or optional daemon serve; use daemon status to query live scheduling. migrate explicitly upgrades v1..v9 storage to v10.\nRuns with artifact evidence require --artifacts on reads and mutations; this location is not persisted.\nclaim/drive checks frozen postconditions; UNKNOWN waits for explicit retry-gate.\nRaw gate events/manual gate receipts and raw successes in gated runs are refused.\nInbox ingress is trusted host input; inspect entry.status: committed receipt does not mean applied approval.\nOther events and delivery receipts are trusted host facts; delivery is not task success.\nExit 0 means committed/read successfully; inspect result.snapshot.status (mutations) or result.status (status).\nExit 1 means rejected request/transition/storage/execution; 2 means usage/input I/O/output failure.\n";
 fn read<T: DeserializeOwned>(p: &str) -> Result<T> {
     let mut bytes = vec![];
     std::fs::File::open(p)
@@ -23,7 +23,7 @@ fn number<T: std::str::FromStr>(s: &str) -> Result<T> {
     s.parse()
         .map_err(|_| Error::new(ErrorCode::InvalidRequest, "unsigned integer required"))
 }
-fn open(db: &str, artifacts: Option<&str>) -> Result<SqliteRunStore> {
+pub(crate) fn open(db: &str, artifacts: Option<&str>) -> Result<SqliteRunStore> {
     let store = SqliteRunStore::open(db)?;
     Ok(if let Some(root) = artifacts {
         store.with_artifacts(Box::new(workflow_artifact_local::LocalArtifactStore::open(
@@ -57,6 +57,19 @@ fn execute(args: &[&str], artifacts: Option<&str>) -> Result<Value> {
         ["run", "init", db] => {
             SqliteRunStore::create(db)?;
             Ok(json!({"initialized":true}))
+        }
+        ["run", "export", db, destination] => {
+            let index = workflow_backup_local::create(
+                &workflow_backup_local::BackupSources {
+                    runs: db.into(),
+                    artifacts: artifacts.map(Into::into),
+                    registry: None,
+                },
+                destination,
+                &workflow_worker::SystemClock,
+            )
+            .map_err(|e| Error::new(ErrorCode::Storage, e.to_string()))?;
+            Ok(crate::backups::summary(&index))
         }
         ["run", "migrate", db] => {
             let reader = artifacts
@@ -281,7 +294,7 @@ fn execute(args: &[&str], artifacts: Option<&str>) -> Result<Value> {
         _ => Err(Error::new(ErrorCode::InvalidRequest, "usage")),
     }
 }
-fn drive(
+pub(crate) fn drive(
     db: &str,
     id: &str,
     owner: &str,

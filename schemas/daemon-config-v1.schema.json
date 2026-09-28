@@ -1,0 +1,57 @@
+{
+  "ok": true,
+  "result": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "additionalProperties": false,
+    "properties": {
+      "artifacts": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "control_directory": {
+        "type": "string"
+      },
+      "database": {
+        "type": "string"
+      },
+      "effect_bindings": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "error_backoff_ms": {
+        "format": "uint64",
+        "minimum": 0,
+        "type": "integer"
+      },
+      "model_bindings": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "poll_interval_ms": {
+        "format": "uint64",
+        "minimum": 0,
+        "type": "integer"
+      },
+      "schema_version": {
+        "format": "uint32",
+        "minimum": 0,
+        "type": "integer"
+      }
+    },
+    "required": [
+      "schema_version",
+      "database",
+      "control_directory",
+      "poll_interval_ms",
+      "error_backoff_ms"
+    ],
+    "title": "Config",
+    "type": "object"
+  }
+}

@@ -74,6 +74,26 @@ sources:
   status: active
   version: 1
   description: Deterministic bundle compilation, workflow transitions, replay and durable host boundary
+- id: local-backup-recovery
+  topic: architecture
+  kind: doc
+  uri: docs/backup-recovery.md
+  source_scope: docs
+  read_policy: direct
+  write_policy: manual-review
+  status: active
+  version: 1
+  description: Verified local SQLite and artifact snapshots, fenced restores and post-backup effect reconciliation
+- id: local-daemon
+  topic: architecture
+  kind: doc
+  uri: docs/local-daemon.md
+  source_scope: docs
+  read_policy: direct
+  write_policy: manual-review
+  status: active
+  version: 1
+  description: Optional local daemon, live IPC status, generation-bound drain, offline scheduling and fault boundaries
 - id: local-execution
   topic: architecture
   kind: doc
@@ -94,6 +114,16 @@ sources:
   status: active
   version: 1
   description: Bounded model policies, provider bindings, explicit tool records and durable replay
+- id: ordered-compensation
+  topic: architecture
+  kind: doc
+  uri: docs/ordered-compensation.md
+  source_scope: docs
+  read_policy: direct
+  write_policy: manual-review
+  status: active
+  version: 1
+  description: Explicit effect dependencies, original receipt binding, reverse compensation order and manual takeover
 - id: run-store
   topic: architecture
   kind: doc
@@ -150,4 +180,7 @@ route:
   - model-execution
   - event-inbox
   - durable-effects
+  - ordered-compensation
+  - local-backup-recovery
+  - local-daemon
   fallback: bounded-search

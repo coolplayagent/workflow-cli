@@ -104,6 +104,8 @@ the CLI exits 0.
 - [Attempt workspaces, source objects and captured outputs](docs/workspaces.md)
 - [Mandatory task/terminal gates and bounded repair](docs/runtime-postconditions.md)
 - [Local execution, leases, attempts and migration](docs/local-execution.md)
+- [Local daemon, live status, stopping and offline example](docs/local-daemon.md)
+- [R08 local acceptance and supported environments](docs/local-acceptance.md)
 - [Durable event Inbox and callback matching](docs/event-inbox.md)
 - [Durable write effects and gateway protocol](docs/durable-effects.md)
 - [Ordered compensation and manual takeover](docs/ordered-compensation.md)

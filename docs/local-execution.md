@@ -37,7 +37,8 @@ returns the snapshot, task/command/timer counts and stop reason `idle` or `budge
 The CLI creates a fresh acquisition ID and uses a 120-second lease. `idle` can
 mean a waiting run; it does not mean success. No background process remains.
 A subsequent explicit drive advances due wait/loop deadlines and resumes pending
-work. Polling is a host responsibility. `run execution-history` uses an exclusive
+work. For unattended polling and live service status, use the optional
+[local daemon](local-daemon.md). `run execution-history` uses an exclusive
 sequence cursor starting at 0, page size 1–100, and `next_cursor`.
 
 ## Ownership and invocation sequence
@@ -203,8 +204,7 @@ transaction and retries only an orphan. Migration preserves v1 runs and rolls ba
 on corruption. Cargo and Bazel run the same tests.
 
 R02/R04/R08/R09 remain open for authenticated remote adapters, automatic
-workspace binding and sandboxing, remote artifact adapters, autonomous
-dispatch, node parallelism, scheduling/fairness,
+workspace binding and sandboxing, remote artifact adapters, node parallelism, scheduling/fairness,
 cluster ownership, authenticated tenants and archive retention policy. These
 Linux process-crash checks establish no production throughput, power-loss, shared
 network filesystem, business-benefit or RPO/RTO claim.

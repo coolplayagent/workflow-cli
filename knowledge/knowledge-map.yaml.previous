@@ -1,8 +1,8 @@
 schema_version: 4
 artifact_kind: map
 map_type: knowledge
-map_version: 15
-updated_at: unix:1790569201
+map_version: 17
+updated_at: unix:1790577178
 directories:
 - directory: domain
   purpose: Domain concepts, models, and business rules.
@@ -61,6 +61,8 @@ topics:
   - durable-effects
   - event-inbox
   - kernel-semantics
+  - local-backup-recovery
+  - local-daemon
   - local-execution
   - model-execution
   - ordered-compensation
@@ -68,8 +70,8 @@ topics:
   - runtime-postconditions
   - worker-protocol
   - workflow-evidence-gates
-  ref: topics/topic-4ca303a3bf7ddf7b-f75157015f8d33167f8b3bfb81d911cf8346bfe8dcbc62eef33eedf02468c50c.yaml
-  digest: f75157015f8d33167f8b3bfb81d911cf8346bfe8dcbc62eef33eedf02468c50c
+  ref: topics/topic-4ca303a3bf7ddf7b-e06036ea1c1fa8b8fb1298e65c098044dc3259b320c739d111c0e684114fd1aa.yaml
+  digest: e06036ea1c1fa8b8fb1298e65c098044dc3259b320c739d111c0e684114fd1aa
 - id: business-knowledge
   title: Business knowledge
   description: Version-controlled business domains, terminology, aliases, semantics, and technical mappings.
@@ -85,12 +87,8 @@ topics:
   ref: topics/topic-247e2a0d6f43d185-fc2d5534a38a5ddc28536afa855ff77db8e2941ccaccbfa79f948ddcfaec2f7d.yaml
   digest: fc2d5534a38a5ddc28536afa855ff77db8e2941ccaccbfa79f948ddcfaec2f7d
 history:
-  omitted_through: 0
+  omitted_through: 1
   recent:
-  - version: 1
-    action: init
-    actor: cli
-    summary: Created knowledge map with repository software-model route.
   - version: 2
     action: source.add
     actor: cli
@@ -147,3 +145,11 @@ history:
     action: source.add
     actor: cli
     summary: Added source 'ordered-compensation' to topic 'architecture'.
+  - version: 16
+    action: source.add
+    actor: cli
+    summary: Added source 'local-backup-recovery' to topic 'architecture'.
+  - version: 17
+    action: source.add
+    actor: cli
+    summary: Added source 'local-daemon' to topic 'architecture'.
