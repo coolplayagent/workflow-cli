@@ -25,3 +25,20 @@ jobs:
           repository-cache: true
       - run: bazel test //...
       - run: bazel run //:workflow -- validate "$PWD/examples/review.yaml"
+  postgres:
+    runs-on: ubuntu-24.04
+    services:
+      postgres:
+        image: public.ecr.aws/docker/library/postgres@sha256:d74eeac9a635390a49bc21bd49fccd973de707e2a53a76ac49b552b8712ec46f
+        env:
+          POSTGRES_PASSWORD: workflow-isolated-test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready --health-interval 5s
+          --health-timeout 5s --health-retries 10
+    env:
+      WORKFLOW_TEST_POSTGRES: host=127.0.0.1 port=5432 user=postgres password=workflow-isolated-test
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - run: cargo test -p workflow-runstore-postgres --locked -- --ignored --nocapture

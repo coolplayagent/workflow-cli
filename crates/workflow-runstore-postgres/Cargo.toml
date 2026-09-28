@@ -1,0 +1,21 @@
+[package]
+name = "workflow-runstore-postgres"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+postgres = "0.19.14"
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+workflow-runstore = { path = "../workflow-runstore" }
+workflow-runstore-sqlite = { path = "../workflow-runstore-sqlite" }
+workflow-worker = { path = "../workflow-worker" }
+workflow-kernel = { path = "../workflow-kernel" }
+workflow-artifacts = { path = "../workflow-artifacts" }
+workflow-effects = { path = "../workflow-effects" }
+
+[dev-dependencies]
+workflow-builtin-capabilities = { path = "../workflow-builtin-capabilities" }
+workflow-runtime = { path = "../workflow-runtime" }

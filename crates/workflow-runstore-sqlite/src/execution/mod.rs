@@ -161,7 +161,13 @@ fn receipt(l: &Lease, e: &OutboxEntry) -> DeliveryReceipt {
     }
 }
 
-fn commit_guard(clock: &dyn Clock, lease: &Lease, admitted: u64, deadline: u64) -> Result<u64> {
+fn commit_guard(
+    admission: &std::cell::Cell<Option<AdmissionWindow>>,
+    clock: &dyn Clock,
+    lease: &Lease,
+    admitted: u64,
+    deadline: u64,
+) -> Result<u64> {
     let now = clock.now_unix_ms()?;
     if now < admitted || now >= lease.expires_at_unix_ms || now >= deadline {
         return Err(Error::new(
@@ -169,5 +175,6 @@ fn commit_guard(clock: &dyn Clock, lease: &Lease, admitted: u64, deadline: u64) 
             "clock reversed or lease/request expired before commit admission",
         ));
     }
+    image::record_admission(admission, now, deadline.min(lease.expires_at_unix_ms));
     Ok(now)
 }

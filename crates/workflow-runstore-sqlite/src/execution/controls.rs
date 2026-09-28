@@ -74,7 +74,7 @@ impl SqliteRunStore {
                 at_unix_ms: now,
             },
         )?;
-        let commit_at = commit_guard(clock, l, now, l.expires_at_unix_ms)?;
+        let commit_at = commit_guard(&self.admission, clock, l, now, l.expires_at_unix_ms)?;
         check_signal_admission(&committed.snapshot, commit_at)?;
         tx.commit().map_err(storage)?;
         Ok(Some(committed))
@@ -161,7 +161,7 @@ impl SqliteRunStore {
                         },
                     )?;
                     hook("gate_written");
-                    let commit_at = commit_guard(clock, l, now, deadline)?;
+                    let commit_at = commit_guard(&self.admission, clock, l, now, deadline)?;
                     check_signal_admission(&committed.snapshot, commit_at)?;
                     hook("before_commit");
                     tx.commit().map_err(storage)?;
@@ -206,7 +206,13 @@ impl SqliteRunStore {
                                 attempt: Box::new(attempt.clone()),
                             },
                         )?;
-                        commit_guard(clock, l, now, attempt.request.deadline_unix_ms)?;
+                        commit_guard(
+                            &self.admission,
+                            clock,
+                            l,
+                            now,
+                            attempt.request.deadline_unix_ms,
+                        )?;
                         tx.commit().map_err(storage)?;
                         return Ok(Claimed::Task {
                             attempt: Box::new(attempt),
@@ -281,7 +287,7 @@ impl SqliteRunStore {
                 at_unix_ms: now,
             },
         )?;
-        let commit_at = commit_guard(clock, l, now, l.expires_at_unix_ms)?;
+        let commit_at = commit_guard(&self.admission, clock, l, now, l.expires_at_unix_ms)?;
         if event_revision.is_some() {
             check_signal_admission(r.engine.snapshot(), commit_at)?;
         }

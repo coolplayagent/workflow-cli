@@ -1,8 +1,8 @@
 schema_version: 4
 artifact_kind: map
 map_type: knowledge
-map_version: 18
-updated_at: unix:1790577367
+map_version: 19
+updated_at: unix:1790585432
 directories:
 - directory: domain
   purpose: Domain concepts, models, and business rules.
@@ -67,12 +67,13 @@ topics:
   - local-execution
   - model-execution
   - ordered-compensation
+  - postgres-authority
   - run-store
   - runtime-postconditions
   - worker-protocol
   - workflow-evidence-gates
-  ref: topics/topic-4ca303a3bf7ddf7b-6c3bab908b8d87c238225c6be5708a00a78b15950fcf681d342a990923ec8b66.yaml
-  digest: 6c3bab908b8d87c238225c6be5708a00a78b15950fcf681d342a990923ec8b66
+  ref: topics/topic-4ca303a3bf7ddf7b-50ee4c04b65d2d7c6756a5779583263f2fd3cf388fe76a21352dab7af34b0cdf.yaml
+  digest: 50ee4c04b65d2d7c6756a5779583263f2fd3cf388fe76a21352dab7af34b0cdf
 - id: business-knowledge
   title: Business knowledge
   description: Version-controlled business domains, terminology, aliases, semantics, and technical mappings.
@@ -88,12 +89,8 @@ topics:
   ref: topics/topic-247e2a0d6f43d185-fc2d5534a38a5ddc28536afa855ff77db8e2941ccaccbfa79f948ddcfaec2f7d.yaml
   digest: fc2d5534a38a5ddc28536afa855ff77db8e2941ccaccbfa79f948ddcfaec2f7d
 history:
-  omitted_through: 2
+  omitted_through: 3
   recent:
-  - version: 3
-    action: source.add
-    actor: cli
-    summary: Added source 'definition-authoring' to topic 'architecture'.
   - version: 4
     action: source.add
     actor: cli
@@ -154,3 +151,7 @@ history:
     action: source.add
     actor: cli
     summary: Added source 'local-acceptance' to topic 'architecture'.
+  - version: 19
+    action: source.add
+    actor: cli
+    summary: Added source 'postgres-authority' to topic 'architecture'.

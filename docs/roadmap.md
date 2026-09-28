@@ -49,6 +49,8 @@ flowchart LR
     EH --> E
     E --> W
     E --> IR
+    PG[workflow-runstore-postgres: shared transactional authority] --> DB
+    PG --> RS
     DB --> RS
     DB --> K
     RS --> K
@@ -95,7 +97,7 @@ completion of the workflow runtime.
 | [R07 #7](https://github.com/coolplayagent/workflow-cli/issues/7), [R11 #8](https://github.com/coolplayagent/workflow-cli/issues/8) | Delivered: typed artifact manifests, exact producer/input/source provenance, local atomic upload, retention-safe orphan cleanup, lineage/impact, portable local export/import and run evidence verification. Also delivered: attempt-bound workspace contracts, independent committed-file exports, current file observation, typed output capture and explicit merge policy. Next: automatic execution/gate workspace binding, sandboxing, resource/merge execution, authenticated remote storage and controlled invalidation; immutable versions and migrations. |
 | [R03 #10](https://github.com/coolplayagent/workflow-cli/issues/10), [R06 #11](https://github.com/coolplayagent/workflow-cli/issues/11) | Delivered: portable PASS/FAIL/UNKNOWN checker with exact policy/target/tool/input bindings, settled execution provenance and read-only CLI revalidation. Also delivered: frozen mandatory task/terminal postconditions, fenced decision commits and replay, durable UNKNOWN retry and declared bounded repair. Also delivered: durable callback Inbox, early/pause buffering, exact target/input matching and transactional deduplication. Next: effect authorization, current-workspace verification, authenticated approval policy and autonomous wakeups. |
 | [R08 #12](https://github.com/coolplayagent/workflow-cli/issues/12) | Delivered: explicit local read-only drive with real built-in capability results and durable pause/resume controls. Also delivered: verified local backup/restore, moved paths, old-lease fencing and explicit external-effect recovery holds. Also delivered: optional queryable/stoppable local daemon, restart/suspend recovery, concurrent CLI ownership tests and a full offline branch/loop/parallel/approval example. Independent environment verification is retained with the daemon MR. |
-| [R09 #13](https://github.com/coolplayagent/workflow-cli/issues/13), [R14 #9](https://github.com/coolplayagent/workflow-cli/issues/9) | Local run ownership and epoch fencing foundation delivered; cluster leasing, fairness, tenant identity and secrets remain open. |
+| [R09 #13](https://github.com/coolplayagent/workflow-cli/issues/13), [R14 #9](https://github.com/coolplayagent/workflow-cli/issues/9) | Local run ownership and epoch fencing foundation delivered. Also delivered: PostgreSQL run authority with bounded data-only reducers, primary database time, atomic immutable bindings, independent-client lease races and actual database failure tests. Remote scheduling, fairness, authenticated tenant identity and secrets remain open. |
 | [R10 #15](https://github.com/coolplayagent/workflow-cli/issues/15), [R12 #16](https://github.com/coolplayagent/workflow-cli/issues/16), [R13 #14](https://github.com/coolplayagent/workflow-cli/issues/14) | Hybrid deployment, cost/observability and composable SDLC templates. |
 | [R16 #17](https://github.com/coolplayagent/workflow-cli/issues/17) | Offline candidate learning with held-out evaluation and mandatory-gate preservation. |
 

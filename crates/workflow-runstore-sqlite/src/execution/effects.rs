@@ -379,7 +379,7 @@ impl EffectStore for SqliteRunStore {
             },
         };
         let committed = commit_record(&tx, &mut r, &mut a, l, record, &|_| {})?;
-        let end = commit_guard(clock, l, now, l.expires_at_unix_ms)?;
+        let end = commit_guard(&self.admission, clock, l, now, l.expires_at_unix_ms)?;
         check_signal_admission(&committed.snapshot, end)?;
         tx.commit().map_err(storage)?;
         Ok(committed)
@@ -463,7 +463,7 @@ impl SqliteRunStore {
                     at_unix_ms: now,
                 },
             )?;
-            let end = commit_guard(clock, l, now, l.expires_at_unix_ms)?;
+            let end = commit_guard(&self.admission, clock, l, now, l.expires_at_unix_ms)?;
             if event_revision.is_some() {
                 check_signal_admission(&committed.snapshot, end)?;
             }
@@ -518,7 +518,7 @@ impl SqliteRunStore {
                         },
                     };
                     let committed = commit_record(&tx, &mut r, &mut a, l, record, &hook)?;
-                    let end = commit_guard(clock, l, now, l.expires_at_unix_ms)?;
+                    let end = commit_guard(&self.admission, clock, l, now, l.expires_at_unix_ms)?;
                     check_signal_admission(&committed.snapshot, end)?;
                 }
                 tx.commit().map_err(storage)?;
@@ -570,7 +570,7 @@ impl SqliteRunStore {
                     },
                 )?;
                 hook("intent_written");
-                commit_guard(clock, l, now, deadline)?;
+                commit_guard(&self.admission, clock, l, now, deadline)?;
                 hook("before_commit");
                 tx.commit().map_err(storage)?;
                 hook("after_commit");
@@ -627,7 +627,7 @@ impl SqliteRunStore {
             },
         };
         let committed = commit_record(&tx, &mut r, &mut a, l, record, &hook)?;
-        let end = commit_guard(clock, l, now, l.expires_at_unix_ms)?;
+        let end = commit_guard(&self.admission, clock, l, now, l.expires_at_unix_ms)?;
         if committed.transition.revision > r.events.last().map_or(1, |e| e.revision) {
             check_signal_admission(&committed.snapshot, end)?;
         }
@@ -868,7 +868,7 @@ impl SqliteRunStore {
             },
             &|_| {},
         )?;
-        let end = commit_guard(clock, l, now, l.expires_at_unix_ms)?;
+        let end = commit_guard(&self.admission, clock, l, now, l.expires_at_unix_ms)?;
         check_signal_admission(&committed.snapshot, end)?;
         tx.commit().map_err(storage)?;
         Ok(committed)
