@@ -18,6 +18,7 @@ rust_test(
     size = "small",
     crate = ":workflow_cli",
     data = ["//:fixtures"],
+    deps = all_crate_deps(normal_dev = True),
 )
 
 rust_binary(

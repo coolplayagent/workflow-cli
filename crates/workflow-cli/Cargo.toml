@@ -37,3 +37,6 @@ workflow-workspace-local = { path = "../workflow-workspace-local" }
 [[bin]]
 name = "workflow"
 path = "src/main.rs"
+
+[dev-dependencies]
+libc = "0.2"

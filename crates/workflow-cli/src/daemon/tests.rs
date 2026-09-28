@@ -189,6 +189,30 @@ fn daemon_recovers_parallel_loop_and_branch_work_then_wakes_on_callback_and_time
             .unwrap()
             .success()
     );
+    // Sending SIGSTOP only queues it. Wait for the kernel's completed group-stop
+    // notification before requiring every daemon thread to stop serving IPC.
+    wait(|| {
+        let mut status = 0;
+        // This PID is our live child, and status points to a valid writable int.
+        let observed = unsafe {
+            libc::waitpid(
+                child.0.id() as libc::pid_t,
+                &mut status,
+                libc::WUNTRACED | libc::WNOHANG,
+            )
+        };
+        if observed == -1 {
+            let error = std::io::Error::last_os_error();
+            assert_eq!(error.kind(), std::io::ErrorKind::Interrupted, "{error}");
+            return false;
+        }
+        if observed == 0 {
+            return false;
+        }
+        assert!(libc::WIFSTOPPED(status), "child exited before group stop");
+        assert_eq!(libc::WSTOPSIG(status), libc::SIGSTOP);
+        true
+    });
     assert_eq!(
         workflow_daemon_local::inspect(&c.control_directory)
             .unwrap()
