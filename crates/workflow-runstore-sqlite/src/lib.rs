@@ -2,6 +2,7 @@
 mod bindings;
 mod db;
 mod execution;
+mod inbox;
 mod reads;
 mod recovery;
 mod writes;
@@ -118,6 +119,7 @@ impl RunStore for SqliteRunStore {
                 checkpoint_revision: r.checkpoint_revision,
                 events_checked: r.events.len() as u64,
                 commands_checked: r.outbox.len() as u64,
+                inbox_messages_checked: r.engine.snapshot().inbox.len() as u64,
                 state_digest: digest(r.engine.snapshot())?,
             })
         })

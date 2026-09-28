@@ -1,10 +1,12 @@
 //! Deterministic workflow transitions. No clock reads, I/O, model calls or task execution.
 mod bundle;
 mod engine;
+mod inbox;
 mod model;
 mod postconditions;
 pub use bundle::*;
 pub use engine::Engine;
+pub use inbox::*;
 pub use model::*;
 pub use postconditions::*;
 use serde::{Deserialize, Serialize};
@@ -64,10 +66,11 @@ pub fn schema(kind: &str) -> Result<String> {
         "event" => schemars::schema_for!(Event),
         "scenario" => schemars::schema_for!(Scenario),
         "checkpoint" => schemars::schema_for!(Checkpoint),
+        "signal" => schemars::schema_for!(SignalMessage),
         _ => {
             return Err(Error::new(
                 ErrorCode::InvalidRequest,
-                "kernel schema must be bundle, event, scenario or checkpoint",
+                "kernel schema must be bundle, event, scenario, checkpoint or signal",
             ));
         }
     };

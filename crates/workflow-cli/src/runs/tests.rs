@@ -179,7 +179,7 @@ fn cancellation_is_durable_idempotent_and_does_not_claim_task_completion() {
 }
 #[test]
 fn generated_run_schemas_and_shipped_requests_match_the_contract() {
-    for kind in ["start", "receipt", "lease", "execution-record"] {
+    for kind in ["start", "receipt", "lease", "execution-record", "signal"] {
         let (code, actual) = invoke(&["schema", &format!("run-{kind}")]);
         assert_eq!(code, 0);
         let expected: Value = serde_json::from_slice(
@@ -202,6 +202,52 @@ fn generated_run_schemas_and_shipped_requests_match_the_contract() {
             .unwrap(),
     )
     .unwrap();
+}
+
+#[test]
+fn inbox_cli_uses_live_wait_binding_and_acknowledges_exact_redelivery_without_resampling_time() {
+    use workflow_worker::Clock;
+    let dir = std::env::temp_dir().join(format!("workflow-inbox-cli-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let db = dir.join("runs.db");
+    let db = db.to_str().unwrap();
+    let mut start: StartRun = read(
+        base()
+            .join("examples/runs/review-start.json")
+            .to_str()
+            .unwrap(),
+    )
+    .unwrap();
+    start.started_at_unix_ms = workflow_worker::SystemClock.now_unix_ms().unwrap();
+    let start_file = dir.join("start.json");
+    std::fs::write(&start_file, serde_json::to_vec(&start).unwrap()).unwrap();
+    assert_eq!(invoke(&["run", "init", db]).0, 0);
+    let started = invoke(&["run", "start", db, start_file.to_str().unwrap()]);
+    assert_eq!(started.0, 0);
+    let (code, waits) = invoke(&["run", "waits", db, &start.run_id, "0", "100"]);
+    assert_eq!(code, 0);
+    let wait = &waits["result"]["items"][0];
+    let request = json!({
+        "schema_version":1,"run_id":start.run_id,"run_digest":started.1["result"]["snapshot"]["run_digest"],
+        "message":{"schema_version":1,"message_id":"callback-1","target":wait["target"],"correlation_id":wait["correlation_id"],"source":"simulation","decision":"request_changes","reason":"fixture only","outputs":{},"expires_at_unix_ms":wait["deadline_unix_ms"]}
+    });
+    let file = dir.join("signal.json");
+    std::fs::write(&file, serde_json::to_vec(&request).unwrap()).unwrap();
+    let first = invoke(&["run", "receive", db, file.to_str().unwrap()]);
+    assert_eq!(first.0, 0);
+    assert_eq!(first.1["result"]["entry"]["status"]["status"], "applied");
+    let duplicate = invoke(&["run", "receive", db, file.to_str().unwrap()]);
+    assert_eq!(duplicate.0, 0);
+    assert_eq!(duplicate.1["result"]["duplicate"], true);
+    assert_eq!(duplicate.1["result"]["run_revision"], 2);
+    let inbox = invoke(&["run", "inbox", db, &start.run_id, "0", "100"]).1;
+    assert_eq!(inbox["result"]["items"].as_array().unwrap().len(), 1);
+    assert_eq!(
+        invoke(&["run", "status", db, &start.run_id]).1["result"]["status"],
+        "cancelled"
+    );
+    assert_eq!(invoke(&["run", "verify", db, &start.run_id]).0, 0);
+    std::fs::remove_dir_all(dir).unwrap();
 }
 
 #[test]

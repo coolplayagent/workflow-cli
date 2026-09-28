@@ -1,8 +1,8 @@
 schema_version: 4
 artifact_kind: map
 map_type: knowledge
-map_version: 12
-updated_at: unix:1790558671
+map_version: 13
+updated_at: unix:1790562835
 directories:
 - directory: domain
   purpose: Domain concepts, models, and business rules.
@@ -58,6 +58,7 @@ topics:
   - attempt-workspaces
   - definition-authoring
   - definition-semantics
+  - event-inbox
   - kernel-semantics
   - local-execution
   - model-execution
@@ -65,8 +66,8 @@ topics:
   - runtime-postconditions
   - worker-protocol
   - workflow-evidence-gates
-  ref: topics/topic-4ca303a3bf7ddf7b-e5e7084c6bb1bbbd4af4a0d1ca5226232ff38d8ed3df43480050366a5f92da8a.yaml
-  digest: e5e7084c6bb1bbbd4af4a0d1ca5226232ff38d8ed3df43480050366a5f92da8a
+  ref: topics/topic-4ca303a3bf7ddf7b-1b135a13b5d9a12edc042db8c0e384e4dddef94ea743847aaf7c1d10ab266d19.yaml
+  digest: 1b135a13b5d9a12edc042db8c0e384e4dddef94ea743847aaf7c1d10ab266d19
 - id: business-knowledge
   title: Business knowledge
   description: Version-controlled business domains, terminology, aliases, semantics, and technical mappings.
@@ -132,3 +133,7 @@ history:
     action: source.add
     actor: cli
     summary: Added source 'model-execution' to topic 'architecture'.
+  - version: 13
+    action: source.add
+    actor: cli
+    summary: Added source 'event-inbox' to topic 'architecture'.

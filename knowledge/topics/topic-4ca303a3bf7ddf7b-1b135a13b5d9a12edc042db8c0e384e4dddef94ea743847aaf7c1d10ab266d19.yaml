@@ -14,6 +14,16 @@ sources:
   status: active
   version: 1
   description: Typed artifact identity, provenance, durable local publication, impact and verified run evidence.
+- id: attempt-workspaces
+  topic: architecture
+  kind: doc
+  uri: docs/workspaces.md
+  source_scope: docs
+  read_policy: direct
+  write_policy: manual-review
+  status: active
+  version: 1
+  description: Attempt workspace contracts, Git allocation, current observation and typed output capture
 - id: definition-authoring
   topic: architecture
   kind: doc
@@ -34,6 +44,16 @@ sources:
   status: active
   version: 1
   description: Portable workflow definition and decision semantics.
+- id: event-inbox
+  topic: architecture
+  kind: doc
+  uri: docs/event-inbox.md
+  source_scope: docs
+  read_policy: direct
+  write_policy: manual-review
+  status: active
+  version: 1
+  description: Durable callback ingress, exact wait matching and receipt recovery.
 - id: kernel-semantics
   topic: architecture
   kind: doc
@@ -54,6 +74,16 @@ sources:
   status: active
   version: 1
   description: Local read-only execution, durable leases and attempts, atomic result settlement and storage migration.
+- id: model-execution
+  topic: architecture
+  kind: doc
+  uri: docs/model-execution.md
+  source_scope: docs
+  read_policy: direct
+  write_policy: manual-review
+  status: active
+  version: 1
+  description: Bounded model policies, provider bindings, explicit tool records and durable replay
 - id: run-store
   topic: architecture
   kind: doc
@@ -106,4 +136,7 @@ route:
   - artifact-contracts
   - workflow-evidence-gates
   - runtime-postconditions
+  - attempt-workspaces
+  - model-execution
+  - event-inbox
   fallback: bounded-search

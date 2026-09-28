@@ -132,6 +132,8 @@ pub struct Snapshot {
     /// Durable admission pause. In-flight task observations remain recordable.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub pause: Option<Pause>,
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub inbox: BTreeMap<String, crate::InboxEntry>,
     pub frames: BTreeMap<u64, Frame>,
     pub transition_count: u64,
     pub next_frame_id: u64,
@@ -157,6 +159,9 @@ pub enum TaskResult {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)]
 pub enum EventKind {
+    ReceiveSignal {
+        message: Box<crate::SignalMessage>,
+    },
     Pause {
         reason: String,
     },

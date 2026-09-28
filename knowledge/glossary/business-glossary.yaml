@@ -265,3 +265,12 @@ terms:
       - relation: represented_by
         target_kind: file
         target: crates/workflow-kernel/src/engine/lifecycle.rs
+  - id: durable-signal-inbox
+    domain: workflow
+    canonical_name: Durable signal Inbox
+    definition: Retained host callback receipts reduced from run history, binding a concrete wait instance, immutable definition and input digest; committed receipt, pending delivery and applied decision are separate facts.
+    language: en
+    mappings:
+      - relation: represented_by
+        target_kind: file
+        target: crates/workflow-kernel/src/inbox.rs

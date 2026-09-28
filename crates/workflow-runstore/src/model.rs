@@ -67,5 +67,6 @@ pub struct Verification {
     pub checkpoint_revision: u64,
     pub events_checked: u64,
     pub commands_checked: u64,
+    pub inbox_messages_checked: u64,
     pub state_digest: String,
 }

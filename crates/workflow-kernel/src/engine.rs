@@ -1,3 +1,4 @@
+mod inbox;
 mod lifecycle;
 mod postconditions;
 use crate::bundle::{key, workflow_key};
@@ -67,6 +68,7 @@ impl Engine {
             now_unix_ms: at,
             status: RunStatus::Running,
             pause: None,
+            inbox: BTreeMap::new(),
             frames: BTreeMap::new(),
             transition_count: 0,
             next_frame_id: 1,
@@ -141,7 +143,8 @@ impl Engine {
         if !matches!(
             self.state.status,
             RunStatus::Running | RunStatus::Cancelling
-        ) {
+        ) && !matches!(event.kind, EventKind::ReceiveSignal { .. })
+        {
             return Err(Error::new(ErrorCode::TerminalRun, "run is terminal"));
         }
         if event.at_unix_ms < self.state.now_unix_ms {
@@ -175,7 +178,9 @@ impl Engine {
             if next.state.pause.is_some() {
                 if !matches!(
                     event.kind,
-                    EventKind::TaskCompleted { .. } | EventKind::TaskReconciled { .. }
+                    EventKind::TaskCompleted { .. }
+                        | EventKind::TaskReconciled { .. }
+                        | EventKind::ReceiveSignal { .. }
                 ) {
                     return Err(Error::new(
                         ErrorCode::RunPaused,
@@ -189,6 +194,8 @@ impl Engine {
         }
         if next.state.pause.is_none() {
             next.drive(&mut commands)?;
+        } else {
+            next.settle_inbox(&mut commands)?;
         }
         next.state.revision = next
             .state
@@ -461,6 +468,7 @@ impl Engine {
     }
     fn handle(&mut self, event: &EventKind, commands: &mut Vec<Command>) -> Result<()> {
         match event {
+            EventKind::ReceiveSignal { message } => self.receive_signal(message),
             EventKind::TaskCompleted {
                 instance_id,
                 result,
@@ -806,7 +814,7 @@ impl Engine {
     }
     fn drive(&mut self, commands: &mut Vec<Command>) -> Result<()> {
         loop {
-            let mut progress = false;
+            let mut progress = self.settle_inbox(commands)?;
             let frames: Vec<_> = self.state.frames.keys().copied().collect();
             for frame in frames {
                 if self.state.frames[&frame].status.terminal() {
