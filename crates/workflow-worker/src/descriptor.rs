@@ -29,6 +29,8 @@ pub enum Idempotency {
 pub enum EffectContract {
     ReadOnly,
     Write {
+        #[serde(default, skip_serializing_if = "is_false")]
+        irreversible: bool,
         idempotency: Idempotency,
         query: Option<VersionRef>,
         compensation: Option<VersionRef>,
@@ -96,10 +98,16 @@ impl Capability {
                 }
             }
             EffectContract::Write {
+                irreversible,
                 idempotency,
                 query,
                 compensation,
             } => {
+                if *irreversible && compensation.is_some() {
+                    return Err(invalid(
+                        "irreversible effect cannot declare an automatic compensator",
+                    ));
+                }
                 if let Idempotency::Key {
                     scope,
                     retention_ms,
@@ -166,4 +174,8 @@ fn contract(contract: &Contract) -> Result<()> {
         }
     }
     Ok(())
+}
+
+fn is_false(value: &bool) -> bool {
+    !*value
 }

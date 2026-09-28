@@ -133,6 +133,22 @@
         ],
         "type": "object"
       },
+      "CompensationRef": {
+        "additionalProperties": false,
+        "properties": {
+          "operation_key": {
+            "type": "string"
+          },
+          "receipt": {
+            "$ref": "#/$defs/EffectReceipt"
+          }
+        },
+        "required": [
+          "operation_key",
+          "receipt"
+        ],
+        "type": "object"
+      },
       "EffectAttempt": {
         "additionalProperties": false,
         "properties": {
@@ -306,6 +322,9 @@
               "idempotency": {
                 "$ref": "#/$defs/Idempotency"
               },
+              "irreversible": {
+                "type": "boolean"
+              },
               "query": {
                 "anyOf": [
                   {
@@ -341,10 +360,26 @@
           "command_id": {
             "type": "string"
           },
+          "compensates": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/CompensationRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "created_at_unix_ms": {
             "format": "uint64",
             "minimum": 0,
             "type": "integer"
+          },
+          "dependencies": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
           },
           "input_digest": {
             "type": "string"

@@ -1,5 +1,6 @@
 //! Deterministic workflow transitions. No clock reads, I/O, model calls or task execution.
 mod bundle;
+mod effects;
 mod engine;
 mod inbox;
 mod model;

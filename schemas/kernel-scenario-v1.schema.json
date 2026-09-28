@@ -515,6 +515,18 @@
     "EffectBinding": {
       "additionalProperties": false,
       "properties": {
+        "compensates": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "depends_on": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
         "node_id": {
           "type": "string"
         },
@@ -562,6 +574,9 @@
             },
             "idempotency": {
               "$ref": "#/$defs/Idempotency"
+            },
+            "irreversible": {
+              "type": "boolean"
             },
             "query": {
               "anyOf": [

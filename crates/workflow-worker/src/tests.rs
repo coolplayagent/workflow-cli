@@ -384,6 +384,7 @@ fn deadlines_clock_rollback_panics_and_writes_fail_explicitly() {
     assert_eq!(result(&w, &r).unwrap_err().code, ErrorCode::AdapterPanicked);
     let mut d = descriptor();
     d.effects = EffectContract::Write {
+        irreversible: false,
         idempotency: Idempotency::None,
         query: None,
         compensation: None,

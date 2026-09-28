@@ -255,6 +255,7 @@ fn retries_are_bounded_and_uncertain_or_write_commands_are_never_auto_executed()
     let mut req = start(&s);
     for c in &mut req.bundle.capabilities {
         c.effects = workflow_worker::EffectContract::Write {
+            irreversible: false,
             idempotency: workflow_worker::Idempotency::None,
             query: None,
             compensation: None,

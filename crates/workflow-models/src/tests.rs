@@ -245,6 +245,7 @@ fn missing_or_changed_tools_are_detected_before_model_invocation() {
     assert_eq!(count.load(Ordering::SeqCst), 0);
     let mut spec = p.spec().clone();
     spec.tools[0].effects = EffectContract::Write {
+        irreversible: false,
         idempotency: Idempotency::None,
         query: None,
         compensation: None,

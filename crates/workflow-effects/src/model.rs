@@ -25,6 +25,10 @@ pub struct EffectPolicy {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct EffectBinding {
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub depends_on: Vec<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub compensates: Option<String>,
     pub workflow: VersionRef,
     pub node_id: String,
     pub policy: EffectPolicy,
@@ -32,6 +36,10 @@ pub struct EffectBinding {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct EffectIntent {
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub dependencies: Vec<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub compensates: Option<CompensationRef>,
     pub schema_version: u32,
     pub operation_key: String,
     pub run_id: String,
@@ -105,6 +113,11 @@ pub enum EffectStatus {
     Uncertain {
         reason: String,
     },
+    /// A compensation invocation is known not to have applied, but its business
+    /// obligation remains unresolved and needs an operator to complete it.
+    NeedsAttention {
+        code: String,
+    },
     Applied {
         receipt: EffectReceipt,
     },
@@ -123,6 +136,8 @@ pub struct AttemptRecord {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct EffectState {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub compensated_by: Option<String>,
     pub intent: EffectIntent,
     pub calls: Vec<AttemptRecord>,
     pub status: EffectStatus,
@@ -196,4 +211,11 @@ pub enum Decision {
 pub struct EffectReply {
     pub request_digest: String,
     pub observation: Observation,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct CompensationRef {
+    pub operation_key: String,
+    pub receipt: EffectReceipt,
 }
