@@ -12,6 +12,8 @@ pub struct LeaseRequest {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct Lease {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub generation: Option<String>,
     pub run_id: String,
     pub owner: String,
     pub acquisition_id: String,
@@ -41,6 +43,14 @@ pub enum Claimed {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)]
 pub enum ExecutionAction {
+    Restored {
+        recovery: crate::RecoveryBarrier,
+        at_unix_ms: u64,
+    },
+    RecoveryAcknowledged {
+        resolution: crate::RecoveryAcknowledgement,
+        at_unix_ms: u64,
+    },
     Effect {
         record: Box<workflow_effects::EffectRecord>,
         transition: Option<EffectTransition>,

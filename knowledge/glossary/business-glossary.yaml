@@ -301,3 +301,21 @@ terms:
       - relation: represented_by
         target_kind: file
         target: crates/workflow-effects/src/compensation.rs
+  - id: recovery-barrier
+    domain: workflow
+    canonical_name: External effect recovery barrier
+    definition: A durable restore state that revokes prior ownership generations and blocks new writes until post-backup admissions have been audited; known intents can be queried and missing confirmed effects imported from actual provider receipts.
+    language: en
+    mappings:
+      - relation: represented_by
+        target_kind: file
+        target: crates/workflow-runstore/src/restoration.rs
+  - id: verified-backup-inventory
+    domain: workflow
+    canonical_name: Verified backup inventory
+    definition: A bounded digest-bound list of consistent SQLite images and immutable artifact bytes, checked through application replay before publication; its source snapshot defines the retained history boundary.
+    language: en
+    mappings:
+      - relation: represented_by
+        target_kind: file
+        target: crates/workflow-backups/src/lib.rs

@@ -149,7 +149,9 @@ it does not prove power-loss durability of arbitrary VFS/filesystems, shared
 network-disk multiwriter safety or disk-loss recovery. No RPO/RTO is claimed.
 Run leases, fenced result commits and bounded read-only retries are covered by
 the local execution guide, including durable pause/resume controls. Managed write retries and the effect ledger are covered by the effect guide.
-Autonomous timer service, remote artifact dependencies, backup/restore and retention remain
+[Backup/recovery](backup-recovery.md) now covers verified local snapshots,
+relocation and new ownership generations. Autonomous timer service, remote
+artifact dependencies and archive retention remain
 open in R04/R05/R06/R07/R08. The issue stays open until those acceptance criteria
 have direct evidence.
 
@@ -163,3 +165,7 @@ artifacts. Raw gate events and manual gate receipts are rejected; runs containin
 postconditions also reject raw successful task events. Policy versions bind
 immutable content. Upgrade with the artifact reader when existing runs carry
 evidence, so dependency failures roll back the migration.
+
+Schema 10 adds durable restored ownership and external-effect reconciliation.
+Use [local backup/recovery](backup-recovery.md) for consistent SQLite images and
+retained artifact content; copying live files does not implement that protocol.

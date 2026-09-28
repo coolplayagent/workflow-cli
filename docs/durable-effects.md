@@ -156,8 +156,8 @@ No effect receipt, approval or authenticated actor may be fabricated.
 
 ## Storage and verified boundaries
 
-Storage schema 9 protects effect journal/policy and compensation semantics from older executors.
-`run migrate` explicitly upgrades schemas 1–8 and revalidates existing runs.
+Storage schema 10 protects effect journal, compensation and recovery-import semantics
+from older executors. `run migrate` explicitly upgrades schemas 1–9 and revalidates existing runs.
 Ordinary open refuses a different version. Migration itself is not a backup.
 
 Tests cover an actual loopback HTTP gateway with a separate durable provider
@@ -173,4 +173,6 @@ For declared reverse dependencies, original receipt binding, irreversible effect
 and manual takeover after a failed undo, see [ordered compensation](ordered-compensation.md).
 Authenticated multi-tenant ingress, distributed RunStore/transport, mandatory
 action-specific approval/current-workspace checks, remote artifact access and
-backup/restore remain separate roadmap work. R05 remains open.
+source-to-target ownership migration remain separate roadmap work.
+[Local recovery](backup-recovery.md) preserves known intents and supports audited
+import of actual post-backup provider receipts under a durable recovery barrier. R05 remains open.

@@ -5,6 +5,7 @@ mod execution;
 mod inbox;
 mod reads;
 mod recovery;
+mod restoration;
 mod writes;
 use db::*;
 use rusqlite::{Connection, OpenFlags, TransactionBehavior};

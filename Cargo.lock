@@ -1524,6 +1524,38 @@ dependencies = [
 ]
 
 [[package]]
+name = "workflow-backup-local"
+version = "0.1.0"
+dependencies = [
+ "libc",
+ "rusqlite",
+ "schemars",
+ "serde",
+ "serde_json",
+ "workflow-artifact-local",
+ "workflow-artifacts",
+ "workflow-backups",
+ "workflow-builtin-capabilities",
+ "workflow-definitions",
+ "workflow-effects",
+ "workflow-kernel",
+ "workflow-registry-sqlite",
+ "workflow-runstore",
+ "workflow-runstore-sqlite",
+ "workflow-worker",
+]
+
+[[package]]
+name = "workflow-backups"
+version = "0.1.0"
+dependencies = [
+ "schemars",
+ "serde",
+ "serde_json",
+ "sha2",
+]
+
+[[package]]
 name = "workflow-builtin-capabilities"
 version = "0.1.0"
 dependencies = [
@@ -1542,6 +1574,7 @@ dependencies = [
  "serde_json",
  "workflow-artifact-local",
  "workflow-artifacts",
+ "workflow-backup-local",
  "workflow-builtin-capabilities",
  "workflow-definitions",
  "workflow-effect-http",

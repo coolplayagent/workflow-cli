@@ -1,0 +1,43 @@
+{
+  "ok": true,
+  "result": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "additionalProperties": false,
+    "properties": {
+      "actor": {
+        "type": "string"
+      },
+      "backup_digest": {
+        "type": "string"
+      },
+      "evidence": {
+        "description": "Must describe actual source retirement and post-backup provider audit.",
+        "type": "string"
+      },
+      "generation": {
+        "type": "string"
+      },
+      "no_missing_effect_intents": {
+        "description": "Operator verified that every post-backup admitted write is accounted for.",
+        "type": "boolean"
+      },
+      "reason": {
+        "type": "string"
+      },
+      "resolution_id": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "resolution_id",
+      "no_missing_effect_intents",
+      "generation",
+      "backup_digest",
+      "actor",
+      "evidence",
+      "reason"
+    ],
+    "title": "RecoveryAcknowledgement",
+    "type": "object"
+  }
+}

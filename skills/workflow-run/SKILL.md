@@ -2,7 +2,7 @@
 name: workflow-run
 description: Create and inspect durable workflow-cli runs, submit trusted events, pause, resume or cancel with an expected revision, inspect the command outbox and verify storage recovery, and drive read-only tasks or managed write effects with durable leases. Use for persistent workflow progress and explicit local execution; no background daemon remains.
 metadata:
-  version: "1.9.0"
+  version: "1.10.0"
 ---
 
 # Workflow run
@@ -14,8 +14,8 @@ source checkout or the Bazel binary; `bazel run` needs absolute file paths. Cons
 Choose the explicit run database from the user's task. `run init <db>` alone
 creates a store. Do not point it at a definition-registry database or silently
 initialize a different database after a query fails. Inspect the error and path.
-For schema 1–8, use the explicit `run --artifacts <store> migrate <db>`
-transaction to upgrade to schema 9 when within the task scope. Omit the reader only
+For schema 1–9, use the explicit `run --artifacts <store> migrate <db>`
+transaction to upgrade to schema 10 when within the task scope. Omit the reader only
 when existing runs have no artifact dependencies. A future/foreign schema must not be overwritten to make it open.
 
 Read `workflow schema run-start`, obtain exact definitions and descriptors from
@@ -87,7 +87,7 @@ editing hashes or deleting recovery dependencies.
 
 Report the database, run ID/digest, revision, business status, pending intents and
 verification result. Distinguish committed progress from actual external work.
-Backup/restore remains separate roadmap work.
+Use the verified backup/recovery flow below when requested.
 
 
 For an explicitly managed worker flow, acquire a lease with `run acquire`, persist
@@ -161,3 +161,33 @@ from unknown outcomes; neither permits resetting a retry budget. Use actual
 authorized cleanup receipts for manual takeover. `confirmed_not_applied` on a
 compensator does not mark its original undone. A cancelled run alone is not proof
 of rollback; check the original effects and their `compensated_by` links.
+
+
+## Local backup and recovery
+
+Read `docs/backup-recovery.md` and the exported backup schemas. Name the exact run
+store, required artifacts and optional definition registry in the source file;
+`backup create` writes only to a new directory. `backup verify` checks bytes and
+full application replay. Do not copy live database files or omit required artifacts.
+Backup does not stop the source. Retain the captured snapshot boundary and avoid
+claiming RPO=0 for commits after it.
+
+`backup restore` needs a new directory and an actual operator/reason annotation.
+Inspect the returned generation and `run recovery`; running runs start paused and
+old leases are fenced. Resume can permit read-only work and provider queries, but
+the recovery barrier blocks new writes. Quiesce the original execution authority
+and audit external work since the snapshot before allowing new effect admission.
+
+For a retained intent, query/resolve through the ordinary effect protocol. For a
+missing post-backup intent with a confirmed effect, `run effect-import` requires
+its actual original intent and provider receipt plus an audited resolution; do
+not invent timestamps, missing attempts or business outcomes. Import performs no
+provider write. Missing source/provider history leaves recovery unresolved.
+
+Use `run recovery-acknowledge` only with the actual backup/generation and evidence
+that every admitted write has been accounted for. Its required
+`no_missing_effect_intents: true` is an operator attestation, never a default to
+fill automatically. Known unresolved effects still block it. Inspect
+`pending_recovery` in the response: an exact duplicate of an older acknowledgement
+does not clear a later restore. This local annotation is not remote authentication.
+Restoring a database does not retire the source service or authorize two active copies.

@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/workflow-ir", "crates/workflow-validator", "crates/workflow-cli", "crates/workflow-definitions", "crates/workflow-registry-sqlite", "crates/workflow-worker", "crates/workflow-builtin-capabilities", "crates/workflow-kernel", "crates/workflow-runstore", "crates/workflow-runstore-sqlite", "crates/workflow-runtime", "crates/workflow-artifacts", "crates/workflow-artifact-local", "crates/workflow-gates", "crates/workflow-workspaces", "crates/workflow-workspace-local", "crates/workflow-models", "crates/workflow-model-http", "crates/workflow-effects", "crates/workflow-effect-http"]
+members = ["crates/workflow-ir", "crates/workflow-validator", "crates/workflow-cli", "crates/workflow-definitions", "crates/workflow-registry-sqlite", "crates/workflow-worker", "crates/workflow-builtin-capabilities", "crates/workflow-kernel", "crates/workflow-runstore", "crates/workflow-runstore-sqlite", "crates/workflow-runtime", "crates/workflow-artifacts", "crates/workflow-artifact-local", "crates/workflow-gates", "crates/workflow-workspaces", "crates/workflow-workspace-local", "crates/workflow-models", "crates/workflow-model-http", "crates/workflow-effects", "crates/workflow-effect-http", "crates/workflow-backups", "crates/workflow-backup-local"]
 resolver = "2"
 
 [workspace.package]
@@ -15,4 +15,4 @@ serde_yaml_ng = "0.10"
 schemars = "1"
 sha2 = "0.10"
 serde_path_to_error = "0.1"
-rusqlite = { version = "0.40.2", features = ["bundled"] }
+rusqlite = { version = "0.40.2", features = ["bundled", "backup"] }

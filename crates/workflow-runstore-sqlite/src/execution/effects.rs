@@ -186,7 +186,7 @@ fn pending_timer_deadline(snapshot: &Snapshot) -> Option<u64> {
         })
         .min()
 }
-fn snapshot_at(r: &Recovered, revision: u64) -> Result<Snapshot> {
+pub(super) fn snapshot_at(r: &Recovered, revision: u64) -> Result<Snapshot> {
     let cp = r.engine.checkpoint()?;
     if revision == 0 || revision > r.engine.snapshot().revision {
         return Err(corrupt("effect revision outside run history"));
@@ -337,6 +337,21 @@ impl EffectStore for SqliteRunStore {
         let mut r = crate::recovery::recover(&tx, &l.run_id, self.artifacts.as_deref())?;
         let (mut a, records) = read(&tx, &r, self.artifacts.as_deref())?;
         for item in records {
+            if let ExecutionAction::Effect { record, .. } = &item.action
+                && let EffectChange::Imported {
+                    intent,
+                    resolution: old,
+                } = &record.change
+                && old.resolution_id == resolution.resolution_id
+            {
+                if intent.operation_key != key || old != resolution {
+                    return Err(Error::new(
+                        ErrorCode::ReceiptConflict,
+                        "manual resolution ID conflicts with an imported effect",
+                    ));
+                }
+                return Ok(unchanged(&r, true));
+            }
             if let ExecutionAction::Effect { record, .. } = item.action
                 && let EffectChange::Resolved {
                     operation_key,
@@ -418,7 +433,7 @@ impl SqliteRunStore {
         let original = original(&r, &pending)?.clone();
         let operation_key = key_for(&r, &original)?;
         let node = state(r.engine.snapshot(), &original)?;
-        let allow_write = *node == NodeState::TaskReady;
+        let allow_write = *node == NodeState::TaskReady && a.recovery.is_none();
         if node.terminal()
             || (*node == NodeState::CancelRequested && !a.effects.contains_key(&operation_key))
         {
@@ -469,6 +484,12 @@ impl SqliteRunStore {
                 decision(s, l.epoch, now, allow_write),
             )
         } else {
+            if a.recovery.is_some() {
+                return Err(Error::new(
+                    ErrorCode::RecoveryRequired,
+                    "missing post-backup effect history must be audited before admitting new writes",
+                ));
+            }
             (
                 intent(&r, &original, now, &a)?,
                 1,
@@ -769,4 +790,87 @@ pub(super) fn verify_coverage(r: &Recovered, records: &[ExecutionRecord]) -> Res
         ));
     }
     Ok(())
+}
+
+impl SqliteRunStore {
+    pub(crate) fn import_recovered_effect(
+        &mut self,
+        l: &Lease,
+        import: &RestoredEffect,
+        clock: &dyn Clock,
+    ) -> Result<Committed> {
+        let tx = self
+            .connection
+            .transaction_with_behavior(TransactionBehavior::Immediate)
+            .map_err(storage)?;
+        let mut r = crate::recovery::recover(&tx, &l.run_id, self.artifacts.as_deref())?;
+        let (mut a, records) = read(&tx, &r, self.artifacts.as_deref())?;
+        for record in records {
+            if let ExecutionAction::Effect { record, .. } = record.action {
+                match record.change {
+                    EffectChange::Imported { intent, resolution }
+                        if resolution.resolution_id == import.resolution.resolution_id =>
+                    {
+                        if *intent != import.intent || resolution != import.resolution {
+                            return Err(Error::new(
+                                ErrorCode::ReceiptConflict,
+                                "import resolution ID content conflict",
+                            ));
+                        }
+                        return Ok(unchanged(&r, true));
+                    }
+                    EffectChange::Resolved { resolution, .. }
+                        if resolution.resolution_id == import.resolution.resolution_id =>
+                    {
+                        return Err(Error::new(
+                            ErrorCode::ReceiptConflict,
+                            "resolution ID already used for an existing effect",
+                        ));
+                    }
+                    _ => {}
+                }
+            }
+        }
+        let now = clock.now_unix_ms()?;
+        live(&a, &r, l, now)?;
+        if a.recovery.is_none() {
+            return Err(Error::new(
+                ErrorCode::RecoveryRequired,
+                "effect import requires a restored run under reconciliation",
+            ));
+        }
+        let entry = r
+            .outbox
+            .iter()
+            .find(|e| e.receipt.is_none())
+            .ok_or_else(|| Error::new(ErrorCode::DeliveryOrder, "no pending restored effect"))?;
+        let original = original(&r, entry)?;
+        if import.intent.created_at_unix_ms < r.engine.checkpoint()?.started_at_unix_ms
+            || intent(&r, original, import.intent.created_at_unix_ms, &a)? != import.intent
+        {
+            return Err(Error::new(
+                ErrorCode::InvalidRequest,
+                "imported original intent differs from the restored task contract",
+            ));
+        }
+        let committed = commit_record(
+            &tx,
+            &mut r,
+            &mut a,
+            l,
+            EffectRecord {
+                epoch: l.epoch,
+                at_unix_ms: now,
+                change: EffectChange::Imported {
+                    intent: Box::new(import.intent.clone()),
+                    resolution: import.resolution.clone(),
+                },
+            },
+            &|_| {},
+        )?;
+        let end = commit_guard(clock, l, now, l.expires_at_unix_ms)?;
+        check_signal_admission(&committed.snapshot, end)?;
+        tx.commit().map_err(storage)?;
+        Ok(committed)
+    }
 }

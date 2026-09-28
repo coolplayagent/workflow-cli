@@ -371,6 +371,19 @@ pub(super) fn verify(
         {
             return Err(corrupt("timer event mismatch"));
         }
+        ExecutionAction::Restored {
+            recovery,
+            at_unix_ms,
+        } => {
+            let snapshot = super::effects::snapshot_at(r, recovery.source_revision)?;
+            if digest(&snapshot)? != recovery.source_state_digest
+                || *at_unix_ms < snapshot.now_unix_ms
+            {
+                return Err(corrupt(
+                    "restore ownership proof differs from its source snapshot",
+                ));
+            }
+        }
         _ => {}
     }
     Ok(())

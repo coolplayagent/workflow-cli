@@ -1,0 +1,29 @@
+{
+  "ok": true,
+  "result": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "additionalProperties": false,
+    "properties": {
+      "artifacts": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "registry": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "runs": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "runs"
+    ],
+    "title": "BackupSources",
+    "type": "object"
+  }
+}
