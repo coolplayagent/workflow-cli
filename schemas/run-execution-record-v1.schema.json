@@ -203,6 +203,28 @@
         "oneOf": [
           {
             "additionalProperties": false,
+            "description": "Trusted recovery imports an actual post-backup provider receipt. It does\nnot dispatch a call or recreate the missing attempt history.",
+            "properties": {
+              "intent": {
+                "$ref": "#/$defs/EffectIntent"
+              },
+              "resolution": {
+                "$ref": "#/$defs/ManualResolution"
+              },
+              "type": {
+                "const": "imported",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type",
+              "intent",
+              "resolution"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
             "properties": {
               "attempt": {
                 "$ref": "#/$defs/EffectAttempt"
@@ -597,6 +619,52 @@
       },
       "ExecutionAction": {
         "oneOf": [
+          {
+            "additionalProperties": false,
+            "properties": {
+              "at_unix_ms": {
+                "format": "uint64",
+                "minimum": 0,
+                "type": "integer"
+              },
+              "recovery": {
+                "$ref": "#/$defs/RecoveryBarrier"
+              },
+              "type": {
+                "const": "restored",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type",
+              "recovery",
+              "at_unix_ms"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "at_unix_ms": {
+                "format": "uint64",
+                "minimum": 0,
+                "type": "integer"
+              },
+              "resolution": {
+                "$ref": "#/$defs/RecoveryAcknowledgement"
+              },
+              "type": {
+                "const": "recovery_acknowledged",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type",
+              "resolution",
+              "at_unix_ms"
+            ],
+            "type": "object"
+          },
           {
             "additionalProperties": false,
             "properties": {
@@ -1054,6 +1122,12 @@
             "minimum": 0,
             "type": "integer"
           },
+          "generation": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "issued_at_unix_ms": {
             "format": "uint64",
             "minimum": 0,
@@ -1278,6 +1352,79 @@
           "prepared_revision",
           "request",
           "grant"
+        ],
+        "type": "object"
+      },
+      "RecoveryAcknowledgement": {
+        "additionalProperties": false,
+        "properties": {
+          "actor": {
+            "type": "string"
+          },
+          "backup_digest": {
+            "type": "string"
+          },
+          "evidence": {
+            "description": "Must describe actual source retirement and post-backup provider audit.",
+            "type": "string"
+          },
+          "generation": {
+            "type": "string"
+          },
+          "no_missing_effect_intents": {
+            "description": "Operator verified that every post-backup admitted write is accounted for.",
+            "type": "boolean"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "resolution_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "resolution_id",
+          "no_missing_effect_intents",
+          "generation",
+          "backup_digest",
+          "actor",
+          "evidence",
+          "reason"
+        ],
+        "type": "object"
+      },
+      "RecoveryBarrier": {
+        "additionalProperties": false,
+        "properties": {
+          "backup_digest": {
+            "type": "string"
+          },
+          "generation": {
+            "description": "Random restore generation. This is a fencing identity, not a credential.",
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "restored_by": {
+            "type": "string"
+          },
+          "source_revision": {
+            "format": "uint64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "source_state_digest": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "generation",
+          "backup_digest",
+          "source_revision",
+          "source_state_digest",
+          "restored_by",
+          "reason"
         ],
         "type": "object"
       },

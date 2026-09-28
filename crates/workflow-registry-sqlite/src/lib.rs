@@ -1,4 +1,5 @@
 //! Transactional local definition registry. No model/provider execution lives here.
+mod verification;
 use rusqlite::{Connection, OpenFlags, OptionalExtension, TransactionBehavior, params};
 use std::{path::Path, time::Duration};
 use workflow_definitions::*;

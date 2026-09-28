@@ -1,0 +1,13 @@
+load("@crates//:defs.bzl", "all_crate_deps")
+load("@rules_rust//rust:defs.bzl", "rust_library", "rust_test")
+exports_files(["Cargo.toml"])
+rust_library(
+    name = "workflow_backup_local",
+    srcs = glob(["src/**/*.rs"]),
+    crate_root = "src/lib.rs",
+    edition = "2024",
+    deps = ["//crates/workflow-backups:workflow_backups", "//crates/workflow-runstore:workflow_runstore", "//crates/workflow-runstore-sqlite:workflow_runstore_sqlite", "//crates/workflow-artifacts:workflow_artifacts", "//crates/workflow-artifact-local:workflow_artifact_local", "//crates/workflow-registry-sqlite:workflow_registry_sqlite", "//crates/workflow-worker:workflow_worker"] + all_crate_deps(normal = True),
+    proc_macro_deps = all_crate_deps(proc_macro = True),
+    visibility = ["//visibility:public"],
+)
+rust_test(name = "tests", size = "small", crate = ":workflow_backup_local", data = ["//:fixtures"], deps = ["//crates/workflow-kernel:workflow_kernel", "//crates/workflow-definitions:workflow_definitions", "//crates/workflow-builtin-capabilities:workflow_builtin_capabilities", "//crates/workflow-effects:workflow_effects"] + all_crate_deps(normal_dev = True))

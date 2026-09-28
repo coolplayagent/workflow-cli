@@ -4,6 +4,7 @@ use std::io::{Read, Write};
 use workflow_ir::{Diagnostic, Format, MAX_DOCUMENT_BYTES, Workflow};
 
 mod artifacts;
+mod backups;
 mod gates;
 mod kernel;
 mod models;
@@ -69,7 +70,7 @@ pub fn run(
         [] | ["help" | "--help" | "-h"] => write(
             stdout,
             &format!(
-                "{HELP}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}",
+                "{HELP}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}",
                 registry::HELP,
                 worker::HELP,
                 kernel::HELP,
@@ -77,10 +78,16 @@ pub fn run(
                 artifacts::HELP,
                 gates::HELP,
                 workspaces::HELP,
-                models::HELP
+                models::HELP,
+                backups::HELP
             ),
             0,
         ),
+        args @ ["backup", ..]
+        | args @ [
+            "schema",
+            "backup-index" | "backup-sources" | "backup-restore-request",
+        ] => backups::run(args, stdout, stderr),
         args @ ["model", ..]
         | args @ [
             "schema",
@@ -111,7 +118,9 @@ pub fn run(
             | "run-effect-attempt"
             | "run-effect-reply"
             | "run-effect-observation"
-            | "run-effect-resolution",
+            | "run-effect-resolution"
+            | "run-recovery-acknowledgement"
+            | "run-restored-effect",
         ] => runs::run(args, stdout, stderr),
         args @ ["kernel", ..]
         | args @ [

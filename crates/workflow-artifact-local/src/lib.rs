@@ -115,6 +115,14 @@ impl LocalArtifactStore {
             connection,
         })
     }
+    /// Catalog-verified manifests from one snapshot. Call `verify`/`read` for
+    /// payload verification; metadata alone does not prove content availability.
+    pub fn retained_manifests(&self) -> Result<Vec<ArtifactRef>> {
+        let tx = self.connection.unchecked_transaction().map_err(sql)?;
+        let records = catalog::read(&tx)?;
+        tx.commit().map_err(sql)?;
+        Ok(records.into_values().collect())
+    }
     pub fn resolve(&self, id: &str) -> Result<ArtifactRef> {
         self.verify(&link_for_id(id)?)
     }

@@ -6,6 +6,7 @@ license.workspace = true
 rust-version.workspace = true
 
 [dependencies]
+workflow-backup-local = { path = "../workflow-backup-local" }
 workflow-effect-http = { path = "../workflow-effect-http" }
 workflow-effects = { path = "../workflow-effects" }
 workflow-models = { path = "../workflow-models" }

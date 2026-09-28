@@ -166,7 +166,7 @@ waits, stale resume conflicts and killed pause writers at five commit phases.
 
 ## Explicit storage migration
 
-New databases use storage schema 9. Schema 1–8 databases from prior increments
+New databases use storage schema 10. Schema 1–9 databases from prior increments
 must be upgraded explicitly:
 
 ```sh
@@ -180,15 +180,17 @@ verification; schema 4 adds protected gate transitions and schema 5 protects mod
 policy records and immutable policy bindings. Schema 6 protects durable pause/resume
 admission semantics from older executors; schema 7 adds durable Inbox matching.
 Schema 8 adds the managed effect journal; schema 9 protects ordered compensation.
+Schema 10 protects restore generations, recovery barriers and provider receipt imports.
 Evidence-bearing runs need
 `--artifacts` during migration; omit it only for runs without dependencies. Missing
 or corrupt dependencies roll back the version. Corrupt old runs roll back the
-tables and version together. Running migrate again on schema 9
+tables and version together. Running migrate again on schema 10
 is harmless. Ordinary open/create never silently upgrades old data; foreign or
 future schemas are refused. Logical StartRun schema remains v1. Direct worker calls retain protocol 1;
 model-policy calls require protocol 2. See [model execution](model-execution.md).
-Take the repository's normal database backup before operational migration; this
-release does not provide backup/restore commands or disk-loss recovery guarantees.
+Use [consistent backup and fenced recovery](backup-recovery.md) for an explicit
+verified backup before operational migration. A backup protects its captured
+snapshot; later lost history still needs external reconciliation.
 
 ## Evidence and remaining scope
 
@@ -203,7 +205,7 @@ on corruption. Cargo and Bazel run the same tests.
 R02/R04/R08/R09 remain open for authenticated remote adapters, automatic
 workspace binding and sandboxing, remote artifact adapters, autonomous
 dispatch, node parallelism, scheduling/fairness,
-cluster ownership, authenticated tenants, retention and backup/restore. These
+cluster ownership, authenticated tenants and archive retention policy. These
 Linux process-crash checks establish no production throughput, power-loss, shared
 network filesystem, business-benefit or RPO/RTO claim.
 
@@ -229,4 +231,5 @@ intents and settle provider observations under the same run lease. CLI hosts use
 [durable effects](durable-effects.md) for stable keys, query recovery, bounded
 retry, manual reconciliation and provider fencing limits. Storage schema 8 adds
 these policies and journal records; schema 9 adds [ordered compensation](ordered-compensation.md).
-Explicit migration to schema 9 accepts schemas 1–8.
+Explicit migration to schema 10 accepts schemas 1–9; restored stores use the
+[recovery barrier](backup-recovery.md) before further write admission.

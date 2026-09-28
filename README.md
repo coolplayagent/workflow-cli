@@ -20,7 +20,9 @@ A separate CLI supports read-only evaluation/revalidation. Attempt workspace
 contracts and a local Linux/Git adapter allocate independent files, observe changes
 and capture typed outputs with exact provenance. Bounded model policies invoke allowed
 read-only tools through OpenAI Responses or Anthropic Messages host bindings, with
-explicit records checked during settlement and recovery. Authenticated remote
+explicit records checked during settlement and recovery. Verified local backups retain
+run and artifact history; restored runs use fresh lease generations and require
+external-effect reconciliation before admitting writes. Authenticated remote
 execution and the remaining acceptance work follow the [issue roadmap](docs/roadmap.md). `validate` is a
 static check, not permission to execute a capability or proof of a successful run.
 
@@ -105,6 +107,7 @@ the CLI exits 0.
 - [Durable event Inbox and callback matching](docs/event-inbox.md)
 - [Durable write effects and gateway protocol](docs/durable-effects.md)
 - [Ordered compensation and manual takeover](docs/ordered-compensation.md)
+- [Consistent local backup and fenced recovery](docs/backup-recovery.md)
 - [Durable run state, events, checkpoints and outbox](docs/run-store.md)
 - [Deterministic kernel, bundle checks and replay](docs/kernel-semantics.md)
 - [IR and decision semantics](docs/definition-semantics.md)

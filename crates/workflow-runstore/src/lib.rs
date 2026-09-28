@@ -4,9 +4,11 @@ pub use effects::*;
 mod execution;
 mod inbox;
 mod model;
+mod restoration;
 pub use execution::*;
 pub use inbox::*;
 pub use model::*;
+pub use restoration::*;
 use serde::{Deserialize, Serialize};
 pub use workflow_kernel::{
     BundleSpec, Checkpoint, Command, Event, Limits, RunStatus, Snapshot, Transition, Values,
@@ -23,6 +25,7 @@ pub enum ErrorCode {
     AttemptInProgress,
     AttemptBudget,
     ManualReconciliation,
+    RecoveryRequired,
     UnsupportedEffect,
     NotFound,
     StartConflict,
@@ -143,6 +146,8 @@ pub fn schema(kind: &str) -> Result<String> {
         "effect-attempt" => schemars::schema_for!(workflow_effects::EffectAttempt),
         "effect-reply" => schemars::schema_for!(workflow_effects::EffectReply),
         "effect-observation" => schemars::schema_for!(workflow_effects::Observation),
+        "recovery-acknowledgement" => schemars::schema_for!(RecoveryAcknowledgement),
+        "restored-effect" => schemars::schema_for!(RestoredEffect),
         "effect-resolution" => schemars::schema_for!(workflow_effects::ManualResolution),
         _ => {
             return Err(Error::new(

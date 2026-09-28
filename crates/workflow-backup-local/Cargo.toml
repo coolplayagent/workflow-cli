@@ -1,0 +1,25 @@
+[package]
+name = "workflow-backup-local"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+[dependencies]
+workflow-backups = { path = "../workflow-backups" }
+workflow-runstore = { path = "../workflow-runstore" }
+workflow-runstore-sqlite = { path = "../workflow-runstore-sqlite" }
+workflow-artifacts = { path = "../workflow-artifacts" }
+workflow-artifact-local = { path = "../workflow-artifact-local" }
+workflow-registry-sqlite = { path = "../workflow-registry-sqlite" }
+workflow-worker = { path = "../workflow-worker" }
+rusqlite.workspace = true
+schemars.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+libc = "0.2"
+
+[dev-dependencies]
+workflow-kernel = { path = "../workflow-kernel" }
+workflow-definitions = { path = "../workflow-definitions" }
+workflow-builtin-capabilities = { path = "../workflow-builtin-capabilities" }
+workflow-effects = { path = "../workflow-effects" }

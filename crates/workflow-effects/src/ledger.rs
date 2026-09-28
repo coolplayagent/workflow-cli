@@ -90,6 +90,33 @@ pub fn apply(ledger: &mut BTreeMap<String, EffectState>, r: &EffectRecord) -> Re
     }
     let key = r.change.key();
     let next = match &r.change {
+        EffectChange::Imported { intent, resolution } => {
+            intent.validate()?;
+            if ledger.contains_key(key) || intent.created_at_unix_ms > r.at_unix_ms {
+                return Err(invalid("import requires a missing historical effect"));
+            }
+            crate::compensation::validate_admission(ledger, intent)?;
+            if !workflow_validator::identifier(&resolution.resolution_id) {
+                return Err(invalid("stable import resolution ID required"));
+            }
+            bounded_text(&resolution.actor, 128)?;
+            bounded_text(&resolution.reason, 1024)?;
+            bounded_text(&resolution.evidence, 8192)?;
+            let ManualOutcome::Applied { receipt } = &resolution.outcome else {
+                return Err(invalid(
+                    "effect import requires an actual applied provider receipt",
+                ));
+            };
+            receipt.validate(intent)?;
+            EffectState {
+                compensated_by: None,
+                intent: *intent.clone(),
+                calls: vec![],
+                status: EffectStatus::Applied {
+                    receipt: receipt.clone(),
+                },
+            }
+        }
         EffectChange::Prepared {
             attempt: p,
             request_digest,

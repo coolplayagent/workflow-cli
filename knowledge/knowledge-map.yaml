@@ -1,8 +1,8 @@
 schema_version: 4
 artifact_kind: map
 map_type: knowledge
-map_version: 15
-updated_at: unix:1790569201
+map_version: 16
+updated_at: unix:1790575603
 directories:
 - directory: domain
   purpose: Domain concepts, models, and business rules.
@@ -61,6 +61,7 @@ topics:
   - durable-effects
   - event-inbox
   - kernel-semantics
+  - local-backup-recovery
   - local-execution
   - model-execution
   - ordered-compensation
@@ -68,8 +69,8 @@ topics:
   - runtime-postconditions
   - worker-protocol
   - workflow-evidence-gates
-  ref: topics/topic-4ca303a3bf7ddf7b-f75157015f8d33167f8b3bfb81d911cf8346bfe8dcbc62eef33eedf02468c50c.yaml
-  digest: f75157015f8d33167f8b3bfb81d911cf8346bfe8dcbc62eef33eedf02468c50c
+  ref: topics/topic-4ca303a3bf7ddf7b-81729bdebe92db3794963b09e355ed3bdbf879ccede26a1f536b410996b3fd78.yaml
+  digest: 81729bdebe92db3794963b09e355ed3bdbf879ccede26a1f536b410996b3fd78
 - id: business-knowledge
   title: Business knowledge
   description: Version-controlled business domains, terminology, aliases, semantics, and technical mappings.
@@ -147,3 +148,7 @@ history:
     action: source.add
     actor: cli
     summary: Added source 'ordered-compensation' to topic 'architecture'.
+  - version: 16
+    action: source.add
+    actor: cli
+    summary: Added source 'local-backup-recovery' to topic 'architecture'.

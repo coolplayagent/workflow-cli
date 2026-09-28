@@ -1,0 +1,139 @@
+{
+  "ok": true,
+  "result": {
+    "$defs": {
+      "BackupManifest": {
+        "additionalProperties": false,
+        "properties": {
+          "artifact_manifests": {
+            "format": "uint32",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "artifact_storage_version": {
+            "format": "uint32",
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "completed_at_unix_ms": {
+            "format": "uint64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "created_at_unix_ms": {
+            "format": "uint64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "files": {
+            "additionalProperties": {
+              "$ref": "#/$defs/FileImage"
+            },
+            "type": "object"
+          },
+          "registry_storage_version": {
+            "format": "uint32",
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "run_storage_version": {
+            "format": "uint32",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "runs": {
+            "items": {
+              "$ref": "#/$defs/RunImage"
+            },
+            "type": "array"
+          },
+          "schema_version": {
+            "format": "uint32",
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "schema_version",
+          "created_at_unix_ms",
+          "completed_at_unix_ms",
+          "run_storage_version",
+          "artifact_manifests",
+          "runs",
+          "files"
+        ],
+        "type": "object"
+      },
+      "FileImage": {
+        "additionalProperties": false,
+        "properties": {
+          "bytes": {
+            "format": "uint64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "digest": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "bytes",
+          "digest"
+        ],
+        "type": "object"
+      },
+      "RunImage": {
+        "additionalProperties": false,
+        "properties": {
+          "bundle_digest": {
+            "type": "string"
+          },
+          "revision": {
+            "format": "uint64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "run_digest": {
+            "type": "string"
+          },
+          "run_id": {
+            "type": "string"
+          },
+          "state_digest": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "run_id",
+          "run_digest",
+          "bundle_digest",
+          "revision",
+          "state_digest"
+        ],
+        "type": "object"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "additionalProperties": false,
+    "properties": {
+      "digest": {
+        "type": "string"
+      },
+      "manifest": {
+        "$ref": "#/$defs/BackupManifest"
+      }
+    },
+    "required": [
+      "manifest",
+      "digest"
+    ],
+    "title": "BackupIndex",
+    "type": "object"
+  }
+}

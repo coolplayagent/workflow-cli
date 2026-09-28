@@ -83,7 +83,8 @@ each compensator and no repetition of the earlier deletion. Pure ledger tests
 reject wrong order, original receipt substitution, unresolved dependents, late
 new dependents and irreversible reversal without changing ledger state.
 
-Storage schema 9 protects these semantics. Explicit v8→v9 migration is verified
+Storage schema 9 introduced these semantics; the current schema 10 also protects
+[backup recovery](backup-recovery.md). Explicit v8→v9 migration is verified
 using the actual previous binary: pending paused Inbox entries, lease/attempt
 history and a prepared effect intent remain byte-equivalent at the CLI boundary;
 v8 refuses the upgraded database. The migration fixture does not dispatch that

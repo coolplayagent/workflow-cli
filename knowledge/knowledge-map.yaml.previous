@@ -1,8 +1,8 @@
 schema_version: 4
 artifact_kind: map
 map_type: knowledge
-map_version: 14
-updated_at: unix:1790566009
+map_version: 15
+updated_at: unix:1790569201
 directories:
 - directory: domain
   purpose: Domain concepts, models, and business rules.
@@ -63,12 +63,13 @@ topics:
   - kernel-semantics
   - local-execution
   - model-execution
+  - ordered-compensation
   - run-store
   - runtime-postconditions
   - worker-protocol
   - workflow-evidence-gates
-  ref: topics/topic-4ca303a3bf7ddf7b-1285fc7692c9c4b50b2745d93361aa6f0a8a32e9a52fa75e26680be20fe9efde.yaml
-  digest: 1285fc7692c9c4b50b2745d93361aa6f0a8a32e9a52fa75e26680be20fe9efde
+  ref: topics/topic-4ca303a3bf7ddf7b-f75157015f8d33167f8b3bfb81d911cf8346bfe8dcbc62eef33eedf02468c50c.yaml
+  digest: f75157015f8d33167f8b3bfb81d911cf8346bfe8dcbc62eef33eedf02468c50c
 - id: business-knowledge
   title: Business knowledge
   description: Version-controlled business domains, terminology, aliases, semantics, and technical mappings.
@@ -142,3 +143,7 @@ history:
     action: source.add
     actor: cli
     summary: Added source 'durable-effects' to topic 'architecture'.
+  - version: 15
+    action: source.add
+    actor: cli
+    summary: Added source 'ordered-compensation' to topic 'architecture'.

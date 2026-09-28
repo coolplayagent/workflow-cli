@@ -9,9 +9,12 @@ pub struct Authority {
     pub lease: Option<Lease>,
     pub released: bool,
     pub last_now: u64,
+    pub generation: Option<String>,
+    pub recovery: Option<RecoveryBarrier>,
     pub effects: BTreeMap<String, workflow_effects::EffectState>,
     pub attempts: BTreeMap<String, AttemptState>,
     acquisitions: BTreeSet<String>,
+    generations: BTreeSet<String>,
 }
 impl Authority {
     pub fn new(run_id: &str, started: u64) -> Self {
@@ -21,9 +24,12 @@ impl Authority {
             lease: None,
             released: true,
             last_now: started,
+            generation: None,
+            recovery: None,
             attempts: BTreeMap::new(),
             effects: BTreeMap::new(),
             acquisitions: BTreeSet::new(),
+            generations: BTreeSet::new(),
         }
     }
     pub fn check_clock(&self, now: u64) -> Result<()> {
@@ -66,6 +72,7 @@ impl Authority {
         }
         let epoch = self.lease.as_ref().map_or(1, |l| l.epoch + 1);
         Ok(Lease {
+            generation: self.generation.clone(),
             run_id: self.run_id.clone(),
             owner: request.owner.clone(),
             acquisition_id: request.acquisition_id.clone(),
@@ -125,8 +132,72 @@ impl Authority {
     }
     fn reduce(&mut self, action: &ExecutionAction) -> Result<()> {
         let now = match action {
+            ExecutionAction::Restored {
+                recovery,
+                at_unix_ms,
+            } => {
+                recovery.validate()?;
+                if !self.generations.insert(recovery.generation.clone()) {
+                    return Err(Error::new(
+                        ErrorCode::InvalidRequest,
+                        "restore must create a new ownership generation",
+                    ));
+                }
+                self.generation = Some(recovery.generation.clone());
+                self.recovery = Some(recovery.clone());
+                self.released = true;
+                *at_unix_ms
+            }
+            ExecutionAction::RecoveryAcknowledged {
+                resolution,
+                at_unix_ms,
+            } => {
+                resolution.validate()?;
+                let recovery = self.recovery.as_ref().ok_or_else(|| {
+                    Error::new(ErrorCode::RecoveryRequired, "no pending recovery barrier")
+                })?;
+                if resolution.generation != recovery.generation
+                    || resolution.backup_digest != recovery.backup_digest
+                {
+                    return Err(Error::new(
+                        ErrorCode::RecoveryRequired,
+                        "recovery acknowledgement names another backup/generation",
+                    ));
+                }
+                if self.effects.values().any(|s| {
+                    !matches!(
+                        s.status,
+                        workflow_effects::EffectStatus::Applied { .. }
+                            | workflow_effects::EffectStatus::Failed { .. }
+                            | workflow_effects::EffectStatus::Cancelled
+                    )
+                }) {
+                    return Err(Error::new(
+                        ErrorCode::RecoveryRequired,
+                        "recorded external effects still require reconciliation",
+                    ));
+                }
+                self.recovery = None;
+                *at_unix_ms
+            }
             ExecutionAction::Effect { record, .. } => {
                 self.current(record.epoch, record.at_unix_ms)?;
+                if let workflow_effects::EffectChange::Imported { intent, .. } = &record.change
+                    && (self.recovery.is_none() || intent.run_id != self.run_id)
+                {
+                    return Err(Error::new(
+                        ErrorCode::RecoveryRequired,
+                        "historical effect import requires a restored run under reconciliation",
+                    ));
+                }
+                if self.recovery.is_some()
+                    && matches!(&record.change, workflow_effects::EffectChange::Prepared { attempt, .. } if attempt.kind == workflow_effects::CallKind::Write)
+                {
+                    return Err(Error::new(
+                        ErrorCode::RecoveryRequired,
+                        "restored run cannot admit writes before external reconciliation",
+                    ));
+                }
                 if let workflow_effects::EffectChange::Prepared { attempt, .. } = &record.change
                     && (attempt.intent.run_id != self.run_id
                         || attempt.deadline_unix_ms

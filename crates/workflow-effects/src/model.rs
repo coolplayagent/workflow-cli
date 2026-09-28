@@ -162,6 +162,12 @@ pub enum ManualOutcome {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)]
 pub enum EffectChange {
+    /// Trusted recovery imports an actual post-backup provider receipt. It does
+    /// not dispatch a call or recreate the missing attempt history.
+    Imported {
+        intent: Box<EffectIntent>,
+        resolution: ManualResolution,
+    },
     Prepared {
         attempt: Box<EffectAttempt>,
         request_digest: String,
@@ -190,6 +196,7 @@ pub struct EffectRecord {
 impl EffectChange {
     pub fn key(&self) -> &str {
         match self {
+            Self::Imported { intent, .. } => &intent.operation_key,
             Self::Prepared { attempt, .. } => &attempt.intent.operation_key,
             Self::Observed { operation_key, .. }
             | Self::Stopped { operation_key, .. }
