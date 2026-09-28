@@ -274,3 +274,21 @@ terms:
       - relation: represented_by
         target_kind: file
         target: crates/workflow-kernel/src/inbox.rs
+  - id: durable-effect-ledger
+    domain: workflow
+    canonical_name: Durable effect ledger
+    definition: A run-bound record of write intents, stable operation keys, fenced attempts and provider observations; an unknown outcome requires query or declared target deduplication, otherwise audited manual reconciliation.
+    language: en
+    mappings:
+      - relation: represented_by
+        target_kind: file
+        target: crates/workflow-effects/src/ledger.rs
+  - id: effect-query-absence
+    domain: workflow
+    canonical_name: Effect query absence
+    definition: A provider observation that the operation was not found at query time; it does not prevent an older writer from applying later and cannot alone authorize another write.
+    language: en
+    mappings:
+      - relation: represented_by
+        target_kind: file
+        target: crates/workflow-effects/src/model.rs

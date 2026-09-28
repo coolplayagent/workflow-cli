@@ -102,7 +102,16 @@ pub fn run(
         args @ ["run", ..]
         | args @ [
             "schema",
-            "run-start" | "run-receipt" | "run-lease" | "run-execution-record" | "run-signal",
+            "run-start"
+            | "run-receipt"
+            | "run-lease"
+            | "run-execution-record"
+            | "run-signal"
+            | "run-effect-http-binding"
+            | "run-effect-attempt"
+            | "run-effect-reply"
+            | "run-effect-observation"
+            | "run-effect-resolution",
         ] => runs::run(args, stdout, stderr),
         args @ ["kernel", ..]
         | args @ [

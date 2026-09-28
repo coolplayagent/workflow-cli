@@ -41,6 +41,17 @@ pub(crate) fn lock_bindings(c: &Connection, bundle: &CompiledBundle, create: boo
             create,
         )?;
     }
+    for binding in &bundle.spec().effect_bindings {
+        let p = &binding.policy;
+        check(
+            c,
+            "effect_policy",
+            &p.identity.id,
+            &p.identity.version,
+            &digest(p)?,
+            create,
+        )?;
+    }
     Ok(())
 }
 fn check(

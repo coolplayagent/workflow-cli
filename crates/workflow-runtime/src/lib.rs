@@ -15,6 +15,7 @@ pub struct DriveReport {
     pub snapshot: Snapshot,
     pub processed_commands: u32,
     pub executed_tasks: u32,
+    pub effect_calls: u32,
     pub timer_transitions: u32,
     pub stop_reason: String,
 }
@@ -61,6 +62,63 @@ pub fn drive(
     options: &DriveOptions,
     clock: &impl Clock,
 ) -> Result<DriveReport, Error> {
+    drive_inner(store, worker, run_id, options, clock, |_, _, _| {
+        Ok(EffectProgress::Skip)
+    })
+}
+
+/// Calls adapters only after the durable intent commits. A crash or transport
+/// failure leaves an unknown effect for query/deduplication recovery.
+pub fn drive_with_effects(
+    store: &mut impl workflow_runstore::EffectStore,
+    worker: &Worker,
+    effects: &impl workflow_effects::EffectAdapter,
+    run_id: &str,
+    options: &DriveOptions,
+    clock: &impl Clock,
+) -> Result<DriveReport, Error> {
+    use workflow_effects::Observation;
+    use workflow_runstore::EffectClaim;
+    drive_inner(store, worker, run_id, options, clock, |s, lease, clock| {
+        Ok(match s.claim_effect(lease, clock)? {
+            EffectClaim::Idle => EffectProgress::Skip,
+            EffectClaim::Handled => EffectProgress::Handled,
+            EffectClaim::Waiting { .. } => EffectProgress::Stop("effect_backoff"),
+            EffectClaim::Manual { .. } => EffectProgress::Stop("effect_uncertain"),
+            EffectClaim::Call { attempt } => {
+                let observed = match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                    effects.execute(&attempt, clock)
+                })) {
+                    Ok(Ok(value)) => value,
+                    // Provider errors may include sensitive response bytes. Keep
+                    // stable, bounded reasons; adapter diagnostics stay host-side.
+                    Ok(Err(_)) => Observation::Unknown {
+                        reason: "effect adapter could not return a verified observation".into(),
+                    },
+                    Err(_) => Observation::Unknown {
+                        reason: "effect adapter panicked after dispatch admission".into(),
+                    },
+                };
+                s.observe_effect(lease, &attempt.attempt_id, &observed, clock)?;
+                EffectProgress::Called
+            }
+        })
+    })
+}
+enum EffectProgress {
+    Skip,
+    Handled,
+    Called,
+    Stop(&'static str),
+}
+fn drive_inner<S: ExecutionStore>(
+    store: &mut S,
+    worker: &Worker,
+    run_id: &str,
+    options: &DriveOptions,
+    clock: &impl Clock,
+    effect: impl Fn(&mut S, &workflow_runstore::Lease, &dyn Clock) -> Result<EffectProgress, Error>,
+) -> Result<DriveReport, Error> {
     if !(1..=100).contains(&options.max_commands) {
         return Err(workflow_runstore::Error::new(
             workflow_runstore::ErrorCode::InvalidRequest,
@@ -81,6 +139,7 @@ pub fn drive(
         let mut processed = 0;
         let mut executed = 0;
         let mut timers = 0;
+        let mut effect_calls = 0;
         let mut stop = "budget";
         while processed < options.max_commands {
             let now = clock.now_unix_ms()?;
@@ -89,6 +148,22 @@ pub fn drive(
             }
             if store.tick_due(&lease, clock)?.is_some() {
                 timers += 1;
+            }
+            match effect(store, &lease, clock)? {
+                EffectProgress::Skip => {}
+                EffectProgress::Handled => {
+                    processed += 1;
+                    continue;
+                }
+                EffectProgress::Called => {
+                    processed += 1;
+                    effect_calls += 1;
+                    continue;
+                }
+                EffectProgress::Stop(reason) => {
+                    stop = reason;
+                    break;
+                }
             }
             match store.claim_next(&lease, clock)? {
                 Claimed::Idle => {
@@ -127,6 +202,7 @@ pub fn drive(
             processed_commands: processed,
             executed_tasks: executed,
             timer_transitions: timers,
+            effect_calls,
             stop_reason: stop.into(),
         })
     })();

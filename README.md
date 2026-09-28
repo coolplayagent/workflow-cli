@@ -9,7 +9,8 @@ belong in bindings rather than in the business graph.
 **Current implementation:** a Rust definition compiler, static validator,
 transactional definition registry, checked read-only capability invocation, a
 deterministic workflow kernel, and a transactional RunStore with event history,
-checkpoints, a command outbox and a durable callback Inbox. A local driver executes read-only tasks with
+checkpoints, a command outbox and a durable callback Inbox. Managed write tasks use
+a durable effect ledger with stable keys, query recovery and bounded retries. A local driver executes read-only tasks with
 durable leases, attempts and fenced result commits. Typed artifact manifests bind
 content and provenance; result acceptance verifies their durable dependencies.
 A portable evidence checker produces PASS/FAIL/UNKNOWN from settled execution records
@@ -102,6 +103,7 @@ the CLI exits 0.
 - [Mandatory task/terminal gates and bounded repair](docs/runtime-postconditions.md)
 - [Local execution, leases, attempts and migration](docs/local-execution.md)
 - [Durable event Inbox and callback matching](docs/event-inbox.md)
+- [Durable write effects and gateway protocol](docs/durable-effects.md)
 - [Durable run state, events, checkpoints and outbox](docs/run-store.md)
 - [Deterministic kernel, bundle checks and replay](docs/kernel-semantics.md)
 - [IR and decision semantics](docs/definition-semantics.md)

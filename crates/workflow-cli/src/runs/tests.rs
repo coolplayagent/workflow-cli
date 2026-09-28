@@ -179,7 +179,18 @@ fn cancellation_is_durable_idempotent_and_does_not_claim_task_completion() {
 }
 #[test]
 fn generated_run_schemas_and_shipped_requests_match_the_contract() {
-    for kind in ["start", "receipt", "lease", "execution-record", "signal"] {
+    for kind in [
+        "start",
+        "receipt",
+        "lease",
+        "execution-record",
+        "signal",
+        "effect-http-binding",
+        "effect-attempt",
+        "effect-reply",
+        "effect-observation",
+        "effect-resolution",
+    ] {
         let (code, actual) = invoke(&["schema", &format!("run-{kind}")]);
         assert_eq!(code, 0);
         let expected: Value = serde_json::from_slice(
@@ -362,5 +373,68 @@ fn gated_drive_stops_on_unknown_and_retry_intent_is_cas_bound_and_idempotent() {
         1
     );
     assert_eq!(invoke(&["run", "verify", db, "guarded-validation"]).0, 0);
+    std::fs::remove_dir_all(dir).unwrap();
+}
+
+#[test]
+fn effect_cli_claim_observe_and_inspect_preserve_the_exact_external_receipt() {
+    use workflow_worker::Clock;
+    let dir = std::env::temp_dir().join(format!("workflow-run-effects-cli-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let db = dir.join("runs.db");
+    let db = db.to_str().unwrap();
+    let mut start: Value = serde_json::from_slice(
+        &std::fs::read(base().join("examples/runs/effect-release.json")).unwrap(),
+    )
+    .unwrap();
+    start["started_at_unix_ms"] = json!(workflow_worker::SystemClock.now_unix_ms().unwrap());
+    let start_path = dir.join("start.json");
+    std::fs::write(&start_path, start.to_string()).unwrap();
+    assert_eq!(invoke(&["run", "init", db]).0, 0);
+    assert_eq!(
+        invoke(&["run", "start", db, start_path.to_str().unwrap()]).0,
+        0
+    );
+    let req = dir.join("lease-request.json");
+    std::fs::write(&req,json!({"run_id":"demo-effect-release","owner":"cli","acquisition_id":"cli-effect-one","ttl_ms":300000}).to_string()).unwrap();
+    let (code, l) = invoke(&["run", "acquire", db, req.to_str().unwrap()]);
+    assert_eq!(code, 0);
+    let lease = dir.join("lease.json");
+    std::fs::write(&lease, l["result"].to_string()).unwrap();
+    let (code, claimed) = invoke(&["run", "effect-claim", db, lease.to_str().unwrap()]);
+    assert_eq!(code, 0);
+    let p: workflow_effects::EffectAttempt =
+        serde_json::from_value(claimed["result"]["attempt"].clone()).unwrap();
+    let observed = workflow_effects::Observation::Applied {
+        receipt: workflow_effects::EffectReceipt {
+            operation_key: p.intent.operation_key.clone(),
+            intent_digest: workflow_effects::digest(&p.intent).unwrap(),
+            target: p.intent.policy.target.clone(),
+            resource_id: "release-cli-1".into(),
+            provider_receipt: "sandbox-receipt-cli-1".into(),
+            outputs: [("release_id".into(), "release-cli-1".into())].into(),
+        },
+    };
+    let file = dir.join("observation.json");
+    std::fs::write(&file, serde_json::to_vec(&observed).unwrap()).unwrap();
+    let args = [
+        "run",
+        "effect-observe",
+        db,
+        lease.to_str().unwrap(),
+        &p.attempt_id,
+        file.to_str().unwrap(),
+    ];
+    let (code, committed) = invoke(&args);
+    assert_eq!(code, 0);
+    assert_eq!(committed["result"]["snapshot"]["status"], "succeeded");
+    assert_eq!(invoke(&args).1["result"]["transition"]["duplicate"], true);
+    let (code, page) = invoke(&["run", "effects", db, "demo-effect-release", "0", "10"]);
+    assert_eq!(code, 0);
+    assert_eq!(
+        page["result"]["items"][0]["status"]["receipt"]["resource_id"],
+        "release-cli-1"
+    );
+    assert_eq!(invoke(&["run", "verify", db, "demo-effect-release"]).0, 0);
     std::fs::remove_dir_all(dir).unwrap();
 }

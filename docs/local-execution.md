@@ -219,3 +219,12 @@ settlement can leave the run awaiting a gate; inspect business state and decisio
 A gate PASS commits its transition, receipt and proof atomically; UNKNOWN consumes
 one intent and waits for explicit `retry-gate`. See [runtime postconditions](runtime-postconditions.md)
 for bindings, evidence selection, repair bounds and protected event ingress.
+
+## Managed write effects
+
+The separate `EffectStore` port and `drive_with_effects` host driver persist write
+intents and settle provider observations under the same run lease. CLI hosts use
+`run drive-effects`; ordinary `drive` continues to use read-only workers. See
+[durable effects](durable-effects.md) for stable keys, query recovery, bounded
+retry, manual reconciliation and provider fencing limits. Storage schema 8 adds
+these policies and journal records; explicit migration accepts schemas 1–7.

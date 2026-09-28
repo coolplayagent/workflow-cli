@@ -9,6 +9,7 @@ pub struct Authority {
     pub lease: Option<Lease>,
     pub released: bool,
     pub last_now: u64,
+    pub effects: BTreeMap<String, workflow_effects::EffectState>,
     pub attempts: BTreeMap<String, AttemptState>,
     acquisitions: BTreeSet<String>,
 }
@@ -21,6 +22,7 @@ impl Authority {
             released: true,
             last_now: started,
             attempts: BTreeMap::new(),
+            effects: BTreeMap::new(),
             acquisitions: BTreeSet::new(),
         }
     }
@@ -123,6 +125,21 @@ impl Authority {
     }
     fn reduce(&mut self, action: &ExecutionAction) -> Result<()> {
         let now = match action {
+            ExecutionAction::Effect { record, .. } => {
+                self.current(record.epoch, record.at_unix_ms)?;
+                if let workflow_effects::EffectChange::Prepared { attempt, .. } = &record.change
+                    && (attempt.intent.run_id != self.run_id
+                        || attempt.deadline_unix_ms
+                            > self.lease.as_ref().unwrap().expires_at_unix_ms)
+                {
+                    return Err(Error::new(
+                        ErrorCode::InvalidRequest,
+                        "effect attempt exceeds this run lease",
+                    ));
+                }
+                workflow_effects::apply(&mut self.effects, record)?;
+                record.at_unix_ms
+            }
             ExecutionAction::Acquired { lease } => {
                 let ttl = lease
                     .expires_at_unix_ms

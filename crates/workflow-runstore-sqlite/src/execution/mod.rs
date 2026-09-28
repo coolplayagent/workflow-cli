@@ -2,6 +2,7 @@ use crate::recovery::Recovered;
 use crate::*;
 use rusqlite::{OptionalExtension, params};
 mod controls;
+pub(crate) mod effects;
 pub(crate) mod gates;
 mod leases;
 mod proof;
@@ -106,6 +107,7 @@ pub(crate) fn read(
     {
         return Err(corrupt("gate events and fenced execution proofs differ"));
     }
+    effects::verify_coverage(r, &records)?;
     if count != number(authority.sequence)? || chain != expected {
         return Err(corrupt("execution journal disagrees with its head"));
     }

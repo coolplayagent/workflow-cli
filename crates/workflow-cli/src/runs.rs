@@ -5,7 +5,7 @@ use std::io::{Read, Write};
 use workflow_runstore::*;
 use workflow_runstore_sqlite::SqliteRunStore;
 
-pub const HELP: &str = "DURABLE RUN STORAGE\n  workflow run init <db>\n  workflow run migrate <db>\n  workflow run start <db> <start.json>\n  workflow run drive <db> <run-id> <owner> <max-commands>\n  workflow run drive-models <db> <run-id> <owner> <max-commands> <bindings.json>\n  workflow run execution-history <db> <run-id> <after-sequence> <limit>\n  workflow run status <db> <run-id>\n  workflow run receive <db> <signal.json>\n  workflow run inbox <db> <run-id> <after-revision> <limit>\n  workflow run waits <db> <run-id> <after-instance> <limit>\n  workflow run event <db> <event.json>\n  workflow run cancel <db> <run-id> <event-id> <expected-revision> <at-unix-ms>\n  workflow run <pause|resume> <db> <run-id> <event-id> <expected-revision> <at-unix-ms> <reason>\n  workflow run list <db> <after-id|-> <limit>\n  workflow run history <db> <run-id> <after-revision> <limit>\n  workflow run outbox <db> <run-id> <after-sequence> <limit> <all|pending>\n  workflow run acknowledge <db> <receipt.json>\n  workflow run verify <db> <run-id>\n  workflow run acquire <db> <lease-request.json>\n  workflow run renew <db> <lease.json> <ttl-ms>\n  workflow run release <db> <lease.json>\n  workflow run claim <db> <lease.json>\n  workflow run tick-due <db> <lease.json>\n  workflow run retry-gate <db> <run-id> <instance-id> <event-id> <expected-revision>\n  workflow run finish <db> <lease.json> <attempt-id> <result.json>\n  workflow run attempt-failed <db> <lease.json> <attempt-id> <worker-error.json>\n  workflow run --artifacts <store> <operation> ...\n  workflow schema <run-start|run-receipt|run-lease|run-execution-record|run-signal>\n\nOnly init creates a database. Mutations acknowledge after SQLite commit.\ndrive executes local read-only builtins with a durable run lease; max-commands is 1..100.\nPause persists admission state; in-flight results may commit; resume preserves original deadlines.\nTimers advance on drive; there is no background daemon. migrate explicitly upgrades v1..v6 storage to v7.\nRuns with artifact evidence require --artifacts on reads and mutations; this location is not persisted.\nclaim/drive checks frozen postconditions; UNKNOWN waits for explicit retry-gate.\nRaw gate events/manual gate receipts and raw successes in gated runs are refused.\nInbox ingress is trusted host input; inspect entry.status: committed receipt does not mean applied approval.\nOther events and delivery receipts are trusted host facts; delivery is not task success.\nExit 0 means committed/read successfully; inspect result.snapshot.status (mutations) or result.status (status).\nExit 1 means rejected request/transition/storage/execution; 2 means usage/input I/O/output failure.\n";
+pub const HELP: &str = "DURABLE RUN STORAGE\n  workflow run init <db>\n  workflow run migrate <db>\n  workflow run start <db> <start.json>\n  workflow run drive <db> <run-id> <owner> <max-commands>\n  workflow run drive-models <db> <run-id> <owner> <max-commands> <bindings.json>\n  workflow run drive-effects <db> <run-id> <owner> <max-commands> <bindings.json> [model-bindings.json]\n  workflow run effects <db> <run-id> <after-instance> <limit>\n  workflow run effect-claim <db> <lease.json>\n  workflow run effect-observe <db> <lease.json> <attempt-id> <observation.json>\n  workflow run effect-resolve <db> <lease.json> <operation-key> <resolution.json>\n  workflow run execution-history <db> <run-id> <after-sequence> <limit>\n  workflow run status <db> <run-id>\n  workflow run receive <db> <signal.json>\n  workflow run inbox <db> <run-id> <after-revision> <limit>\n  workflow run waits <db> <run-id> <after-instance> <limit>\n  workflow run event <db> <event.json>\n  workflow run cancel <db> <run-id> <event-id> <expected-revision> <at-unix-ms>\n  workflow run <pause|resume> <db> <run-id> <event-id> <expected-revision> <at-unix-ms> <reason>\n  workflow run list <db> <after-id|-> <limit>\n  workflow run history <db> <run-id> <after-revision> <limit>\n  workflow run outbox <db> <run-id> <after-sequence> <limit> <all|pending>\n  workflow run acknowledge <db> <receipt.json>\n  workflow run verify <db> <run-id>\n  workflow run acquire <db> <lease-request.json>\n  workflow run renew <db> <lease.json> <ttl-ms>\n  workflow run release <db> <lease.json>\n  workflow run claim <db> <lease.json>\n  workflow run tick-due <db> <lease.json>\n  workflow run retry-gate <db> <run-id> <instance-id> <event-id> <expected-revision>\n  workflow run finish <db> <lease.json> <attempt-id> <result.json>\n  workflow run attempt-failed <db> <lease.json> <attempt-id> <worker-error.json>\n  workflow run --artifacts <store> <operation> ...\n  workflow schema <run-start|run-receipt|run-lease|run-execution-record|run-signal>\n\nOnly init creates a database. Mutations acknowledge after SQLite commit.\ndrive executes local read-only builtins with a durable run lease; max-commands is 1..100.\nPause persists admission state; in-flight results may commit; resume preserves original deadlines.\nTimers advance on drive; there is no background daemon. migrate explicitly upgrades v1..v7 storage to v8.\nRuns with artifact evidence require --artifacts on reads and mutations; this location is not persisted.\nclaim/drive checks frozen postconditions; UNKNOWN waits for explicit retry-gate.\nRaw gate events/manual gate receipts and raw successes in gated runs are refused.\nInbox ingress is trusted host input; inspect entry.status: committed receipt does not mean applied approval.\nOther events and delivery receipts are trusted host facts; delivery is not task success.\nExit 0 means committed/read successfully; inspect result.snapshot.status (mutations) or result.status (status).\nExit 1 means rejected request/transition/storage/execution; 2 means usage/input I/O/output failure.\n";
 fn read<T: DeserializeOwned>(p: &str) -> Result<T> {
     let mut bytes = vec![];
     std::fs::File::open(p)
@@ -35,13 +35,20 @@ fn open(db: &str, artifacts: Option<&str>) -> Result<SqliteRunStore> {
 }
 fn execute(args: &[&str], artifacts: Option<&str>) -> Result<Value> {
     match args {
+        ["schema", "run-effect-http-binding"] => report(schemars::schema_for!(
+            Vec<workflow_effect_http::HttpEffectBinding>
+        )),
         [
             "schema",
             kind @ ("run-start"
             | "run-receipt"
             | "run-lease"
             | "run-execution-record"
-            | "run-signal"),
+            | "run-signal"
+            | "run-effect-attempt"
+            | "run-effect-reply"
+            | "run-effect-observation"
+            | "run-effect-resolution"),
         ] => Ok(workflow_worker::parse_message(
             schema(&kind[4..])?.as_bytes(),
         )?),
@@ -57,7 +64,29 @@ fn execute(args: &[&str], artifacts: Option<&str>) -> Result<Value> {
                 db,
                 reader.map(|r| Box::new(r) as Box<dyn workflow_artifacts::ArtifactReader>),
             )?;
-            Ok(json!({"migrated":true,"storage_version":7}))
+            Ok(json!({"migrated":true,"storage_version":8}))
+        }
+        ["run", "effects", db, id, after, limit] => {
+            report(open(db, artifacts)?.effects(id, number(after)?, number(limit)?)?)
+        }
+        ["run", "effect-claim", db, lease] => {
+            report(open(db, artifacts)?.claim_effect(&read(lease)?, &workflow_worker::SystemClock)?)
+        }
+        ["run", "effect-observe", db, lease, attempt, file] => {
+            report(open(db, artifacts)?.observe_effect(
+                &read(lease)?,
+                attempt,
+                &read(file)?,
+                &workflow_worker::SystemClock,
+            )?)
+        }
+        ["run", "effect-resolve", db, lease, key, file] => {
+            report(open(db, artifacts)?.resolve_effect(
+                &read(lease)?,
+                key,
+                &read(file)?,
+                &workflow_worker::SystemClock,
+            )?)
         }
         ["run", "execution-history", db, id, after, limit] => {
             report(open(db, artifacts)?.execution_history(id, number(after)?, number(limit)?)?)
@@ -240,6 +269,7 @@ fn drive(
     budget: &str,
     artifacts: Option<&str>,
     models: Option<&str>,
+    effects: Option<&str>,
 ) -> std::result::Result<Value, workflow_runtime::Error> {
     let max_commands = number(budget)?;
     let nonce = std::time::SystemTime::now()
@@ -258,13 +288,25 @@ fn drive(
     } else {
         workflow_builtin_capabilities::worker()?
     };
-    let result = workflow_runtime::drive(
-        &mut store,
-        &worker,
-        id,
-        &options,
-        &workflow_worker::SystemClock,
-    )?;
+    let result = if let Some(file) = effects {
+        let adapters = workflow_effect_http::HttpEffects::new(read(file)?)?;
+        workflow_runtime::drive_with_effects(
+            &mut store,
+            &worker,
+            &adapters,
+            id,
+            &options,
+            &workflow_worker::SystemClock,
+        )?
+    } else {
+        workflow_runtime::drive(
+            &mut store,
+            &worker,
+            id,
+            &options,
+            &workflow_worker::SystemClock,
+        )?
+    };
     Ok(report(result)?)
 }
 pub fn run(args: &[&str], stdout: &mut impl Write, stderr: &mut impl Write) -> i32 {
@@ -277,9 +319,34 @@ pub fn run(args: &[&str], stdout: &mut impl Write, stderr: &mut impl Write) -> i
         (args, None)
     };
     let outcome = if let ["run", "drive", db, id, owner, budget] = args {
-        drive(db, id, owner, budget, artifacts, None).map_err(|e| (e.message.clone(), json!(e)))
+        drive(db, id, owner, budget, artifacts, None, None)
+            .map_err(|e| (e.message.clone(), json!(e)))
     } else if let ["run", "drive-models", db, id, owner, budget, file] = args {
-        drive(db, id, owner, budget, artifacts, Some(file))
+        drive(db, id, owner, budget, artifacts, Some(file), None)
+            .map_err(|e| (e.message.clone(), json!(e)))
+    } else if let [
+        "run",
+        "drive-effects",
+        db,
+        id,
+        owner,
+        budget,
+        effects,
+        models,
+    ] = args
+    {
+        drive(
+            db,
+            id,
+            owner,
+            budget,
+            artifacts,
+            Some(models),
+            Some(effects),
+        )
+        .map_err(|e| (e.message.clone(), json!(e)))
+    } else if let ["run", "drive-effects", db, id, owner, budget, file] = args {
+        drive(db, id, owner, budget, artifacts, None, Some(file))
             .map_err(|e| (e.message.clone(), json!(e)))
     } else {
         execute(args, artifacts).map_err(|e| (e.message.clone(), json!(e)))

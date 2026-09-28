@@ -16,6 +16,8 @@ pub struct BundleSpec {
     pub postconditions: Vec<crate::Postcondition>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub model_policies: Vec<workflow_models::PolicySpec>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub effect_bindings: Vec<workflow_effects::EffectBinding>,
 }
 #[derive(Clone, Debug)]
 pub struct CompiledBundle {
@@ -34,7 +36,10 @@ pub(crate) fn workflow_key(w: &Workflow) -> String {
 impl CompiledBundle {
     pub fn compile(mut spec: BundleSpec) -> Result<Self> {
         // Bound new recursive policy types before encoding in-process bundles.
-        if spec.postconditions.len() > 256 || spec.model_policies.len() > 128 {
+        if spec.postconditions.len() > 256
+            || spec.model_policies.len() > 128
+            || spec.effect_bindings.len() > 256
+        {
             return Err(Error::new(
                 ErrorCode::InvalidBundle,
                 "at most 256 postconditions and 128 model policies",
@@ -226,6 +231,48 @@ impl CompiledBundle {
                 }
             }
         }
+        let mut effect_nodes = BTreeSet::new();
+        for binding in &spec.effect_bindings {
+            workflow_effects::validate_policy(&binding.policy)
+                .map_err(|e| Error::new(ErrorCode::InvalidBundle, e.message))?;
+            let node = workflows
+                .get(&key(&binding.workflow))
+                .and_then(|w| w.nodes.iter().find(|n| n.id == binding.node_id))
+                .ok_or_else(|| {
+                    Error::new(
+                        ErrorCode::MissingReference,
+                        "effect binding node is missing",
+                    )
+                })?;
+            let NodeKind::Task {
+                capability,
+                policy: None,
+            } = &node.kind
+            else {
+                return Err(Error::new(
+                    ErrorCode::ContractMismatch,
+                    "effect binding requires a direct task",
+                ));
+            };
+            let workflow_worker::EffectContract::Write { query, .. } =
+                &capabilities[&key(capability)].descriptor().effects
+            else {
+                return Err(Error::new(
+                    ErrorCode::ContractMismatch,
+                    "effect binding requires a write capability",
+                ));
+            };
+            if query.as_ref().is_some_and(|q| {
+                capabilities[&key(q)].descriptor().effects
+                    != workflow_worker::EffectContract::ReadOnly
+            }) || !effect_nodes.insert((key(&binding.workflow), binding.node_id.clone()))
+            {
+                return Err(Error::new(
+                    ErrorCode::ContractMismatch,
+                    "effect query must be read-only and node bindings unique",
+                ));
+            }
+        }
         crate::postconditions::validate(&spec, &workflows, &capabilities)?;
         // Remove leaves. Any remaining dependency is a recursion cycle, including loop bodies.
         while !dependencies.is_empty() {
@@ -250,6 +297,8 @@ impl CompiledBundle {
         spec.workflows.sort_by_key(workflow_key);
         spec.capabilities.sort_by_key(|d| key(&d.capability));
         spec.model_policies.sort_by_key(|p| key(&p.policy));
+        spec.effect_bindings
+            .sort_by_key(|b| (key(&b.workflow), b.node_id.clone()));
         let digest = workflow_worker::digest(&spec)?;
         Ok(Self {
             workflows,

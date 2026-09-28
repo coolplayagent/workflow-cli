@@ -187,7 +187,7 @@ pub(super) fn entry<'a>(r: &'a Recovered, id: &str) -> Result<&'a OutboxEntry> {
         .find(|e| e.command_id == id)
         .ok_or_else(|| corrupt("execution command is missing"))
 }
-fn verify_receipt(r: &Recovered, id: &str, epoch: u64) -> Result<()> {
+pub(super) fn verify_receipt(r: &Recovered, id: &str, epoch: u64) -> Result<()> {
     let e = entry(r, id)?;
     let receipt = e
         .receipt
@@ -198,7 +198,12 @@ fn verify_receipt(r: &Recovered, id: &str, epoch: u64) -> Result<()> {
     }
     Ok(())
 }
-fn stored_event<'a>(r: &'a Recovered, id: &str, revision: u64, now: u64) -> Result<&'a Event> {
+pub(super) fn stored_event<'a>(
+    r: &'a Recovered,
+    id: &str,
+    revision: u64,
+    now: u64,
+) -> Result<&'a Event> {
     let record = r
         .events
         .iter()
@@ -216,6 +221,9 @@ pub(super) fn verify(
     artifacts: Option<&dyn workflow_artifacts::ArtifactReader>,
 ) -> Result<()> {
     match action {
+        ExecutionAction::Effect { record, transition } => {
+            super::effects::verify(r, a, record, transition)?
+        }
         ExecutionAction::Prepared { attempt } => {
             let paused = r
                 .events
@@ -320,17 +328,22 @@ pub(super) fn verify(
             at_unix_ms,
         } => {
             verify_receipt(r, command_id, *epoch)?;
-            match &entry(r, command_id)?.command {
-                Command::ExecuteTask { .. } => {
-                    capability(r, entry(r, command_id)?)?;
+            let handled = entry(r, command_id)?;
+            if super::effects::managed(r, handled)? {
+                super::effects::verify_handled(r, a, handled)?;
+            } else {
+                match &handled.command {
+                    Command::ExecuteTask { .. } => {
+                        capability(r, entry(r, command_id)?)?;
+                    }
+                    Command::CancelTask { instance_id } => {
+                        super::controls::read_only_instance(r, *instance_id)?
+                    }
+                    Command::ReconcileTask { .. } => {
+                        return Err(corrupt("local executor cannot acknowledge reconciliation"));
+                    }
+                    _ => {}
                 }
-                Command::CancelTask { instance_id } => {
-                    super::controls::read_only_instance(r, *instance_id)?
-                }
-                Command::ReconcileTask { .. } => {
-                    return Err(corrupt("local executor cannot acknowledge reconciliation"));
-                }
-                _ => {}
             }
             if let (Some(id), Some(revision)) = (event_id, event_revision) {
                 let instance = match entry(r, command_id)?.command {
