@@ -53,6 +53,7 @@ impl SqliteRunStore {
         tx.commit().map_err(storage)?;
         Ok(Self {
             connection,
+            admission: Default::default(),
             artifacts,
         })
     }
@@ -82,7 +83,13 @@ impl SqliteRunStore {
                 lease: lease.clone(),
             },
         )?;
-        commit_guard(clock, &lease, now, lease.expires_at_unix_ms)?;
+        commit_guard(
+            &self.admission,
+            clock,
+            &lease,
+            now,
+            lease.expires_at_unix_ms,
+        )?;
         tx.commit().map_err(storage)?;
         Ok(lease)
     }
@@ -105,7 +112,7 @@ impl SqliteRunStore {
                 at_unix_ms: now,
             },
         )?;
-        commit_guard(clock, l, now, l.expires_at_unix_ms)?;
+        commit_guard(&self.admission, clock, l, now, l.expires_at_unix_ms)?;
         tx.commit().map_err(storage)?;
         Ok(renewed)
     }
@@ -126,7 +133,7 @@ impl SqliteRunStore {
                 at_unix_ms: now,
             },
         )?;
-        commit_guard(clock, l, now, l.expires_at_unix_ms)?;
+        commit_guard(&self.admission, clock, l, now, l.expires_at_unix_ms)?;
         tx.commit().map_err(storage)?;
         Ok(())
     }

@@ -140,3 +140,5 @@ corrupt/missing/type-conflicting evidence and preserve references across local
 export/import. `qualitygate.yaml` runs these
 four commands against its captured delivery snapshot. No business benefit or
 recovery SLA is claimed before the R15 benchmarks have been collected.
+
+Shared storage: [PostgreSQL authority library and contract boundary](docs/postgres-authority.md).

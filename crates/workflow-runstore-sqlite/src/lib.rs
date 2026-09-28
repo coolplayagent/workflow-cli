@@ -2,7 +2,9 @@
 mod bindings;
 mod db;
 mod execution;
+mod image;
 mod inbox;
+pub use image::{AdmissionWindow, ImageBinding, RunImage};
 mod reads;
 mod recovery;
 mod restoration;
@@ -14,6 +16,7 @@ use workflow_runstore::*;
 
 pub struct SqliteRunStore {
     connection: Connection,
+    admission: std::cell::Cell<Option<AdmissionWindow>>,
     artifacts: Option<Box<dyn workflow_artifacts::ArtifactReader>>,
 }
 impl SqliteRunStore {
@@ -61,6 +64,7 @@ impl SqliteRunStore {
         tx.commit().map_err(storage)?;
         Ok(Self {
             connection,
+            admission: Default::default(),
             artifacts: None,
         })
     }
@@ -69,6 +73,7 @@ impl SqliteRunStore {
         check_version(&connection)?;
         Ok(Self {
             connection,
+            admission: Default::default(),
             artifacts: None,
         })
     }
@@ -77,6 +82,7 @@ impl SqliteRunStore {
         check_version(&connection)?;
         Ok(Self {
             connection,
+            admission: Default::default(),
             artifacts: None,
         })
     }

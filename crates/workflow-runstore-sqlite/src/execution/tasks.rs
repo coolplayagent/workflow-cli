@@ -111,7 +111,7 @@ impl SqliteRunStore {
             },
         )?;
         hook("execution_written");
-        let commit_at = commit_guard(clock, l, now, p.request.deadline_unix_ms)?;
+        let commit_at = commit_guard(&self.admission, clock, l, now, p.request.deadline_unix_ms)?;
         check_signal_admission(&committed.snapshot, commit_at)?;
         hook("before_commit");
         tx.commit().map_err(storage)?;
@@ -151,7 +151,7 @@ impl SqliteRunStore {
                 at_unix_ms: now,
             },
         )?;
-        commit_guard(clock, l, now, l.expires_at_unix_ms)?;
+        commit_guard(&self.admission, clock, l, now, l.expires_at_unix_ms)?;
         tx.commit().map_err(storage)?;
         Ok(())
     }
