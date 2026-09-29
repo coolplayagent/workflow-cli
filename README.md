@@ -45,6 +45,10 @@ bazel run //:workflow -- validate "$PWD/examples/review.yaml"
 bazel query 'kind(rust_library, //...)'
 ```
 
+Builds reject stale module locks. After changing Cargo manifests or `Cargo.lock`,
+run `bazel mod deps --lockfile_mode=update`, review `MODULE.bazel.lock`, and commit
+it before running the checks. Verification does not silently rewrite the lock.
+
 The first build downloads the pinned toolchain and dependencies. Bazel runs a
 binary in its execution directory: pass an absolute filename when using
 `bazel run`. A directly installed `workflow` binary resolves paths against the
