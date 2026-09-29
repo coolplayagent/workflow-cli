@@ -22,8 +22,10 @@ and capture typed outputs with exact provenance. Bounded model policies invoke a
 read-only tools through OpenAI Responses or Anthropic Messages host bindings, with
 explicit records checked during settlement and recovery. Verified local backups retain
 run and artifact history; restored runs use fresh lease generations and require
-external-effect reconciliation before admitting writes. Authenticated remote
-execution and the remaining acceptance work follow the [issue roadmap](docs/roadmap.md). `validate` is a
+external-effect reconciliation before admitting writes. Authenticated HTTPS
+execution connects separate schedulers and workers to PostgreSQL, with scoped
+credentials and fenced read-only results. Remaining acceptance work follows the
+[issue roadmap](docs/roadmap.md). `validate` is a
 static check, not permission to execute a capability or proof of a successful run.
 
 ## Use
@@ -106,6 +108,7 @@ the CLI exits 0.
 - [Local execution, leases, attempts and migration](docs/local-execution.md)
 - [Local daemon, live status, stopping and offline example](docs/local-daemon.md)
 - [R08 local acceptance and supported environments](docs/local-acceptance.md)
+- [Authenticated HTTPS service, remote schedulers and workers](docs/remote-service.md)
 - [Durable event Inbox and callback matching](docs/event-inbox.md)
 - [Durable write effects and gateway protocol](docs/durable-effects.md)
 - [Ordered compensation and manual takeover](docs/ordered-compensation.md)

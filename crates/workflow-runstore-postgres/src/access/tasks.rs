@@ -70,6 +70,25 @@ fn check_lease(
     Ok(())
 }
 impl AuthenticatedService {
+    /// Rebuild delivery after notification/response loss. This returns only the
+    /// authenticated worker's unexpired, unsettled assignment IDs. Retrieval
+    /// still revalidates the exact current lease and committed attempt.
+    pub fn pending(
+        &mut self,
+        token: &str,
+        after: &str,
+        limit: u32,
+    ) -> Result<Page<String, String>> {
+        self.transact(token, &[Role::Worker], "pending", "assignments", |tx, who| {
+            validate_limit(limit)?;
+            if !after.is_empty() { validate_id(after)?; }
+            let at=now(tx)?;
+            let rows=tx.query("SELECT id FROM workflow_access.assignments WHERE tenant=$1 AND project=$2 AND worker_id=$3 AND NOT settled AND expires_at>$4 AND id COLLATE \"C\">$5 COLLATE \"C\" ORDER BY id COLLATE \"C\" LIMIT $6", &[&who.tenant,&who.project,&who.id,&at,&after,&(i64::from(limit)+1)]).map_err(storage)?;
+            let mut items:Vec<String>=rows.iter().map(|r|r.get(0)).collect();
+            let next_cursor=if items.len()>limit as usize {items.pop();items.last().cloned()}else{None};
+            Ok(Page{items,next_cursor})
+        })
+    }
     /// A scheduler may prepare work only for a live worker in its own scope and
     /// with an exact capability contract allowlist. Identity and assignment are
     /// committed atomically with the prepared attempt.
@@ -143,6 +162,37 @@ impl AuthenticatedService {
                 revision: committed.snapshot.revision,
                 duplicate: committed.transition.duplicate,
             })
+        })
+    }
+    pub fn fail(
+        &mut self,
+        token: &str,
+        assignment: &str,
+        error: &workflow_worker::Error,
+    ) -> Result<()> {
+        self.transact(token, &[Role::Worker], "fail", assignment, |tx, who| {
+            let a = load(tx, who, assignment)?;
+            if a.settled {
+                return Err(Error::new(
+                    ErrorCode::ReceiptConflict,
+                    "assignment already settled",
+                ));
+            }
+            // Transport failures never carry arbitrary exception text into the ledger.
+            let bounded = workflow_worker::Error::new(
+                error.code.clone(),
+                "worker could not execute assigned contract",
+            );
+            who.change(tx, &a.lease.run_id, false, |s, c| {
+                check_lease(s, &a.lease, &a.task, c.now_unix_ms()?)?;
+                s.fail_task(&a.lease, &a.task.attempt_id, &bounded, c)
+            })?;
+            tx.execute(
+                "UPDATE workflow_access.assignments SET settled=true WHERE id=$1",
+                &[&assignment],
+            )
+            .map_err(storage)?;
+            Ok(())
         })
     }
     /// Retain unresolved work after worker revocation/rotation/expiry for operator

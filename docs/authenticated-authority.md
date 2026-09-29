@@ -90,7 +90,7 @@ bounded resource identifier, fixed outcome and database timestamp. Raw tokens,
 token digests, request payloads, raw errors, SQL and connection strings are not
 copied into the audit. Returned operation errors contain fixed messages.
 Unauthenticated attempts and database failures have no claimed durable audit;
-an eventual transport host must record bounded ingress failure metrics. A final
+transport hosts must supply bounded ingress failure metrics. A final
 expiry/commit failure can roll back the audit with the entire transaction.
 Caller-supplied workflow content is still application data; this API does not
 claim to detect arbitrary secrets deliberately embedded in it.
@@ -100,12 +100,19 @@ run images nor upgrades an unknown access schema. Administrative DB access can
 modify these tables, so deployment must restrict it and apply backup/retention
 policy. This is not a tamper-proof audit or an independent identity provider.
 
-R14 and R09 remain open. Public TLS transport, enterprise identity provisioning,
-provider secret references and rotation, authenticated artifact ACL/download
-links, sandbox/resource/egress restrictions, scoped export/restore with ownership,
-shared definition lifecycle, audited external-effect reconciliation, and actual
-two-scheduler/three-worker failure tests are still required. No network deployment
-or throughput claim is made by these library-level tests.
+The [HTTPS service](remote-service.md) exposes these application operations with
+explicit CA verification, host secret references, bounded admission, and separate
+scheduler/worker processes. Its real PostgreSQL acceptance fixture kills an owner
+among two schedulers and three workers, resumes a stale worker, and compares the
+result with local execution.
+
+R14 and R09 remain open. Enterprise identity provisioning, provider secret grants,
+authenticated artifact ACL/download links, sandbox/resource/egress restrictions,
+scoped export/restore with ownership, shared definition lifecycle, audited
+external-effect reconciliation, scheduling quotas/fairness, version routing and
+production performance/fault evidence remain required. The service guide states
+the supported transport and fault model; these library tests make no throughput
+claim.
 
 The mandatory PostgreSQL CI job runs the ignored integration tests in this crate.
 They exercise real PostgreSQL locks through independent connections, cross-scope

@@ -1,0 +1,11 @@
+{
+  "listen": "127.0.0.1:8443",
+  "certificate_file": "certs/service.pem",
+  "private_key": { "type": "file", "path": "secrets/service-key.pem" },
+  "database": {
+    "connection": { "type": "file", "path": "secrets/postgres" },
+    "transport": { "type": "tls", "ca_file": "certs/postgres-ca.pem" }
+  },
+  "max_connections": 32,
+  "max_operations": 8
+}

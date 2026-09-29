@@ -1,0 +1,6 @@
+{
+  "endpoint": "https://localhost:8443/v1/operations",
+  "ca_file": "certs/service-ca.pem",
+  "credential": { "type": "file", "path": "secrets/runner" },
+  "timeout_ms": 60000
+}

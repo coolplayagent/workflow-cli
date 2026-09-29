@@ -1,0 +1,32 @@
+[package]
+name = "workflow-service"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+workflow-runstore = { path = "../workflow-runstore" }
+workflow-runstore-postgres = { path = "../workflow-runstore-postgres" }
+workflow-worker = { path = "../workflow-worker" }
+workflow-kernel = { path = "../workflow-kernel" }
+postgres = "0.19.14"
+tokio-postgres-rustls = "0.14"
+serde.workspace = true
+serde_json.workspace = true
+axum = { version = "0.8", default-features = false, features = ["http1", "tokio"] }
+hyper = { version = "1", features = ["server", "http1"] }
+hyper-util = { version = "0.1", features = ["tokio", "service"] }
+tokio = { version = "1", features = ["rt-multi-thread", "net", "time", "sync", "signal", "macros"] }
+tokio-rustls = { version = "0.26", default-features = false }
+rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
+rustls-pemfile = "2"
+reqwest = { version = "0.13.5", default-features = false, features = ["blocking", "json", "rustls-no-provider"] }
+libc = "0.2"
+getrandom = "0.4.3"
+
+[dev-dependencies]
+workflow-runstore-sqlite = { path = "../workflow-runstore-sqlite" }
+workflow-runtime = { path = "../workflow-runtime" }
+workflow-builtin-capabilities = { path = "../workflow-builtin-capabilities" }
+rcgen = { version = "0.14", default-features = false, features = ["ring", "pem", "crypto"] }
