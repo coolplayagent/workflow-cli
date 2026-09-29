@@ -72,6 +72,23 @@ impl AuthenticatedService {
             Ok(Page{items,next_cursor})
         })
     }
+    /// Read-only authoring validation. The label is never opened as a path and
+    /// no document bytes or diagnostic text are copied into the audit ledger.
+    pub fn validate_definition(
+        &mut self,
+        token: &str,
+        source: &str,
+        format: workflow_ir::Format,
+        file: &str,
+    ) -> Result<workflow_validator::ValidationReport> {
+        self.transact(
+            token,
+            &[Role::DefinitionMaintainer, Role::Runner],
+            "validate_definition",
+            "definition",
+            |_tx, _who| Ok(workflow_validator::validate_source(source, format, file)),
+        )
+    }
     /// Administrator-created credentials cannot escape the administrator's scope.
     pub fn issue(
         &mut self,
@@ -129,6 +146,8 @@ impl AuthenticatedService {
     pub fn publish(&mut self, token: &str, bundle: &BundleSpec) -> Result<String> {
         self.transact(token, &[Role::DefinitionMaintainer], "publish", "bundle", |tx, who| {
             let compiled = workflow_kernel::CompiledBundle::compile(bundle.clone())?;
+            bind_versions(tx, &who.tenant, &who.project,
+                workflow_runstore_sqlite::bundle_bindings(&compiled)?, true)?;
             let digest = compiled.digest().to_owned();
             tx.execute("INSERT INTO workflow_access.published_bundles(tenant,project,digest,published_by) VALUES($1,$2,$3,$4) ON CONFLICT DO NOTHING", &[&who.tenant,&who.project,&digest,&who.id]).map_err(storage)?;
             audit(tx, who, "bundle_published", &digest, "accepted")?;

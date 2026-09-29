@@ -6,6 +6,8 @@ license.workspace = true
 rust-version.workspace = true
 
 [dependencies]
+workflow-ir = { path = "../workflow-ir" }
+workflow-validator = { path = "../workflow-validator" }
 workflow-artifacts = { path = "../workflow-artifacts" }
 workflow-runstore = { path = "../workflow-runstore" }
 workflow-runstore-postgres = { path = "../workflow-runstore-postgres" }

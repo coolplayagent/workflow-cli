@@ -197,7 +197,8 @@ pub enum Condition {
     Not { condition: Box<Condition> },
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum Format {
     Json,
     Yaml,

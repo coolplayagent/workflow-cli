@@ -1,7 +1,7 @@
 //! CLI application layer, also callable by tests and future service adapters.
-use serde::Serialize;
 use std::io::{Read, Write};
 use workflow_ir::{Diagnostic, Format, MAX_DOCUMENT_BYTES, Workflow};
+use workflow_validator::ValidationReport as Report;
 
 mod artifacts;
 mod backups;
@@ -17,14 +17,7 @@ mod workspaces;
 
 const HELP: &str = "workflow — portable SOP definition compiler\n\nUSAGE\n  workflow validate <file.json|file.yaml>\n  workflow export <file.json|file.yaml> <json|yaml>\n  workflow schema\n  workflow help\n\nvalidate emits JSON with valid, digest and diagnostics.\nExit codes: 0 success, 1 invalid definition, 2 usage or I/O error.\nRelative files resolve against the caller's current directory.\n";
 
-#[derive(Serialize)]
-struct Report {
-    valid: bool,
-    digest: Option<String>,
-    diagnostics: Vec<Diagnostic>,
-}
-
-fn load(path: &str) -> Result<Workflow, Box<Diagnostic>> {
+fn load_source(path: &str) -> Result<(String, Format), Box<Diagnostic>> {
     let fail = |code: &str, message: String| {
         Box::new(Diagnostic {
             code: code.into(),
@@ -48,12 +41,58 @@ fn load(path: &str) -> Result<Workflow, Box<Diagnostic>> {
             ));
         }
     };
-    let file = std::fs::File::open(path).map_err(|e| fail("io_error", e.to_string()))?;
-    let mut input = String::new();
-    file.take((MAX_DOCUMENT_BYTES + 1) as u64)
-        .read_to_string(&mut input)
+    let mut options = std::fs::OpenOptions::new();
+    options.read(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        options.custom_flags(libc::O_NONBLOCK | libc::O_CLOEXEC);
+    }
+    let file = options
+        .open(path)
         .map_err(|e| fail("io_error", e.to_string()))?;
-    workflow_ir::parse(&input, format, path)
+    if !file
+        .metadata()
+        .map_err(|e| fail("io_error", e.to_string()))?
+        .is_file()
+    {
+        return Err(fail("io_error", "input must be a regular file".into()));
+    }
+    let mut bytes = vec![];
+    file.take((MAX_DOCUMENT_BYTES + 1) as u64)
+        .read_to_end(&mut bytes)
+        .map_err(|e| fail("io_error", e.to_string()))?;
+    if bytes.len() > MAX_DOCUMENT_BYTES {
+        return Err(fail(
+            "document_too_large",
+            "definition exceeds 1 MiB".into(),
+        ));
+    }
+    let input =
+        String::from_utf8(bytes).map_err(|_| fail("io_error", "input must be UTF-8".into()))?;
+    Ok((input, format))
+}
+
+fn load(path: &str) -> Result<Workflow, Box<Diagnostic>> {
+    let (source, format) = load_source(path)?;
+    workflow_ir::parse(&source, format, path)
+}
+fn validation_output(report: &Report, stdout: &mut impl Write, stderr: &mut impl Write) -> i32 {
+    let code = if report
+        .diagnostics
+        .iter()
+        .any(|d| d.code == "io_error" || d.code == "format_error")
+    {
+        2
+    } else if report.valid {
+        0
+    } else {
+        1
+    };
+    match serde_json::to_string_pretty(report) {
+        Ok(json) => write(stdout, &json, code),
+        Err(_) => write(stderr, "validation report serialization failed", 2),
+    }
 }
 
 /// No process exits or global output redirection inside the reusable application layer.
@@ -148,26 +187,11 @@ pub fn run(
             Err(e) => write(stderr, &e.to_string(), 2),
         },
         ["validate", path] => {
-            let (workflow, diagnostics) = compile(path);
-            let code = if diagnostics
-                .iter()
-                .any(|d| d.code == "io_error" || d.code == "format_error")
-            {
-                2
-            } else if diagnostics.is_empty() {
-                0
-            } else {
-                1
+            let report = match load_source(path) {
+                Ok((source, format)) => workflow_validator::validate_source(&source, format, path),
+                Err(diagnostic) => Report::rejected(*diagnostic),
             };
-            let report = Report {
-                valid: code == 0,
-                digest: workflow.and_then(|w| w.digest().ok()),
-                diagnostics,
-            };
-            match serde_json::to_string_pretty(&report) {
-                Ok(json) => write(stdout, &json, code),
-                Err(e) => write(stderr, &e.to_string(), 2),
-            }
+            validation_output(&report, stdout, stderr)
         }
         ["export", path, format @ ("json" | "yaml")] => {
             let (workflow, diagnostics) = compile(path);
@@ -321,6 +345,64 @@ mod contract_tests {
                 assert_eq!(restored.digest().unwrap(), expected);
             }
         }
+    }
+
+    #[test]
+    fn compiler_file_admission_keeps_size_and_fifo_failures_explicit() {
+        let dir = std::env::temp_dir().join(format!(
+            "workflow-file-admission-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        std::fs::create_dir(&dir).unwrap();
+        let large = dir.join("large.json");
+        // Capacity is diagnosed before decoding a possibly truncated UTF-8 unit.
+        std::fs::write(&large, vec![0xe9; MAX_DOCUMENT_BYTES + 32]).unwrap();
+        for prefix in [
+            vec!["validate".to_string()],
+            vec![
+                "remote".into(),
+                "validate".into(),
+                "unused-binding.json".into(),
+            ],
+        ] {
+            let mut args = prefix;
+            args.push(large.display().to_string());
+            let mut out = vec![];
+            let mut err = vec![];
+            assert_eq!(run(args, &mut out, &mut err), 1);
+            let report: Report = serde_json::from_slice(&out).unwrap();
+            assert!(!report.valid);
+            assert!(report.digest.is_none());
+            assert_eq!(report.diagnostics[0].code, "document_too_large");
+        }
+        #[cfg(unix)]
+        {
+            let fifo = dir.join("pipe.json");
+            let name = std::ffi::CString::new(fifo.as_os_str().as_encoded_bytes()).unwrap();
+            // SAFETY: this fixture owns a valid NUL-terminated path.
+            assert_eq!(unsafe { libc::mkfifo(name.as_ptr(), 0o600) }, 0);
+            for prefix in [
+                vec!["validate".to_string()],
+                vec![
+                    "remote".into(),
+                    "validate".into(),
+                    "unused-binding.json".into(),
+                ],
+            ] {
+                let mut args = prefix;
+                args.push(fifo.display().to_string());
+                let mut out = vec![];
+                let mut err = vec![];
+                assert_eq!(run(args, &mut out, &mut err), 2);
+                let report: Report = serde_json::from_slice(&out).unwrap();
+                assert_eq!(report.diagnostics[0].code, "io_error");
+            }
+        }
+        std::fs::remove_dir_all(dir).unwrap();
     }
 
     #[test]

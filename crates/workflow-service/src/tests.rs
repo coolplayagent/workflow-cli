@@ -1,5 +1,6 @@
 use super::*;
 mod artifacts;
+mod validation;
 use serde_json::{Value, json};
 use std::{
     path::{Path, PathBuf},

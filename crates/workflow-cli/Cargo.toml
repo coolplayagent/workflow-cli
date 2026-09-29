@@ -6,6 +6,7 @@ license.workspace = true
 rust-version.workspace = true
 
 [dependencies]
+libc = "0.2"
 workflow-service = { path = "../workflow-service" }
 workflow-runstore-postgres = { path = "../workflow-runstore-postgres" }
 workflow-daemon-local = { path = "../workflow-daemon-local" }
@@ -39,6 +40,3 @@ workflow-workspace-local = { path = "../workflow-workspace-local" }
 [[bin]]
 name = "workflow"
 path = "src/main.rs"
-
-[dev-dependencies]
-libc = "0.2"

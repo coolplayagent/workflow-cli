@@ -5,6 +5,8 @@ edition.workspace = true
 license.workspace = true
 
 [dependencies]
+workflow-ir = { path = "../workflow-ir" }
+workflow-validator = { path = "../workflow-validator" }
 postgres = "0.19.14"
 getrandom = "0.4.3"
 serde.workspace = true
