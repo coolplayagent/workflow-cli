@@ -43,7 +43,9 @@ jobs:
       WORKFLOW_TEST_POSTGRES: host=127.0.0.1 port=5432 user=postgres password=workflow-isolated-test
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-      - run: cargo test -p workflow-runstore-postgres --locked -- --ignored --nocapture
-      - run: cargo test -p workflow-service --locked -- --ignored --nocapture
+      # Isolate experiments with real lease/deadline clocks. Each concurrency
+      # contract still starts its own competing connections and OS processes.
+      - run: cargo test -p workflow-runstore-postgres --locked -- --ignored --nocapture --test-threads=1
+      - run: cargo test -p workflow-service --locked -- --ignored --nocapture --test-threads=1
       - run: cargo build -p workflow-cli --locked
       - run: python3 examples/validation/https-cli.py target/debug/workflow

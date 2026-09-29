@@ -124,10 +124,14 @@ Run the normal repository checks plus the mandatory database suites:
 ```sh
 cargo test --workspace --locked
 # WORKFLOW_TEST_POSTGRES must name a disposable database.
-cargo test -p workflow-runstore-postgres --locked -- --ignored --nocapture
-cargo test -p workflow-service --locked -- --ignored --nocapture
+cargo test -p workflow-runstore-postgres --locked -- --ignored --nocapture --test-threads=1
+cargo test -p workflow-service --locked -- --ignored --nocapture --test-threads=1
 bazel test //...
 ```
+
+Independent database fault experiments run serially so unrelated tests do not
+consume each other's real lease/deadline windows. Each race or takeover test
+retains its competing connections/processes and unchanged timing assertions.
 
 The HTTPS fault test prints measured recovery time with an eight-second lease.
 Its 60-second observation ceiling is a test bound, not a production RTO. The

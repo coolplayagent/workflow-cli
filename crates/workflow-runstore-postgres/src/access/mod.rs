@@ -114,6 +114,10 @@ struct Identity {
     expires: i64,
     not_before: std::cell::Cell<i64>,
     deadline: std::cell::Cell<i64>,
+    // Execution expiry is a recoverable fence, not credential revocation. Keep
+    // the windows separate through the final post-audit database-time check.
+    execution_not_before: std::cell::Cell<i64>,
+    execution_deadline: std::cell::Cell<i64>,
 }
 fn denied() -> Error {
     Error::new(
@@ -159,6 +163,8 @@ fn identity(row: &postgres::Row) -> Result<Identity> {
         expires: row.get(7),
         not_before: std::cell::Cell::new(row.get(6)),
         deadline: std::cell::Cell::new(row.get(7)),
+        execution_not_before: std::cell::Cell::new(0),
+        execution_deadline: std::cell::Cell::new(i64::MAX),
     })
 }
 fn authenticate(tx: &mut Transaction<'_>, token: &str) -> Result<Identity> {
@@ -175,6 +181,12 @@ fn live(tx: &mut Transaction<'_>, identity: &Identity) -> Result<()> {
     let at = now(tx)?;
     if at <= 0 || at < identity.not_before.get() || at >= identity.deadline.get() {
         return Err(denied());
+    }
+    if at < identity.execution_not_before.get() || at >= identity.execution_deadline.get() {
+        return Err(Error::new(
+            ErrorCode::LeaseConflict,
+            "execution authority expired during transaction",
+        ));
     }
     identity.not_before.set(at);
     Ok(())

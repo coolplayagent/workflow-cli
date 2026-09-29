@@ -103,7 +103,7 @@ fn load(tx: &mut Transaction<'_>, who: &Identity, id: &str) -> Result<Assignment
             "effect assignment lease expired",
         ));
     }
-    who.fence(a.lease.issued_at_unix_ms as i64, row.get(2));
+    who.fence_execution(a.lease.issued_at_unix_ms as i64, row.get(2));
     permitted(who, &a.attempt)?;
     live(tx, who)?;
     Ok(a)
@@ -159,7 +159,7 @@ impl AuthenticatedService {
                     // Observation can retain a late truthful receipt, but no later
                     // than the live lease and worker credential permit.
                     let expires = (lease.expires_at_unix_ms as i64).min(worker.expires);
-                    who.fence(attempt.issued_at_unix_ms as i64, (attempt.deadline_unix_ms as i64).min(expires));
+                    who.fence_execution(attempt.issued_at_unix_ms as i64, (attempt.deadline_unix_ms as i64).min(expires));
                     let id = random("effect-assignment-")?;
                     let lease_json = serde_json::to_string(lease).map_err(|_| corrupt("effect lease serialization failed"))?;
                     let attempt_json = serde_json::to_string(&attempt).map_err(|_| corrupt("effect attempt serialization failed"))?;
@@ -207,7 +207,7 @@ impl AuthenticatedService {
                         "effect assignment already delivered",
                     ));
                 }
-                who.fence(
+                who.fence_execution(
                     a.attempt.issued_at_unix_ms as i64,
                     a.attempt.deadline_unix_ms as i64,
                 );
@@ -315,7 +315,7 @@ impl AuthenticatedService {
                 }
                 let mut resolution = resolution.clone();
                 resolution.actor = who.actor.clone();
-                who.fence(
+                who.fence_execution(
                     lease.issued_at_unix_ms as i64,
                     lease.expires_at_unix_ms as i64,
                 );

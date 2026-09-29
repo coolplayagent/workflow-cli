@@ -27,6 +27,12 @@ impl Identity {
         self.not_before.set(self.not_before.get().max(lower));
         self.deadline.set(self.deadline.get().min(upper));
     }
+    pub(super) fn fence_execution(&self, lower: i64, upper: i64) {
+        self.execution_not_before
+            .set(self.execution_not_before.get().max(lower));
+        self.execution_deadline
+            .set(self.execution_deadline.get().min(upper));
+    }
     pub(super) fn change<T>(
         &self,
         tx: &mut Transaction<'_>,
@@ -45,7 +51,7 @@ impl Identity {
         let reader = artifact_catalog::load(tx, self, id)?;
         let (result, lower, upper) =
             PostgresRunStore::change_in(tx, &self.tenant, &self.project, reader, id, create, f)?;
-        self.fence(lower, upper);
+        self.fence_execution(lower, upper);
         Ok(result)
     }
     pub(super) fn read<T>(
