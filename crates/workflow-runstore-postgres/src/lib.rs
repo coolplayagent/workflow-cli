@@ -5,7 +5,7 @@ use sha2::{Digest, Sha256};
 use std::{cell::RefCell, rc::Rc};
 use workflow_artifacts::ArtifactReader;
 use workflow_runstore::*;
-use workflow_runstore_sqlite::{RunImage, SqliteRunStore};
+use workflow_runstore_sqlite::{ImageBinding, RunImage, SqliteRunStore};
 use workflow_worker::Clock;
 pub mod access;
 mod ports;
@@ -28,6 +28,28 @@ fn corrupt(message: &str) -> Error {
 }
 fn hash(bytes: &[u8]) -> String {
     format!("sha256:{:x}", Sha256::digest(bytes))
+}
+/// Sorted immutable identities are shared by publication and run commits.
+fn bind_versions(
+    tx: &mut Transaction<'_>,
+    tenant: &str,
+    project: &str,
+    bindings: Vec<ImageBinding>,
+    create: bool,
+) -> Result<()> {
+    for binding in bindings {
+        if create {
+            tx.execute("INSERT INTO workflow_authority.bindings(tenant,project,kind,id,version,digest) VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT DO NOTHING", &[&tenant,&project,&binding.kind,&binding.id,&binding.version,&binding.digest]).map_err(storage)?;
+        }
+        let row = tx.query_opt("SELECT digest FROM workflow_authority.bindings WHERE tenant=$1 AND project=$2 AND kind=$3 AND id=$4 AND version=$5 FOR SHARE", &[&tenant,&project,&binding.kind,&binding.id,&binding.version]).map_err(storage)?;
+        if row.as_ref().map(|r| r.get::<_, &str>(0)) != Some(binding.digest.as_str()) {
+            return Err(Error::new(
+                ErrorCode::BindingConflict,
+                "immutable shared version differs or is missing",
+            ));
+        }
+    }
+    Ok(())
 }
 struct Reader(Rc<dyn ArtifactReader>);
 impl ArtifactReader for Reader {
@@ -248,18 +270,7 @@ impl PostgresRunStore {
         let image = reducer.export_image(id)?;
         // Freeze versions across all runs in this tenant/project in the same transaction.
         // Globally sorted keys give competing starts a consistent lock order.
-        for binding in image.bindings()? {
-            if create {
-                tx.execute("INSERT INTO workflow_authority.bindings(tenant,project,kind,id,version,digest) VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT DO NOTHING", &[&tenant,&project,&binding.kind,&binding.id,&binding.version,&binding.digest]).map_err(storage)?;
-            }
-            let row = tx.query_opt("SELECT digest FROM workflow_authority.bindings WHERE tenant=$1 AND project=$2 AND kind=$3 AND id=$4 AND version=$5 FOR SHARE", &[&tenant,&project,&binding.kind,&binding.id,&binding.version]).map_err(storage)?;
-            if row.as_ref().map(|r| r.get::<_, &str>(0)) != Some(binding.digest.as_str()) {
-                return Err(Error::new(
-                    ErrorCode::BindingConflict,
-                    "immutable shared version differs or is missing",
-                ));
-            }
-        }
+        bind_versions(tx, tenant, project, image.bindings()?, create)?;
         let bytes = image.bytes()?;
         let digest = hash(&bytes);
         let window = reducer.take_admission_window();

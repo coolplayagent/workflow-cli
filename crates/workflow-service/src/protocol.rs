@@ -21,6 +21,11 @@ pub struct Request {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)]
 pub enum Operation {
+    ValidateDefinition {
+        source: String,
+        format: workflow_ir::Format,
+        file: String,
+    },
     ArtifactBegin {
         request: Box<ArtifactUploadRequest>,
     },
@@ -136,6 +141,7 @@ pub struct Reply {
     deny_unknown_fields
 )]
 pub enum Response {
+    Validation(workflow_validator::ValidationReport),
     ArtifactUpload(Box<ArtifactUploadStatus>),
     Artifact(Box<workflow_artifacts::ArtifactRef>),
     ArtifactGrant(Box<ArtifactDownloadGrant>),
@@ -176,6 +182,13 @@ impl Request {
     pub fn execute(&self, service: &mut AuthenticatedService, token: &str) -> Result<Response> {
         self.validate()?;
         match &self.operation {
+            Operation::ValidateDefinition {
+                source,
+                format,
+                file,
+            } => service
+                .validate_definition(token, source, *format, file)
+                .map(Response::Validation),
             Operation::ArtifactBegin { request } => service
                 .begin_artifact_upload(token, request)
                 .map(|r| Response::ArtifactUpload(Box::new(r))),
@@ -290,7 +303,10 @@ impl Request {
     pub fn accepts(&self, response: &Response) -> bool {
         matches!(
             (&self.operation, response),
-            (Operation::ArtifactBegin { .. }, Response::ArtifactUpload(_))
+            (
+                Operation::ValidateDefinition { .. },
+                Response::Validation(_)
+            ) | (Operation::ArtifactBegin { .. }, Response::ArtifactUpload(_))
                 | (Operation::ArtifactPut { .. }, Response::ArtifactUpload(_))
                 | (Operation::ArtifactComplete { .. }, Response::Artifact(_))
                 | (Operation::ArtifactGrant { .. }, Response::ArtifactGrant(_))

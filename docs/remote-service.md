@@ -20,7 +20,7 @@ envelope:
 
 `protocol.rs` defines the complete tagged operation/response contract. Unknown
 versions, operations and fields are rejected. Requests cannot provide tenant,
-project or actor authority. Read, publish, start, approve, scheduler lease/dispatch,
+project or actor authority. Validate, read, publish, start, approve, scheduler lease/dispatch,
 worker assignment/finish/fail, audit, revocation and recovery acknowledgement all
 call `AuthenticatedService`; the same transaction validates identity and state.
 Credential creation/rotation and bootstrap are privileged local library operations,
@@ -73,6 +73,7 @@ workflow service bootstrap server.json tenant project operator secrets/admin
 workflow service issue server.json admin-ref.json runner-provision.json secrets/runner
 workflow service serve server.json
 workflow remote call client.json request.json
+workflow remote validate author-client.json examples/review.yaml
 workflow remote schedule scheduler-client.json scheduler.json 1000 100
 workflow remote work worker-client.json 1000 100
 ```
@@ -159,3 +160,14 @@ credential-bound expiring downloads, typed input/lineage authorization and
 artifact-backed result recovery. Content is stored transactionally in PostgreSQL.
 The artifact CLI verifies complete content before returning a reference or writing
 a private download. Object storage and full retention/backup policy remain open.
+
+## Definition validation and publication
+
+[R01 acceptance](definition-acceptance.md) specifies the shared validation report,
+local/remote CLI exits and limits. An authorized `validate_definition` request
+carries source text, `format: json|yaml` and a diagnostic `file` label. Validation
+has no publication or execution side effect. Its 18-case real HTTPS matrix checks
+full report parity and authorization; a separate executable CLI fixture compares
+output bytes. Both run in mandatory CI. Publication recompiles the bundle and
+atomically freezes all immutable versions; conflicts are rejected before first
+start, and concurrent differing publications have exactly one winner.

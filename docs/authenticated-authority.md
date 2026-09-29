@@ -28,16 +28,20 @@ roles. Administrative issuance always inherits the administrator's scope.
 | Role | Operations |
 | --- | --- |
 | Administrator | Issue, rotate and revoke credentials; read audit and unresolved assignments; clean expired artifact transfers |
-| Definition maintainer | Publish a validated bundle digest; read runs |
-| Runner | Start only a published bundle; read runs |
+| Definition maintainer | Validate definitions; publish an immutable bundle; read runs |
+| Runner | Validate definitions; start only a published bundle; read runs |
 | Viewer | Read run state, history, inbox and waits |
 | Approver | Read runs; submit a decision with the authenticated actor stamped as source |
 | Scheduler | Read runs, acquire/release ownership, advance timers, dispatch authorized tasks |
 | Worker | Retrieve its own task and return results; publish/read artifacts within its explicit capability policy |
 | Recovery | Read runs, audit and unresolved assignments; acknowledge an existing recovery barrier with the authenticated actor; clean expired artifact transfers |
 
-Publication admits an immutable bundle digest in a scope. Existing global version
-binding checks still reject conflicting workflow/capability versions at start.
+Publication admits an immutable bundle digest and freezes its workflow,
+capability and policy versions in one transaction, before any start. Conflicting
+content returns `binding_conflict`; an identical publication is idempotent.
+The shared identity calculation and sorted lock order also apply to run commits.
+Older digest-only publications acquire these bindings when republished or started;
+existing run bindings remain authoritative.
 This publication allowlist does not yet provide shared draft editing, withdrawal,
 or the full DefinitionRegistry authoring history.
 

@@ -3,7 +3,10 @@ use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use workflow_ir::*;
 
 pub use workflow_ir::Diagnostic;
+mod report;
+pub use report::{MAX_DIAGNOSTIC_LABEL_BYTES, MAX_REPORT_BYTES, ValidationReport, validate_source};
 
+pub const MAX_DIAGNOSTICS: usize = 256;
 const MAX_NODES: usize = 4096;
 const MAX_EDGES: usize = 16384;
 
@@ -20,6 +23,22 @@ impl Checker<'_> {
         edge: Option<&str>,
         message: impl Into<String>,
     ) {
+        if self.diagnostics.len() >= MAX_DIAGNOSTICS {
+            return;
+        }
+        if self.diagnostics.len() == MAX_DIAGNOSTICS - 1 {
+            self.diagnostics.push(Diagnostic {
+                code: "diagnostic_limit".into(),
+                file: self.file.into(),
+                path: "$".into(),
+                node: None,
+                edge: None,
+                message:
+                    "diagnostic budget reached; additional errors omitted; definition rejected"
+                        .into(),
+            });
+            return;
+        }
         self.diagnostics.push(Diagnostic {
             code: code.into(),
             file: self.file.into(),

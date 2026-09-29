@@ -373,3 +373,36 @@ fn invalid_conditions_do_not_hide_behind_a_matching_first_case() {
         "missing_condition_value"
     );
 }
+
+#[test]
+fn compiler_report_bounds_diagnostics_without_accepting_truncated_failures() {
+    let mut w = base();
+    for i in 0..300 {
+        w.nodes.push(terminal(&format!("orphan-{i}")));
+    }
+    let report = ValidationReport::check(&w, "many-errors.json");
+    assert!(!report.valid);
+    assert!(report.digest.is_none());
+    assert_eq!(report.diagnostics.len(), MAX_DIAGNOSTICS);
+    assert_eq!(report.diagnostics.last().unwrap().code, "diagnostic_limit");
+    assert!(serde_json::to_vec(&report).unwrap().len() <= MAX_REPORT_BYTES);
+    // Escaping must count against the encoded report bound, not just text length.
+    let report = ValidationReport::rejected(Diagnostic {
+        code: "parse_error".into(),
+        file: "escaped.json".into(),
+        path: "$".into(),
+        node: None,
+        edge: None,
+        message: "\u{1}".repeat(MAX_REPORT_BYTES / 2),
+    });
+    assert!(!report.valid);
+    assert_eq!(report.diagnostics[0].code, "diagnostic_limit");
+    assert!(serde_json::to_vec(&report).unwrap().len() < 1024);
+    let report = validate_source(
+        "{}",
+        Format::Json,
+        &"x".repeat(MAX_DIAGNOSTIC_LABEL_BYTES + 1),
+    );
+    assert_eq!(report.diagnostics[0].code, "diagnostic_label_limit");
+    assert!(serde_json::to_vec(&report).unwrap().len() < 1024);
+}

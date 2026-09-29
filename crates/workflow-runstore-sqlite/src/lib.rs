@@ -1,5 +1,6 @@
 //! Transactional SQLite run and execution authority. Adapter invocation stays in the host.
 mod bindings;
+pub use bindings::bundle_bindings;
 mod db;
 mod execution;
 mod image;

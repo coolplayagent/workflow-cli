@@ -6,7 +6,7 @@ use workflow_runstore_postgres::access::{
     ArtifactUploadRequest, AuthenticatedService, CapabilityRule, Role,
 };
 use workflow_service::*;
-pub const HELP: &str = "REMOTE SERVICE\n  workflow service serve <server-binding.json>\n  workflow service init-artifacts <server-binding.json>\n  workflow service bootstrap <server-binding.json> <tenant> <project> <actor> <private-token-output>\n  workflow service issue <server-binding.json> <admin-secret-ref.json> <provision.json> <private-token-output>\n  workflow remote call <client-binding.json> <request.json>\n  workflow remote artifact-upload <client-binding.json> <assignment-id> <request-id> <artifact-type.json> <content-file>\n  workflow remote artifact-download <client-binding.json> <download-request.json> <private-output>\n  workflow remote work <client-binding.json> <iterations> <poll-ms>\n  workflow remote schedule <client-binding.json> <scheduler.json> <iterations> <poll-ms>\n\nTLS and a scoped bearer are required. Bindings contain secret references, never literal tokens.\nCredential creation is a trusted local administrative operation with exclusive 0600 output.\nwork executes registered builtin read-only capabilities. Iterations are bounded; service managers may supervise commands.\n";
+pub const HELP: &str = "REMOTE SERVICE\n  workflow service serve <server-binding.json>\n  workflow service init-artifacts <server-binding.json>\n  workflow service bootstrap <server-binding.json> <tenant> <project> <actor> <private-token-output>\n  workflow service issue <server-binding.json> <admin-secret-ref.json> <provision.json> <private-token-output>\n  workflow remote call <client-binding.json> <request.json>\n  workflow remote validate <client-binding.json> <file.json|file.yaml>\n  workflow remote artifact-upload <client-binding.json> <assignment-id> <request-id> <artifact-type.json> <content-file>\n  workflow remote artifact-download <client-binding.json> <download-request.json> <private-output>\n  workflow remote work <client-binding.json> <iterations> <poll-ms>\n  workflow remote schedule <client-binding.json> <scheduler.json> <iterations> <poll-ms>\n\nTLS and a scoped bearer are required. Bindings contain secret references, never literal tokens.\nCredential creation is a trusted local administrative operation with exclusive 0600 output.\nwork executes registered builtin read-only capabilities. Iterations are bounded; service managers may supervise commands.\n";
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 struct Provision {
@@ -50,6 +50,33 @@ fn bounds(iterations: &str, poll: &str) -> Result<(u32, Duration)> {
     Ok((iterations, Duration::from_millis(poll)))
 }
 pub fn run(args: &[&str], stdout: &mut impl Write, stderr: &mut impl Write) -> i32 {
+    if let ["remote", "validate", binding, file] = args {
+        let (source, format) = match crate::load_source(file) {
+            Ok(source) => source,
+            Err(diagnostic) => {
+                return crate::validation_output(
+                    &workflow_validator::ValidationReport::rejected(*diagnostic),
+                    stdout,
+                    stderr,
+                );
+            }
+        };
+        let result = (|| -> Result<Response> {
+            RemoteClient::new(read(binding)?)?.call(&Request {
+                protocol_version: PROTOCOL_VERSION,
+                request_id: "validate-definition".into(),
+                operation: Operation::ValidateDefinition {
+                    source,
+                    format,
+                    file: (*file).into(),
+                },
+            })
+        })();
+        return match result {
+            Ok(Response::Validation(report)) => crate::validation_output(&report, stdout, stderr),
+            _ => write(stderr, "remote validation could not be confirmed", 2),
+        };
+    }
     let result = (|| -> Result<serde_json::Value> {
         match args {
             ["service", "init-artifacts", path] => {

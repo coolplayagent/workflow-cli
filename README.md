@@ -58,8 +58,10 @@ The bundled [workflow-definition Skill](skills/workflow-definition/SKILL.md) ins
 `workflow schema` exposes the complete input shape without sending the model any
 provider credentials. Exit status is `0` for success, `1` for invalid definitions,
 and `2` for usage or I/O errors. A valid report has a SHA-256 definition digest;
-an invalid report never has one. The same validation library can be called by a
-remote service, which must revalidate the received definition.
+an invalid report never has one. `workflow remote validate <client-binding> <file>`
+uses the same report over authenticated HTTPS, with server-side revalidation.
+The [R01 acceptance guide](docs/definition-acceptance.md) maps requirements to
+checks and gives reproducible definition-error, edit-latency and replay-step baselines.
 
 ```json
 {"valid":false,"digest":null,"diagnostics":[{"code":"dangling_edge","file":"draft.json","path":"edges[0].to","node":null,"edge":"finish","message":"unknown node missing"}]}
@@ -99,6 +101,7 @@ the CLI exits 0.
 
 ## Contracts and development
 
+- [R01 acceptance and reproducible definition baselines](docs/definition-acceptance.md)
 - [Draft editing, semantic diff and immutable publication](docs/definition-registry.md)
 - [Capability contracts, worker protocol and host authority](docs/worker-protocol.md)
 - [Typed artifacts, provenance, atomic publication and evidence](docs/artifacts.md)

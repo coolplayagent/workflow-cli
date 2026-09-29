@@ -2603,10 +2603,12 @@ dependencies = [
  "workflow-artifacts",
  "workflow-builtin-capabilities",
  "workflow-effects",
+ "workflow-ir",
  "workflow-kernel",
  "workflow-runstore",
  "workflow-runstore-sqlite",
  "workflow-runtime",
+ "workflow-validator",
  "workflow-worker",
 ]
 
@@ -2665,11 +2667,13 @@ dependencies = [
  "tokio-rustls",
  "workflow-artifacts",
  "workflow-builtin-capabilities",
+ "workflow-ir",
  "workflow-kernel",
  "workflow-runstore",
  "workflow-runstore-postgres",
  "workflow-runstore-sqlite",
  "workflow-runtime",
+ "workflow-validator",
  "workflow-worker",
 ]
 

@@ -106,14 +106,18 @@ losers. No successful branch means the join cannot succeed.
 
 See [kernel semantics](kernel-semantics.md) for wait consumption, terminal
 arbitration, data availability and event order. Unit tests and CLI replay cover
-these transitions; durable host persistence and actual external cancellation are
-separate delivery work, so R01 remains open.
+these transitions. RunStore tests persist waits and deadlines, and authenticated
+HTTPS execution compares local and remote business state after scheduler loss.
+Actual external cancellation and provider reconciliation retain their separate
+runtime acceptance. See the [R01 acceptance map](definition-acceptance.md).
 
 ## Diagnostics
 
 Static diagnostics carry `code`, `file`, `path`, optional `node`/`edge` IDs, and a
 reason. Parse messages retain the parser's location and nested field path where
 available. No model interpretation is needed to decide whether validation passed.
-The validator has no file, clock, transport or provider dependency, so a service
-can use exactly the same contract as the CLI. The deployment parity test is a
-serialization round trip through that shared function, not a deployed-service test.
+The validator has no file, clock, transport or provider dependency. Both CLI and
+HTTPS `validate_definition` use `validate_source` and `ValidationReport`; a real
+HTTPS/PostgreSQL matrix compares complete reports, including field paths and IDs.
+Reports cap diagnostic count and encoded bytes without accepting invalid input.
+See [validation bounds and reproducible evidence](definition-acceptance.md).
