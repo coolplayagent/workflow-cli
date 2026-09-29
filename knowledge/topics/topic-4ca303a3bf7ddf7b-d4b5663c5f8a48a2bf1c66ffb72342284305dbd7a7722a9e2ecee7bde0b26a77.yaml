@@ -1,0 +1,230 @@
+schema_version: 4
+topic:
+  id: architecture
+  title: architecture
+  description: Added by CLI source registration.
+sources:
+- id: artifact-contracts
+  topic: architecture
+  kind: doc
+  uri: docs/artifacts.md
+  source_scope: docs
+  read_policy: direct
+  write_policy: manual-review
+  status: active
+  version: 1
+  description: Typed artifact identity, provenance, durable local publication, impact and verified run evidence.
+- id: attempt-workspaces
+  topic: architecture
+  kind: doc
+  uri: docs/workspaces.md
+  source_scope: docs
+  read_policy: direct
+  write_policy: manual-review
+  status: active
+  version: 1
+  description: Attempt workspace contracts, Git allocation, current observation and typed output capture
+- id: authenticated-authority
+  topic: architecture
+  kind: doc
+  uri: docs/authenticated-authority.md
+  source_scope: repo
+  read_policy: direct
+  write_policy: manual-review
+  status: active
+  version: 1
+  description: Authenticated PostgreSQL application boundary, scoped roles, transactional worker assignments, revocation and audit contracts.
+- id: definition-authoring
+  topic: architecture
+  kind: doc
+  uri: docs/definition-registry.md
+  source_scope: docs
+  read_policy: direct
+  write_policy: manual-review
+  status: active
+  version: 1
+  description: Revisioned drafts, semantic diff and immutable local definition publication.
+- id: definition-semantics
+  topic: architecture
+  kind: doc
+  uri: docs/definition-semantics.md
+  source_scope: docs
+  read_policy: direct
+  write_policy: manual-review
+  status: active
+  version: 1
+  description: Portable workflow definition and decision semantics.
+- id: durable-effects
+  topic: architecture
+  kind: doc
+  uri: docs/durable-effects.md
+  source_scope: docs
+  read_policy: direct
+  write_policy: manual-review
+  status: active
+  version: 1
+  description: Durable write intent and receipt ledger, bounded retries, provider query recovery and gateway contracts
+- id: event-inbox
+  topic: architecture
+  kind: doc
+  uri: docs/event-inbox.md
+  source_scope: docs
+  read_policy: direct
+  write_policy: manual-review
+  status: active
+  version: 1
+  description: Durable callback ingress, exact wait matching and receipt recovery.
+- id: kernel-semantics
+  topic: architecture
+  kind: doc
+  uri: docs/kernel-semantics.md
+  source_scope: docs
+  read_policy: direct
+  write_policy: manual-review
+  status: active
+  version: 1
+  description: Deterministic bundle compilation, workflow transitions, replay and durable host boundary
+- id: local-acceptance
+  topic: architecture
+  kind: doc
+  uri: docs/local-acceptance.md
+  source_scope: docs
+  read_policy: direct
+  write_policy: manual-review
+  status: active
+  version: 1
+  description: R08 local acceptance checkers, isolated offline environment and exact failure boundaries
+- id: local-backup-recovery
+  topic: architecture
+  kind: doc
+  uri: docs/backup-recovery.md
+  source_scope: docs
+  read_policy: direct
+  write_policy: manual-review
+  status: active
+  version: 1
+  description: Verified local SQLite and artifact snapshots, fenced restores and post-backup effect reconciliation
+- id: local-daemon
+  topic: architecture
+  kind: doc
+  uri: docs/local-daemon.md
+  source_scope: docs
+  read_policy: direct
+  write_policy: manual-review
+  status: active
+  version: 1
+  description: Optional local daemon, live IPC status, generation-bound drain, offline scheduling and fault boundaries
+- id: local-execution
+  topic: architecture
+  kind: doc
+  uri: docs/local-execution.md
+  source_scope: docs
+  read_policy: direct
+  write_policy: manual-review
+  status: active
+  version: 1
+  description: Local read-only execution, durable leases and attempts, atomic result settlement and storage migration.
+- id: model-execution
+  topic: architecture
+  kind: doc
+  uri: docs/model-execution.md
+  source_scope: docs
+  read_policy: direct
+  write_policy: manual-review
+  status: active
+  version: 1
+  description: Bounded model policies, provider bindings, explicit tool records and durable replay
+- id: ordered-compensation
+  topic: architecture
+  kind: doc
+  uri: docs/ordered-compensation.md
+  source_scope: docs
+  read_policy: direct
+  write_policy: manual-review
+  status: active
+  version: 1
+  description: Explicit effect dependencies, original receipt binding, reverse compensation order and manual takeover
+- id: postgres-authority
+  topic: architecture
+  kind: doc
+  uri: docs/postgres-authority.md
+  source_scope: docs
+  read_policy: direct
+  write_policy: manual-review
+  status: active
+  version: 1
+  description: Shared transactional PostgreSQL run authority, bounded reducers, database-clock fencing and contract boundary
+- id: remote-service
+  topic: architecture
+  kind: doc
+  uri: docs/remote-service.md
+  source_scope: repo
+  read_policy: direct
+  write_policy: manual-review
+  status: active
+  version: 1
+  description: Authenticated HTTPS operations, host bindings, remote scheduling and worker recovery.
+- id: run-store
+  topic: architecture
+  kind: doc
+  uri: docs/run-store.md
+  source_scope: docs
+  read_policy: direct
+  write_policy: manual-review
+  status: active
+  version: 1
+  description: RunStore port, atomic SQLite state/event/outbox commits and verified recovery
+- id: runtime-postconditions
+  topic: architecture
+  kind: doc
+  uri: docs/runtime-postconditions.md
+  source_scope: docs
+  read_policy: direct
+  write_policy: manual-review
+  status: active
+  version: 1
+  description: Frozen mandatory task and terminal gates, fenced evidence decisions, UNKNOWN retry and bounded repair.
+- id: worker-protocol
+  topic: architecture
+  kind: doc
+  uri: docs/worker-protocol.md
+  source_scope: docs
+  read_policy: direct
+  write_policy: manual-review
+  status: active
+  version: 1
+  description: Capability descriptors, request-bound host grants, checked worker invocation and protocol limits
+- id: workflow-evidence-gates
+  topic: architecture
+  kind: doc
+  uri: docs/evidence-gates.md
+  source_scope: docs
+  read_policy: direct
+  write_policy: manual-review
+  status: active
+  version: 1
+  description: Portable evidence decisions, source authority and target revalidation
+route:
+  topic: architecture
+  source_order:
+  - definition-semantics
+  - definition-authoring
+  - worker-protocol
+  - kernel-semantics
+  - run-store
+  - local-execution
+  - artifact-contracts
+  - workflow-evidence-gates
+  - runtime-postconditions
+  - attempt-workspaces
+  - model-execution
+  - event-inbox
+  - durable-effects
+  - ordered-compensation
+  - local-backup-recovery
+  - local-daemon
+  - local-acceptance
+  - postgres-authority
+  - authenticated-authority
+  - remote-service
+  fallback: bounded-search

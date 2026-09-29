@@ -40,6 +40,28 @@ impl Identity {
     }
 }
 impl AuthenticatedService {
+    /// A bounded scan for control-plane reconciliation. IDs are scoped by the
+    /// authenticated credential; each returned aggregate is locked and verified.
+    pub fn runs(
+        &mut self,
+        token: &str,
+        after: Option<&str>,
+        limit: u32,
+    ) -> Result<Page<RunSummary, String>> {
+        self.transact(token, READ, "runs", "runs", |tx, who| {
+            validate_limit(limit)?;
+            if let Some(id)=after {validate_id(id)?;}
+            let rows=tx.query("SELECT run_id FROM workflow_authority.runs WHERE tenant=$1 AND project=$2 AND ($3::text IS NULL OR run_id COLLATE \"C\">$3 COLLATE \"C\") ORDER BY run_id COLLATE \"C\" LIMIT $4", &[&who.tenant,&who.project,&after,&(i64::from(limit)+1)]).map_err(storage)?;
+            let mut items=vec![];
+            for row in rows {
+                let id:String=row.get(0);
+                let s=who.read(tx,&id,|s|s.get(&id))?;
+                items.push(RunSummary{run_id:s.run_id,revision:s.revision,status:s.status,pause:s.pause,bundle_digest:s.bundle_digest});
+            }
+            let next_cursor=if items.len()>limit as usize {items.pop();items.last().map(|s|s.run_id.clone())}else{None};
+            Ok(Page{items,next_cursor})
+        })
+    }
     /// Administrator-created credentials cannot escape the administrator's scope.
     pub fn issue(
         &mut self,

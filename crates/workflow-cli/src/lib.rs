@@ -10,6 +10,7 @@ mod gates;
 mod kernel;
 mod models;
 mod registry;
+mod remote;
 mod runs;
 mod worker;
 mod workspaces;
@@ -71,7 +72,7 @@ pub fn run(
         [] | ["help" | "--help" | "-h"] => write(
             stdout,
             &format!(
-                "{HELP}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}",
+                "{HELP}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}",
                 registry::HELP,
                 worker::HELP,
                 kernel::HELP,
@@ -81,10 +82,12 @@ pub fn run(
                 workspaces::HELP,
                 models::HELP,
                 backups::HELP,
-                daemon::HELP
+                daemon::HELP,
+                remote::HELP
             ),
             0,
         ),
+        args @ ["service" | "remote", ..] => remote::run(args, stdout, stderr),
         args @ ["daemon", ..] | args @ ["schema", "daemon-config"] => {
             daemon::run(args, stdout, stderr)
         }

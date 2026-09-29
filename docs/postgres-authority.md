@@ -68,11 +68,12 @@ Local image export does not revoke an old owner or authorize migration. Full
 database recovery must retire the old authority and apply recovery fences before
 admitting writes; this increment does not provide that operator protocol.
 
-R09 remains open for the actual two-scheduler/three-worker topology, task transport,
-fairness/quotas/backpressure, graceful drain, rolling upgrades, queue failure,
-database outage and disaster recovery measurements. R14 remains a prerequisite
-for shared service admission. Local SQLite and PostgreSQL storage contracts alone
-do not prove those deployment properties.
+The [authenticated HTTPS service](remote-service.md) adds task transport and a
+two-scheduler/three-worker owner-loss fixture above this storage boundary. R09
+remains open for fairness/quotas/backpressure, worker drain, rolling upgrades,
+broader queue/network failure, database outage and disaster recovery measurements.
+R14 remains a prerequisite for shared service admission. Local SQLite and
+PostgreSQL storage contracts alone do not prove those deployment properties.
 
 Implementation references: [PostgreSQL row locking](https://www.postgresql.org/docs/17/explicit-locking.html)
 and the [Rust PostgreSQL client](https://docs.rs/postgres/0.19.14/postgres/struct.Client.html).
