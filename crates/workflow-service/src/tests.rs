@@ -1,4 +1,5 @@
 use super::*;
+mod artifacts;
 use serde_json::{Value, json};
 use std::{
     path::{Path, PathBuf},
@@ -236,6 +237,34 @@ fn service_child() {
             )
             .unwrap();
         }
+        "partial_uploader" => {
+            let client =
+                RemoteClient::new(serde_json::from_value(s["binding"].clone()).unwrap()).unwrap();
+            let request = serde_json::from_value(s["request"].clone()).unwrap();
+            let content = std::fs::read(s["content"].as_str().unwrap()).unwrap();
+            let Response::ArtifactUpload(upload) = call(
+                &client,
+                Operation::ArtifactBegin {
+                    request: Box::new(request),
+                },
+            )
+            .unwrap() else {
+                panic!("upload")
+            };
+            call(
+                &client,
+                Operation::ArtifactPut {
+                    upload_id: upload.upload_id,
+                    offset: 0,
+                    content: content[..65536].to_vec(),
+                },
+            )
+            .unwrap();
+            std::fs::write(s["ready"].as_str().unwrap(), b"durable first chunk").unwrap();
+            loop {
+                std::thread::sleep(Duration::from_secs(1));
+            }
+        }
         "held_worker" => {
             let client =
                 RemoteClient::new(serde_json::from_value(s["binding"].clone()).unwrap()).unwrap();
@@ -390,6 +419,20 @@ fn strict_protocol_tls_and_private_secret_contract() {
     assert!(binding.credential.resolve().is_err());
     symlink(h.dir.join("key.pem"), h.dir.join("key-link")).unwrap();
     assert!(read_private(&h.dir.join("key-link"), 65536).is_err());
+    let fifo = h.dir.join("input-fifo");
+    let name = std::ffi::CString::new(fifo.as_os_str().as_encoded_bytes()).unwrap();
+    // SAFETY: name is a valid NUL-terminated path owned by this fixture.
+    assert_eq!(unsafe { libc::mkfifo(name.as_ptr(), 0o600) }, 0);
+    assert!(read_bounded(&fifo, 1024).is_err());
+    assert!(read_private(&fifo, 1024).is_err());
+    let output = h.dir.join("private-output");
+    write_private_output(&output, b"validated bytes").unwrap();
+    assert_eq!(
+        std::fs::metadata(&output).unwrap().permissions().mode() & 0o777,
+        0o600
+    );
+    assert!(write_private_output(&output, b"replacement").is_err());
+    assert_eq!(std::fs::read(output).unwrap(), b"validated bytes");
     // Graceful termination of the real TLS server process.
     unsafe { libc::kill(h.children[0].id() as i32, libc::SIGTERM) };
     h.wait_child(0);
@@ -412,6 +455,7 @@ fn credential(
                     id: c.descriptor().capability.id.clone(),
                     version: c.descriptor().capability.version.clone(),
                     contract_digest: c.digest().into(),
+                    artifacts: None,
                 }
             })
             .collect()

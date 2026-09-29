@@ -147,3 +147,7 @@ recovery SLA is claimed before the R15 benchmarks have been collected.
 Shared storage: [PostgreSQL authority library and contract boundary](docs/postgres-authority.md).
 
 共享存储的认证应用接口、角色、任务签发、撤销和审计边界见 [认证权威服务](docs/authenticated-authority.md)。
+
+Authenticated shared artifact uploads/downloads and artifact-backed remote result
+recovery are documented in [shared artifacts](docs/shared-artifacts.md). Transfers
+use PostgreSQL storage, scoped credentials and current assignments.

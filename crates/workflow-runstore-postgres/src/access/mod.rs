@@ -1,10 +1,18 @@
 //! Authenticated application boundary for trusted service hosts. Database clients
 //! stay on the host; callers provide opaque bearer credentials, never scope/actor.
-//! Network TLS, artifact ACLs and effect execution are deliberately not exposed here.
+//! Artifact authority is bound to exact assignments and capability policies.
+//! Network TLS lives in workflow-service; effect execution is not exposed here.
 use crate::*;
 use serde::{Deserialize, Serialize};
+mod artifact_catalog;
+mod artifact_download;
+mod artifact_policy;
+mod artifact_upload;
 mod operations;
 mod tasks;
+pub use artifact_download::{ArtifactCleanup, ArtifactDownloadChunk, ArtifactDownloadGrant};
+pub use artifact_policy::{ArtifactOutputPolicy, ArtifactPolicy};
+pub use artifact_upload::{ARTIFACT_CHUNK_BYTES, ArtifactUploadRequest, ArtifactUploadStatus};
 pub use tasks::{Dispatch, OutstandingAssignment, TaskReceipt};
 #[cfg(test)]
 mod tests;
@@ -46,6 +54,8 @@ pub struct CapabilityRule {
     pub id: String,
     pub version: String,
     pub contract_digest: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub artifacts: Option<ArtifactPolicy>,
 }
 impl CapabilityRule {
     fn matches(&self, request: &workflow_worker::WorkRequest) -> bool {
@@ -198,6 +208,9 @@ fn issue(
     }
     let mut unique = std::collections::BTreeSet::new();
     for c in capabilities {
+        if let Some(policy) = &c.artifacts {
+            policy.validate()?;
+        }
         validate_id(&c.id)?;
         if c.version.is_empty()
             || c.version.len() > 128
@@ -257,6 +270,7 @@ impl AuthenticatedService {
             tx.batch_execute(ACCESS_SCHEMA).map_err(storage)?;
         }
         check_schema(&mut tx)?;
+        artifact_catalog::initialize(&mut tx)?;
         if tx.query_one("SELECT EXISTS(SELECT 1 FROM workflow_access.credentials WHERE tenant=$1 AND project=$2)", &[&tenant,&project]).map_err(storage)?.get::<_,bool>(0) { return Err(denied()); }
         let issued = issue(
             &mut tx,
@@ -271,6 +285,15 @@ impl AuthenticatedService {
         audit(&mut tx, &identity, "bootstrap", &issued.id, "accepted")?;
         tx.commit().map_err(storage)?;
         Ok(issued)
+    }
+    /// Explicit trusted-host initialization for an existing access deployment.
+    /// Public artifact requests never create or upgrade database schemas.
+    pub fn initialize_artifacts(client: &mut Client) -> Result<()> {
+        let mut tx = client.transaction().map_err(storage)?;
+        PostgresRunStore::transaction_settings(&mut tx)?;
+        check_schema(&mut tx)?;
+        artifact_catalog::initialize(&mut tx)?;
+        tx.commit().map_err(storage)
     }
     pub fn open(mut client: Client) -> Result<Self> {
         let mut tx = client.transaction().map_err(storage)?;

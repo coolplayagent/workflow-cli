@@ -1,8 +1,8 @@
 schema_version: 4
 artifact_kind: map
 map_type: knowledge
-map_version: 21
-updated_at: unix:1790651940
+map_version: 22
+updated_at: unix:1790655888
 directories:
 - directory: domain
   purpose: Domain concepts, models, and business rules.
@@ -72,10 +72,11 @@ topics:
   - remote-service
   - run-store
   - runtime-postconditions
+  - shared-artifacts
   - worker-protocol
   - workflow-evidence-gates
-  ref: topics/topic-4ca303a3bf7ddf7b-d4b5663c5f8a48a2bf1c66ffb72342284305dbd7a7722a9e2ecee7bde0b26a77.yaml
-  digest: d4b5663c5f8a48a2bf1c66ffb72342284305dbd7a7722a9e2ecee7bde0b26a77
+  ref: topics/topic-4ca303a3bf7ddf7b-08f8cde5a668eabccfc1116c465cbe87a5fe164987e38f2991b96ec08378d6d3.yaml
+  digest: 08f8cde5a668eabccfc1116c465cbe87a5fe164987e38f2991b96ec08378d6d3
 - id: business-knowledge
   title: Business knowledge
   description: Version-controlled business domains, terminology, aliases, semantics, and technical mappings.
@@ -91,12 +92,8 @@ topics:
   ref: topics/topic-247e2a0d6f43d185-fc2d5534a38a5ddc28536afa855ff77db8e2941ccaccbfa79f948ddcfaec2f7d.yaml
   digest: fc2d5534a38a5ddc28536afa855ff77db8e2941ccaccbfa79f948ddcfaec2f7d
 history:
-  omitted_through: 5
+  omitted_through: 6
   recent:
-  - version: 6
-    action: source.add
-    actor: cli
-    summary: Added source 'run-store' to topic 'architecture'.
   - version: 7
     action: source.add
     actor: cli
@@ -157,3 +154,7 @@ history:
     action: source.add
     actor: cli
     summary: Added source 'remote-service' to topic 'architecture'.
+  - version: 22
+    action: source.add
+    actor: cli
+    summary: Added source 'shared-artifacts' to topic 'architecture'.

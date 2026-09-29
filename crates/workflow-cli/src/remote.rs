@@ -2,9 +2,11 @@ use crate::write;
 use serde::{Deserialize, de::DeserializeOwned};
 use serde_json::json;
 use std::{io::Write, path::Path, time::Duration};
-use workflow_runstore_postgres::access::{AuthenticatedService, CapabilityRule, Role};
+use workflow_runstore_postgres::access::{
+    ArtifactUploadRequest, AuthenticatedService, CapabilityRule, Role,
+};
 use workflow_service::*;
-pub const HELP: &str = "REMOTE SERVICE\n  workflow service serve <server-binding.json>\n  workflow service bootstrap <server-binding.json> <tenant> <project> <actor> <private-token-output>\n  workflow service issue <server-binding.json> <admin-secret-ref.json> <provision.json> <private-token-output>\n  workflow remote call <client-binding.json> <request.json>\n  workflow remote work <client-binding.json> <iterations> <poll-ms>\n  workflow remote schedule <client-binding.json> <scheduler.json> <iterations> <poll-ms>\n\nTLS and a scoped bearer are required. Bindings contain secret references, never literal tokens.\nCredential creation is a trusted local administrative operation with exclusive 0600 output.\nwork executes registered builtin read-only capabilities. Iterations are bounded; service managers may supervise commands.\n";
+pub const HELP: &str = "REMOTE SERVICE\n  workflow service serve <server-binding.json>\n  workflow service init-artifacts <server-binding.json>\n  workflow service bootstrap <server-binding.json> <tenant> <project> <actor> <private-token-output>\n  workflow service issue <server-binding.json> <admin-secret-ref.json> <provision.json> <private-token-output>\n  workflow remote call <client-binding.json> <request.json>\n  workflow remote artifact-upload <client-binding.json> <assignment-id> <request-id> <artifact-type.json> <content-file>\n  workflow remote artifact-download <client-binding.json> <download-request.json> <private-output>\n  workflow remote work <client-binding.json> <iterations> <poll-ms>\n  workflow remote schedule <client-binding.json> <scheduler.json> <iterations> <poll-ms>\n\nTLS and a scoped bearer are required. Bindings contain secret references, never literal tokens.\nCredential creation is a trusted local administrative operation with exclusive 0600 output.\nwork executes registered builtin read-only capabilities. Iterations are bounded; service managers may supervise commands.\n";
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 struct Provision {
@@ -20,6 +22,13 @@ struct Schedule {
     worker_ids: Vec<String>,
     lease_ms: u64,
     scan_limit: u32,
+}
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct Download {
+    artifact: workflow_artifacts::ArtifactLink,
+    assignment_id: Option<String>,
+    ttl_ms: u64,
 }
 fn read<T: DeserializeOwned>(path: &str) -> Result<T> {
     serde_json::from_slice(&read_bounded(Path::new(path), MAX_REQUEST_BYTES)?)
@@ -43,6 +52,53 @@ fn bounds(iterations: &str, poll: &str) -> Result<(u32, Duration)> {
 pub fn run(args: &[&str], stdout: &mut impl Write, stderr: &mut impl Write) -> i32 {
     let result = (|| -> Result<serde_json::Value> {
         match args {
+            ["service", "init-artifacts", path] => {
+                let binding: ServerBinding = read(path)?;
+                AuthenticatedService::initialize_artifacts(&mut binding.database.connect()?)?;
+                Ok(json!({"artifact_schema":1,"initialized":true}))
+            }
+            [
+                "remote",
+                "artifact-upload",
+                binding,
+                assignment,
+                request,
+                artifact_type,
+                file,
+            ] => {
+                let content = read_bounded(
+                    Path::new(file),
+                    workflow_artifacts::MAX_CONTENT_BYTES as usize,
+                )?;
+                let upload = ArtifactUploadRequest {
+                    request_id: (*request).into(),
+                    assignment_id: (*assignment).into(),
+                    artifact_type: read(artifact_type)?,
+                    bytes: content.len() as u64,
+                    content_digest: workflow_artifacts::content_digest(&content),
+                };
+                let reference =
+                    RemoteClient::new(read(binding)?)?.upload_artifact(&upload, &content)?;
+                serde_json::to_value(reference)
+                    .map_err(|_| Error::new(ErrorCode::InvalidRequest, "artifact reply invalid"))
+            }
+            ["remote", "artifact-download", binding, request, output] => {
+                if Path::new(output).symlink_metadata().is_ok() {
+                    return Err(Error::new(
+                        ErrorCode::InvalidRequest,
+                        "artifact output must not exist",
+                    ));
+                }
+                let request: Download = read(request)?;
+                let (reference, content) = RemoteClient::new(read(binding)?)?.download_artifact(
+                    &request.artifact,
+                    request.assignment_id.as_deref(),
+                    request.ttl_ms,
+                )?;
+                write_private_output(Path::new(output), &content)?;
+                serde_json::to_value(reference)
+                    .map_err(|_| Error::new(ErrorCode::InvalidRequest, "artifact reply invalid"))
+            }
             ["service", "serve", path] => {
                 serve_foreground(read(path)?, |address| {
                     writeln!(stdout, "{}", json!({"bound_address":address.to_string()}))
