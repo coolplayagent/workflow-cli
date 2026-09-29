@@ -24,6 +24,26 @@ sources:
   status: active
   version: 1
   description: Attempt workspace contracts, Git allocation, current observation and typed output capture
+- id: authenticated-authority
+  topic: architecture
+  kind: doc
+  uri: docs/authenticated-authority.md
+  source_scope: repo
+  read_policy: direct
+  write_policy: manual-review
+  status: active
+  version: 1
+  description: Authenticated PostgreSQL application boundary, scoped roles, transactional worker assignments, revocation and audit contracts.
+- id: definition-acceptance
+  topic: architecture
+  kind: doc
+  uri: docs/definition-acceptance.md
+  source_scope: repo
+  read_policy: direct
+  write_policy: manual-review
+  status: active
+  version: 1
+  description: R01 acceptance matrix and reproducible compiler authoring and control-flow baselines
 - id: definition-authoring
   topic: architecture
   kind: doc
@@ -74,6 +94,16 @@ sources:
   status: active
   version: 1
   description: Deterministic bundle compilation, workflow transitions, replay and durable host boundary
+- id: local-acceptance
+  topic: architecture
+  kind: doc
+  uri: docs/local-acceptance.md
+  source_scope: docs
+  read_policy: direct
+  write_policy: manual-review
+  status: active
+  version: 1
+  description: R08 local acceptance checkers, isolated offline environment and exact failure boundaries
 - id: local-backup-recovery
   topic: architecture
   kind: doc
@@ -84,6 +114,16 @@ sources:
   status: active
   version: 1
   description: Verified local SQLite and artifact snapshots, fenced restores and post-backup effect reconciliation
+- id: local-daemon
+  topic: architecture
+  kind: doc
+  uri: docs/local-daemon.md
+  source_scope: docs
+  read_policy: direct
+  write_policy: manual-review
+  status: active
+  version: 1
+  description: Optional local daemon, live IPC status, generation-bound drain, offline scheduling and fault boundaries
 - id: local-execution
   topic: architecture
   kind: doc
@@ -114,6 +154,36 @@ sources:
   status: active
   version: 1
   description: Explicit effect dependencies, original receipt binding, reverse compensation order and manual takeover
+- id: postgres-authority
+  topic: architecture
+  kind: doc
+  uri: docs/postgres-authority.md
+  source_scope: docs
+  read_policy: direct
+  write_policy: manual-review
+  status: active
+  version: 1
+  description: Shared transactional PostgreSQL run authority, bounded reducers, database-clock fencing and contract boundary
+- id: remote-effects
+  topic: architecture
+  kind: doc
+  uri: docs/remote-effects.md
+  source_scope: docs
+  read_policy: direct
+  write_policy: manual-review
+  status: active
+  version: 1
+  description: Authenticated shared effect execution, single delivery, query recovery, manual reconciliation and R05 acceptance evidence
+- id: remote-service
+  topic: architecture
+  kind: doc
+  uri: docs/remote-service.md
+  source_scope: repo
+  read_policy: direct
+  write_policy: manual-review
+  status: active
+  version: 1
+  description: Authenticated HTTPS operations, host bindings, remote scheduling and worker recovery.
 - id: run-store
   topic: architecture
   kind: doc
@@ -134,6 +204,16 @@ sources:
   status: active
   version: 1
   description: Frozen mandatory task and terminal gates, fenced evidence decisions, UNKNOWN retry and bounded repair.
+- id: shared-artifacts
+  topic: architecture
+  kind: doc
+  uri: docs/shared-artifacts.md
+  source_scope: repo
+  read_policy: direct
+  write_policy: manual-review
+  status: active
+  version: 1
+  description: Authenticated PostgreSQL artifact transfer, assignment provenance, scoped input lineage and recovery.
 - id: worker-protocol
   topic: architecture
   kind: doc
@@ -172,4 +252,12 @@ route:
   - durable-effects
   - ordered-compensation
   - local-backup-recovery
+  - local-daemon
+  - local-acceptance
+  - postgres-authority
+  - authenticated-authority
+  - remote-service
+  - shared-artifacts
+  - definition-acceptance
+  - remote-effects
   fallback: bounded-search

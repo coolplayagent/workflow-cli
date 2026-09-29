@@ -1,8 +1,8 @@
 schema_version: 4
 artifact_kind: map
 map_type: knowledge
-map_version: 22
-updated_at: unix:1790655888
+map_version: 23
+updated_at: unix:1790664726
 directories:
 - directory: domain
   purpose: Domain concepts, models, and business rules.
@@ -57,6 +57,7 @@ topics:
   - artifact-contracts
   - attempt-workspaces
   - authenticated-authority
+  - definition-acceptance
   - definition-authoring
   - definition-semantics
   - durable-effects
@@ -75,8 +76,8 @@ topics:
   - shared-artifacts
   - worker-protocol
   - workflow-evidence-gates
-  ref: topics/topic-4ca303a3bf7ddf7b-08f8cde5a668eabccfc1116c465cbe87a5fe164987e38f2991b96ec08378d6d3.yaml
-  digest: 08f8cde5a668eabccfc1116c465cbe87a5fe164987e38f2991b96ec08378d6d3
+  ref: topics/topic-4ca303a3bf7ddf7b-854f9e3d6c5aa88328f087d37b29117722050525f1e5bf42f80c0df468fe540c.yaml
+  digest: 854f9e3d6c5aa88328f087d37b29117722050525f1e5bf42f80c0df468fe540c
 - id: business-knowledge
   title: Business knowledge
   description: Version-controlled business domains, terminology, aliases, semantics, and technical mappings.
@@ -92,12 +93,8 @@ topics:
   ref: topics/topic-247e2a0d6f43d185-fc2d5534a38a5ddc28536afa855ff77db8e2941ccaccbfa79f948ddcfaec2f7d.yaml
   digest: fc2d5534a38a5ddc28536afa855ff77db8e2941ccaccbfa79f948ddcfaec2f7d
 history:
-  omitted_through: 6
+  omitted_through: 7
   recent:
-  - version: 7
-    action: source.add
-    actor: cli
-    summary: Added source 'local-execution' to topic 'architecture'.
   - version: 8
     action: source.add
     actor: cli
@@ -158,3 +155,7 @@ history:
     action: source.add
     actor: cli
     summary: Added source 'shared-artifacts' to topic 'architecture'.
+  - version: 23
+    action: source.add
+    actor: cli
+    summary: Added source 'definition-acceptance' to topic 'architecture'.

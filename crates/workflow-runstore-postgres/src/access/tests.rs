@@ -1,5 +1,6 @@
 use super::*;
 mod artifacts;
+mod effects;
 use std::sync::atomic::{AtomicU64, Ordering};
 static NEXT: AtomicU64 = AtomicU64::new(0);
 fn client() -> Client {
@@ -81,6 +82,7 @@ fn rules() -> Vec<CapabilityRule> {
         .map(|d| {
             let c = workflow_worker::Capability::new(d).unwrap();
             CapabilityRule {
+                effect: None,
                 id: c.descriptor().capability.id.clone(),
                 version: c.descriptor().capability.version.clone(),
                 contract_digest: c.digest().into(),

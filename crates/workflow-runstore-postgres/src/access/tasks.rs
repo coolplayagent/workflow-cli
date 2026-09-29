@@ -34,6 +34,13 @@ pub(super) fn load(tx: &mut Transaction<'_>, who: &Identity, id: &str) -> Result
         expires: row.get(2),
         settled: row.get(3),
     };
+    let at = now(tx)?;
+    if at < a.lease.issued_at_unix_ms as i64 || at >= a.expires {
+        return Err(Error::new(
+            ErrorCode::LeaseConflict,
+            "task assignment expired",
+        ));
+    }
     who.fence(a.lease.issued_at_unix_ms as i64, a.expires);
     if !who.capabilities.iter().any(|c| c.matches(&a.task.request)) {
         return Err(denied());
