@@ -19,8 +19,17 @@ impl Identity {
         create: bool,
         f: impl FnOnce(&mut SqliteRunStore, &dyn Clock) -> Result<T>,
     ) -> Result<T> {
+        validate_id(id)?;
+        if create {
+            // Establish the aggregate row before loading its artifact snapshot.
+            // A concurrent first start must not leave us with a catalog captured
+            // before the existing run (and its completed evidence) was visible.
+            tx.execute("INSERT INTO workflow_authority.runs(tenant,project,run_id) VALUES($1,$2,$3) ON CONFLICT DO NOTHING", &[&self.tenant,&self.project,&id]).map_err(storage)?;
+        }
+        tx.query_opt("SELECT run_id FROM workflow_authority.runs WHERE tenant=$1 AND project=$2 AND run_id=$3 FOR UPDATE", &[&self.tenant,&self.project,&id]).map_err(storage)?;
+        let reader = artifact_catalog::load(tx, self, id)?;
         let (result, lower, upper) =
-            PostgresRunStore::change_in(tx, &self.tenant, &self.project, None, id, create, f)?;
+            PostgresRunStore::change_in(tx, &self.tenant, &self.project, reader, id, create, f)?;
         self.fence(lower, upper);
         Ok(result)
     }
@@ -34,8 +43,9 @@ impl Identity {
         // Lock the aggregate through the read/audit transaction. Immutable global
         // bindings are verified against the same current aggregate version.
         let row=tx.query_opt("SELECT image,image_digest FROM workflow_authority.runs WHERE tenant=$1 AND project=$2 AND run_id=$3 FOR SHARE", &[&self.tenant,&self.project,&id]).map_err(storage)?.ok_or_else(|| Error::new(ErrorCode::NotFound,"run not found"))?;
+        let reader = artifact_catalog::load(tx, self, id)?;
         let mut store =
-            PostgresRunStore::checked_row(tx, &self.tenant, &self.project, &row, id, None)?;
+            PostgresRunStore::checked_row(tx, &self.tenant, &self.project, &row, id, reader)?;
         f(&mut store)
     }
 }

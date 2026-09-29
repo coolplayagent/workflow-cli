@@ -27,14 +27,14 @@ roles. Administrative issuance always inherits the administrator's scope.
 
 | Role | Operations |
 | --- | --- |
-| Administrator | Issue, rotate and revoke credentials; read audit and unresolved assignments |
+| Administrator | Issue, rotate and revoke credentials; read audit and unresolved assignments; clean expired artifact transfers |
 | Definition maintainer | Publish a validated bundle digest; read runs |
 | Runner | Start only a published bundle; read runs |
 | Viewer | Read run state, history, inbox and waits |
 | Approver | Read runs; submit a decision with the authenticated actor stamped as source |
 | Scheduler | Read runs, acquire/release ownership, advance timers, dispatch authorized tasks |
-| Worker | Retrieve its own assigned task and return that task's result |
-| Recovery | Read runs, audit and unresolved assignments; acknowledge an existing recovery barrier with the authenticated actor |
+| Worker | Retrieve its own task and return results; publish/read artifacts within its explicit capability policy |
+| Recovery | Read runs, audit and unresolved assignments; acknowledge an existing recovery barrier with the authenticated actor; clean expired artifact transfers |
 
 Publication admits an immutable bundle digest in a scope. Existing global version
 binding checks still reject conflicting workflow/capability versions at start.
@@ -107,7 +107,7 @@ among two schedulers and three workers, resumes a stale worker, and compares the
 result with local execution.
 
 R14 and R09 remain open. Enterprise identity provisioning, provider secret grants,
-authenticated artifact ACL/download links, sandbox/resource/egress restrictions,
+artifact archive/deletion policy, sandbox/resource/egress restrictions,
 scoped export/restore with ownership, shared definition lifecycle, audited
 external-effect reconciliation, scheduling quotas/fairness, version routing and
 production performance/fault evidence remain required. The service guide states
@@ -123,3 +123,13 @@ releasing its barrier rather than assuming a scheduling delay proves ordering.
 
 Implementation references: [PostgreSQL row locks](https://www.postgresql.org/docs/17/explicit-locking.html#LOCKING-ROWS)
 and [getrandom OS entropy](https://docs.rs/getrandom/0.4.3/getrandom/fn.fill.html).
+
+## Artifact authority
+
+[Shared artifact transfer](shared-artifacts.md) uses an optional immutable policy
+on each exact capability rule. Worker reads follow declared typed inputs and their
+lineage; writes derive provenance from a current assignment. Run-reading roles
+can inspect scoped artifacts. Short-lived grants bind scope and credential, and
+every phase participates in the same revocation and final-time transaction checks.
+The verified PostgreSQL catalog supplies artifact evidence to result settlement
+and recovery. It adds version-1 storage without modifying run images.

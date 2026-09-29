@@ -120,7 +120,7 @@ until it expires rather than proactively fencing accepted tasks.
 These mechanisms do not complete R09/R14: shared quotas and tenant/model/capability
 fairness, priorities, measured throughput/p95 delay, dead-letter administration,
 worker version routing and rolling drain, lease renewal with assignment rebinding,
-public edge admission policy, sandbox/egress, provider secret grants, artifact ACLs,
+public edge admission policy, sandbox/egress, provider secret grants, artifact archive/deletion policy,
 and authenticated external-effect reconciliation remain required. This transport
 is not permission to launch a general multi-tenant public deployment.
 
@@ -151,3 +151,11 @@ production RPO, throughput or fairness metric.
 
 Implementation references: [Hyper HTTP/1 connection bounds](https://docs.rs/hyper/1.11.1/hyper/server/conn/http1/struct.Builder.html)
 and [PostgreSQL rustls integration](https://docs.rs/tokio-postgres-rustls/0.14.0/tokio_postgres_rustls/).
+
+## Shared artifact operations
+
+[Shared artifacts](shared-artifacts.md) adds assignment-bound chunk uploads,
+credential-bound expiring downloads, typed input/lineage authorization and
+artifact-backed result recovery. Content is stored transactionally in PostgreSQL.
+The artifact CLI verifies complete content before returning a reference or writing
+a private download. Object storage and full retention/backup policy remain open.

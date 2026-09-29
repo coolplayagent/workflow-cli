@@ -233,7 +233,40 @@ fn daemon_recovers_parallel_loop_and_branch_work_then_wakes_on_callback_and_time
             .unwrap()
             .success()
     );
-    wait(|| store.get("timed-out").unwrap().status == RunStatus::Failed);
+    // The five-second workflow deadline above remains absolute. This separate
+    // observation budget accommodates a resumed process competing with builds;
+    // it does not extend the wait or authorize a late callback.
+    let until = Instant::now() + Duration::from_secs(60);
+    let expired = loop {
+        assert!(
+            child.0.try_wait().unwrap().is_none(),
+            "daemon exited before recovering the expired timer"
+        );
+        let observed = store.get("timed-out");
+        match &observed {
+            Ok(s) if s.status == RunStatus::Failed => break observed.unwrap(),
+            Ok(s) => assert_eq!(
+                s.status,
+                RunStatus::Running,
+                "unexpected timer state: {s:?}"
+            ),
+            Err(e) => assert_eq!(e.code, workflow_runstore::ErrorCode::Busy, "{e:?}"),
+        }
+        assert!(
+            Instant::now() < until,
+            "expired timer recovery stalled: state={observed:?}; service={:?}",
+            workflow_daemon_local::inspect(&c.control_directory)
+        );
+        std::thread::sleep(Duration::from_millis(100));
+    };
+    assert!(
+        expired
+            .frames
+            .values()
+            .flat_map(|f| f.nodes.values())
+            .any(|n| n.reason.as_deref() == Some("timed_out")),
+        "failure must come from the expired wait: {expired:?}"
+    );
     child.0.kill().unwrap();
     child.0.wait().unwrap();
     assert_eq!(

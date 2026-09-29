@@ -1,5 +1,6 @@
 //! TLS transport for the authenticated application interface. Requests contain
 //! operation data; credentials and database connections stay outside that data.
+mod artifacts;
 mod binding;
 mod client;
 mod execution;

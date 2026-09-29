@@ -2,7 +2,9 @@ use crate::*;
 use serde::{Deserialize, Serialize};
 use workflow_runstore::*;
 use workflow_runstore_postgres::access::{
-    AuditEntry, AuthenticatedService, Dispatch, OutstandingAssignment, TaskReceipt,
+    ArtifactCleanup, ArtifactDownloadChunk, ArtifactDownloadGrant, ArtifactUploadRequest,
+    ArtifactUploadStatus, AuditEntry, AuthenticatedService, Dispatch, OutstandingAssignment,
+    TaskReceipt,
 };
 
 pub const PROTOCOL_VERSION: u32 = 1;
@@ -19,6 +21,29 @@ pub struct Request {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)]
 pub enum Operation {
+    ArtifactBegin {
+        request: Box<ArtifactUploadRequest>,
+    },
+    ArtifactPut {
+        upload_id: String,
+        offset: u64,
+        content: Vec<u8>,
+    },
+    ArtifactComplete {
+        upload_id: String,
+    },
+    ArtifactGrant {
+        artifact: workflow_artifacts::ArtifactLink,
+        assignment_id: Option<String>,
+        ttl_ms: u64,
+    },
+    ArtifactGet {
+        download_id: String,
+        offset: u64,
+    },
+    ArtifactCleanup {
+        limit: u32,
+    },
     Publish {
         bundle: Box<BundleSpec>,
     },
@@ -111,6 +136,11 @@ pub struct Reply {
     deny_unknown_fields
 )]
 pub enum Response {
+    ArtifactUpload(Box<ArtifactUploadStatus>),
+    Artifact(Box<workflow_artifacts::ArtifactRef>),
+    ArtifactGrant(Box<ArtifactDownloadGrant>),
+    ArtifactChunk(ArtifactDownloadChunk),
+    ArtifactCleanup(ArtifactCleanup),
     Published(String),
     Committed(Box<Committed>),
     Snapshot(Box<Snapshot>),
@@ -135,11 +165,46 @@ impl Request {
         if self.protocol_version != PROTOCOL_VERSION {
             return Err(invalid());
         }
+        if let Operation::ArtifactPut { content, .. } = &self.operation
+            && (content.is_empty()
+                || content.len() > workflow_runstore_postgres::access::ARTIFACT_CHUNK_BYTES)
+        {
+            return Err(invalid());
+        }
         validate_id(&self.request_id)
     }
     pub fn execute(&self, service: &mut AuthenticatedService, token: &str) -> Result<Response> {
         self.validate()?;
         match &self.operation {
+            Operation::ArtifactBegin { request } => service
+                .begin_artifact_upload(token, request)
+                .map(|r| Response::ArtifactUpload(Box::new(r))),
+            Operation::ArtifactPut {
+                upload_id,
+                offset,
+                content,
+            } => service
+                .put_artifact_chunk(token, upload_id, *offset, content)
+                .map(|r| Response::ArtifactUpload(Box::new(r))),
+            Operation::ArtifactComplete { upload_id } => service
+                .complete_artifact_upload(token, upload_id)
+                .map(|r| Response::Artifact(Box::new(r))),
+            Operation::ArtifactGrant {
+                artifact,
+                assignment_id,
+                ttl_ms,
+            } => service
+                .grant_artifact_download(token, artifact, assignment_id.as_deref(), *ttl_ms)
+                .map(|r| Response::ArtifactGrant(Box::new(r))),
+            Operation::ArtifactGet {
+                download_id,
+                offset,
+            } => service
+                .artifact_download_chunk(token, download_id, *offset)
+                .map(Response::ArtifactChunk),
+            Operation::ArtifactCleanup { limit } => service
+                .cleanup_artifact_transfers(token, *limit)
+                .map(Response::ArtifactCleanup),
             Operation::Publish { bundle } => {
                 service.publish(token, bundle).map(Response::Published)
             }
@@ -225,7 +290,16 @@ impl Request {
     pub fn accepts(&self, response: &Response) -> bool {
         matches!(
             (&self.operation, response),
-            (Operation::Publish { .. }, Response::Published(_))
+            (Operation::ArtifactBegin { .. }, Response::ArtifactUpload(_))
+                | (Operation::ArtifactPut { .. }, Response::ArtifactUpload(_))
+                | (Operation::ArtifactComplete { .. }, Response::Artifact(_))
+                | (Operation::ArtifactGrant { .. }, Response::ArtifactGrant(_))
+                | (Operation::ArtifactGet { .. }, Response::ArtifactChunk(_))
+                | (
+                    Operation::ArtifactCleanup { .. },
+                    Response::ArtifactCleanup(_)
+                )
+                | (Operation::Publish { .. }, Response::Published(_))
                 | (Operation::Start { .. }, Response::Committed(_))
                 | (Operation::Get { .. }, Response::Snapshot(_))
                 | (Operation::History { .. }, Response::History(_))

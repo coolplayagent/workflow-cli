@@ -20,13 +20,13 @@ pub struct TaskReceipt {
     pub revision: u64,
     pub duplicate: bool,
 }
-struct Assignment {
-    lease: Lease,
-    task: PreparedTask,
-    expires: i64,
-    settled: bool,
+pub(super) struct Assignment {
+    pub(super) lease: Lease,
+    pub(super) task: PreparedTask,
+    pub(super) expires: i64,
+    pub(super) settled: bool,
 }
-fn load(tx: &mut Transaction<'_>, who: &Identity, id: &str) -> Result<Assignment> {
+pub(super) fn load(tx: &mut Transaction<'_>, who: &Identity, id: &str) -> Result<Assignment> {
     let row=tx.query_opt("SELECT lease,task,expires_at,settled FROM workflow_access.assignments WHERE tenant=$1 AND project=$2 AND worker_id=$3 AND id=$4 FOR UPDATE", &[&who.tenant,&who.project,&who.id,&id]).map_err(storage)?.ok_or_else(denied)?;
     let a = Assignment {
         lease: serde_json::from_str(row.get(0)).map_err(|_| corrupt("assignment lease invalid"))?,
@@ -41,7 +41,7 @@ fn load(tx: &mut Transaction<'_>, who: &Identity, id: &str) -> Result<Assignment
     live(tx, who)?;
     Ok(a)
 }
-fn check_lease(
+pub(super) fn check_lease(
     store: &mut SqliteRunStore,
     lease: &Lease,
     task: &PreparedTask,

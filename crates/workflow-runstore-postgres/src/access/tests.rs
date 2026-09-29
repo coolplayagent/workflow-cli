@@ -1,4 +1,5 @@
 use super::*;
+mod artifacts;
 use std::sync::atomic::{AtomicU64, Ordering};
 static NEXT: AtomicU64 = AtomicU64::new(0);
 fn client() -> Client {
@@ -83,6 +84,7 @@ fn rules() -> Vec<CapabilityRule> {
                 id: c.descriptor().capability.id.clone(),
                 version: c.descriptor().capability.version.clone(),
                 contract_digest: c.digest().into(),
+                artifacts: None,
             }
         })
         .collect()

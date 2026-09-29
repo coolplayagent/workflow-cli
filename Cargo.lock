@@ -2663,6 +2663,7 @@ dependencies = [
  "tokio",
  "tokio-postgres-rustls",
  "tokio-rustls",
+ "workflow-artifacts",
  "workflow-builtin-capabilities",
  "workflow-kernel",
  "workflow-runstore",

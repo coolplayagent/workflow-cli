@@ -47,7 +47,14 @@ impl SecretRef {
     }
 }
 pub fn read_bounded(path: &Path, limit: usize) -> Result<Vec<u8>> {
-    read_file(std::fs::File::open(path).map_err(|_| invalid())?, limit)
+    let mut options = std::fs::OpenOptions::new();
+    options.read(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        options.custom_flags(libc::O_NONBLOCK | libc::O_CLOEXEC);
+    }
+    read_file(options.open(path).map_err(|_| invalid())?, limit)
 }
 fn read_file(file: std::fs::File, limit: usize) -> Result<Vec<u8>> {
     if !file.metadata().map_err(|_| invalid())?.is_file() {
@@ -90,6 +97,12 @@ pub fn write_credential(
     path: &Path,
     credential: &workflow_runstore_postgres::access::IssuedCredential,
 ) -> Result<()> {
+    write_private_output(path, credential.expose_secret().as_bytes())
+}
+/// Write a new private file and synchronize its bytes and parent entry. The
+/// caller must validate all content first and treat an error as unconfirmed
+/// delivery; an output created before a storage error may require cleanup.
+pub fn write_private_output(path: &Path, bytes: &[u8]) -> Result<()> {
     #[cfg(unix)]
     {
         use std::{io::Write, os::unix::fs::OpenOptionsExt};
@@ -99,8 +112,7 @@ pub fn write_credential(
             .mode(0o600)
             .open(path)
             .map_err(|_| invalid())?;
-        f.write_all(credential.expose_secret().as_bytes())
-            .map_err(|_| unavailable())?;
+        f.write_all(bytes).map_err(|_| unavailable())?;
         f.sync_all().map_err(|_| unavailable())?;
         if let Some(parent) = path.parent() {
             std::fs::File::open(if parent.as_os_str().is_empty() {
@@ -115,7 +127,7 @@ pub fn write_credential(
     }
     #[cfg(not(unix))]
     {
-        let _ = (path, credential);
+        let _ = (path, bytes);
         Err(invalid())
     }
 }
