@@ -29,7 +29,7 @@ jobs:
     runs-on: ubuntu-24.04
     services:
       postgres:
-        image: public.ecr.aws/docker/library/postgres@sha256:d74eeac9a635390a49bc21bd49fccd973de707e2a53a76ac49b552b8712ec46f
+        image: docker.io/library/postgres@sha256:d74eeac9a635390a49bc21bd49fccd973de707e2a53a76ac49b552b8712ec46f
         env:
           POSTGRES_PASSWORD: workflow-isolated-test
         ports:
