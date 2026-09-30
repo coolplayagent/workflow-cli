@@ -10,6 +10,236 @@ impl Clock for Time {
         Ok(self.0.get())
     }
 }
+
+#[test]
+fn definition_migration_replays_old_gate_proofs_but_requires_a_new_attempt_and_evidence() {
+    let f = fixture(true, true, 60000);
+    f.finish();
+    assert!(matches!(f.claim(), Claimed::Handled { .. }));
+    let prior = f.snapshot();
+    assert!(prior.frames[&1].nodes["inspect"].gate_decision.is_some());
+    let mut store = f.store();
+    let paused = store
+        .apply(&event(
+            &prior,
+            "pause-upgrade",
+            EventKind::Pause {
+                reason: "review replacement".into(),
+            },
+        ))
+        .unwrap()
+        .snapshot;
+    let mut target = f.start.bundle.clone();
+    target.root.version = "2.0.0".into();
+    target.workflows[0].version = "2.0.0".into();
+    for gate in &mut target.postconditions {
+        gate.workflow.version = "2.0.0".into();
+        gate.policy.identity.version = "2.0.0".into();
+        gate.policy.requirements[0].max_age_ms = 50000;
+    }
+    let mut inputs = f.start.inputs.clone();
+    inputs.insert(
+        "document".into(),
+        format!("{}\n", inputs["document"].as_str().unwrap()).into(),
+    );
+    let request = MigrationRequest {
+        migration_id: "fresh-gates".into(),
+        target_bundle: target,
+        target_inputs: inputs,
+        execution_policy: workflow_kernel::MigrationExecutionPolicy::RestartWithFreshEvidence,
+        timer_policy: workflow_kernel::MigrationTimerPolicy::CancelAndRearmOnResume,
+        node_mapping: vec![],
+        decision_summary: "Changed inputs and gate policy require fresh inspection".into(),
+    };
+    let plan = store.plan_migration(&f.start.run_id, &request).unwrap();
+    assert!(plan.inputs_changed && plan.nodes.iter().any(|n| n.gate_changed));
+    assert!(
+        plan.invalidated_instances
+            .iter()
+            .any(|i| i.gate_decision_digest.is_some())
+    );
+    let clock = Time(Cell::new(1001));
+    let migrated = store
+        .migrate_definition(&f.lease, &plan, "operator", &clock)
+        .unwrap()
+        .snapshot;
+    clock.0.set(1002);
+    let lease = store
+        .acquire(
+            &LeaseRequest {
+                run_id: f.start.run_id.clone(),
+                owner: "new-worker".into(),
+                acquisition_id: "new-version".into(),
+                ttl_ms: 10000,
+            },
+            &clock,
+        )
+        .unwrap();
+    store
+        .apply(&event(
+            &migrated,
+            "resume-new",
+            EventKind::Resume {
+                reason: "approved plan".into(),
+            },
+        ))
+        .unwrap();
+    let attempt = loop {
+        match store.claim_next(&lease, &clock).unwrap() {
+            Claimed::Task { attempt } => break attempt,
+            Claimed::Handled { .. } => {}
+            other => panic!("{other:?}"),
+        }
+    };
+    assert_ne!(attempt.attempt_id, f.attempt.attempt_id);
+    assert_ne!(
+        artifact_producer(&attempt.request)
+            .unwrap()
+            .node_instance_id,
+        artifact_producer(&f.attempt.request)
+            .unwrap()
+            .node_instance_id
+    );
+    assert!(
+        store
+            .finish_task(&lease, &attempt.attempt_id, &f.result, &clock)
+            .is_err()
+    );
+    let mut result = workflow_builtin_capabilities::worker()
+        .unwrap()
+        .execute_with_clock(&attempt.request, &attempt.grant, &clock)
+        .unwrap()
+        .into_result();
+    if let AdapterOutcome::Succeeded { evidence, .. } = &mut result.outcome
+        && let AdapterOutcome::Succeeded { evidence: old, .. } = &f.result.outcome
+    {
+        *evidence = old.clone();
+    }
+    assert!(
+        store
+            .finish_task(&lease, &attempt.attempt_id, &result, &clock)
+            .is_err()
+    );
+    let mut artifacts = LocalArtifactStore::open(f.root()).unwrap();
+    let spec = PublishSpec {
+        schema_version: 1,
+        artifact_type: f.start.bundle.postconditions[0].policy.requirements[0]
+            .report_type
+            .clone(),
+        producer: artifact_producer(&attempt.request).unwrap(),
+        source_revision: workflow_artifacts::SourceRevision {
+            repository: "fixture-repository".into(),
+            revision: "a".repeat(40),
+        },
+        inputs: vec![],
+        access: AccessScope::Run {
+            run_id: f.start.run_id.clone(),
+        },
+        retention: Retention::RunDependency,
+    };
+    let fresh = artifacts
+        .publish(&spec, &mut br#"{"valid":true}"#.as_slice())
+        .unwrap();
+    if let AdapterOutcome::Succeeded { evidence, .. } = &mut result.outcome {
+        *evidence = vec![workflow_worker::EvidenceRef {
+            artifact_id: fresh.artifact_id,
+            digest: fresh.digest,
+        }];
+    }
+    store
+        .finish_task(&lease, &attempt.attempt_id, &result, &clock)
+        .unwrap();
+    for _ in 0..8 {
+        if store.get(&f.start.run_id).unwrap().status == RunStatus::Succeeded {
+            break;
+        }
+        store.claim_next(&lease, &clock).unwrap();
+    }
+    assert_eq!(
+        store.get(&f.start.run_id).unwrap().status,
+        RunStatus::Succeeded
+    );
+    drop(store);
+    let mut reopened = f.store();
+    reopened.verify(&f.start.run_id).unwrap();
+    assert_eq!(
+        reopened
+            .historical_snapshot(&f.start.run_id, paused.revision)
+            .unwrap(),
+        paused
+    );
+}
+
+#[test]
+fn definition_migration_retains_old_execution_proofs_after_removing_their_capability() {
+    let f = fixture(true, true, 60000);
+    f.finish();
+    assert!(matches!(f.claim(), Claimed::Handled { .. }));
+    let mut store = f.store();
+    let before = f.snapshot();
+    let paused = store
+        .apply(&event(
+            &before,
+            "pause",
+            EventKind::Pause {
+                reason: "replace inspection root".into(),
+            },
+        ))
+        .unwrap()
+        .snapshot;
+    let mut target = start(&scenario("review-approved")).bundle;
+    target.root.version = "2.0.0".into();
+    target.workflows[0].version = "2.0.0".into();
+    target.workflows[0].nodes.retain(|n| n.id != "implement");
+    target.workflows[0].edges.retain(|e| e.from != "implement");
+    for e in &mut target.workflows[0].edges {
+        if e.to == "implement" {
+            e.to = "done".into();
+        }
+    }
+    target.capabilities.clear();
+    let request = MigrationRequest {
+        migration_id: "remove-capability".into(),
+        target_bundle: target,
+        target_inputs: Values::new(),
+        execution_policy: workflow_kernel::MigrationExecutionPolicy::RestartWithFreshEvidence,
+        timer_policy: workflow_kernel::MigrationTimerPolicy::CancelAndRearmOnResume,
+        node_mapping: vec![],
+        decision_summary: "Retire completed inspection and require a new review".into(),
+    };
+    let plan = store.plan_migration(&f.start.run_id, &request).unwrap();
+    store
+        .migrate_definition(&f.lease, &plan, "operator", &Time(Cell::new(1001)))
+        .unwrap();
+    drop(store);
+    let mut restored = f.store();
+    assert!(
+        restored
+            .bundle(&f.start.run_id)
+            .unwrap()
+            .capabilities
+            .is_empty()
+    );
+    assert_eq!(
+        restored
+            .historical_snapshot(&f.start.run_id, paused.revision)
+            .unwrap(),
+        paused
+    );
+    restored.verify(&f.start.run_id).unwrap();
+    assert!(
+        restored
+            .finish_task(
+                &f.lease,
+                &f.attempt.attempt_id,
+                &f.result,
+                &Time(Cell::new(20000))
+            )
+            .unwrap()
+            .transition
+            .duplicate
+    );
+}
 struct Fixture {
     db: Db,
     start: StartRun,

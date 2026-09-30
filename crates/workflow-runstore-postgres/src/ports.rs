@@ -1,4 +1,58 @@
 use crate::*;
+impl MigrationStore for PostgresRunStore {
+    fn plan_migration(&mut self, id: &str, request: &MigrationRequest) -> Result<MigrationPlan> {
+        let plan = self.read(id, |s| s.plan_migration(id, request))?;
+        let compiled =
+            workflow_kernel::CompiledBundle::compile(plan.request.target_bundle.clone())?;
+        let mut tx = self.client.transaction().map_err(storage)?;
+        Self::transaction_settings(&mut tx)?;
+        for b in workflow_runstore_sqlite::bundle_bindings(&compiled)? {
+            let row = tx.query_opt("SELECT digest FROM workflow_authority.bindings WHERE tenant=$1 AND project=$2 AND kind=$3 AND id=$4 AND version=$5 FOR SHARE", &[&self.tenant,&self.project,&b.kind,&b.id,&b.version]).map_err(storage)?;
+            if row.is_some_and(|r| r.get::<_, &str>(0) != b.digest) {
+                return Err(Error::new(
+                    ErrorCode::BindingConflict,
+                    "immutable shared version differs",
+                ));
+            }
+        }
+        tx.commit().map_err(storage)?;
+        Ok(plan)
+    }
+    fn migrate_definition(
+        &mut self,
+        lease: &Lease,
+        plan: &MigrationPlan,
+        actor: &str,
+        _: &dyn Clock,
+    ) -> Result<Committed> {
+        let reader = self.reader();
+        let mut tx = self.client.transaction().map_err(storage)?;
+        Self::transaction_settings(&mut tx)?;
+        let compiled =
+            workflow_kernel::CompiledBundle::compile(plan.request.target_bundle.clone())?;
+        bind_versions(
+            &mut tx,
+            &self.tenant,
+            &self.project,
+            workflow_runstore_sqlite::bundle_bindings(&compiled)?,
+            true,
+        )?;
+        let (result, _, _) = Self::change_in(
+            &mut tx,
+            &self.tenant,
+            &self.project,
+            reader,
+            &plan.run_id,
+            false,
+            |s, c| s.migrate_definition(lease, plan, actor, c),
+        )?;
+        tx.commit().map_err(storage)?;
+        Ok(result)
+    }
+    fn historical_snapshot(&mut self, id: &str, revision: u64) -> Result<Snapshot> {
+        self.read(id, |s| s.historical_snapshot(id, revision))
+    }
+}
 impl RunStore for PostgresRunStore {
     fn start(&mut self, r: &StartRun) -> Result<Committed> {
         self.change(&r.run_id, true, |s, _| s.start(r))

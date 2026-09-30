@@ -115,6 +115,7 @@ the CLI exits 0.
 - [Attempt workspaces, source objects and captured outputs](docs/workspaces.md)
 - [Mandatory task/terminal gates and bounded repair](docs/runtime-postconditions.md)
 - [Local execution, leases, attempts and migration](docs/local-execution.md)
+- [Version locking, reviewed definition migration and verified storage upgrades](docs/version-migration.md)
 - [Local daemon, live status, stopping and offline example](docs/local-daemon.md)
 - [R08 local acceptance and supported environments](docs/local-acceptance.md)
 - [Authenticated HTTPS service, remote schedulers and workers](docs/remote-service.md)

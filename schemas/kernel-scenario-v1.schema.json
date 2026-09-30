@@ -674,6 +674,23 @@
         {
           "additionalProperties": false,
           "properties": {
+            "plan": {
+              "$ref": "#/$defs/MigrationPlan"
+            },
+            "type": {
+              "const": "migrate_definition",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "plan"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
             "message": {
               "$ref": "#/$defs/SignalMessage"
             },
@@ -1078,6 +1095,48 @@
         }
       ]
     },
+    "InvalidatedInstance": {
+      "additionalProperties": false,
+      "properties": {
+        "frame_id": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "gate_decision_digest": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "input_digest": {
+          "type": "string"
+        },
+        "instance_id": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "node": {
+          "$ref": "#/$defs/MigrationNode"
+        },
+        "output_digest": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "frame_id",
+        "node",
+        "instance_id",
+        "state",
+        "input_digest",
+        "output_digest"
+      ],
+      "type": "object"
+    },
     "JoinMode": {
       "enum": [
         "all",
@@ -1116,6 +1175,241 @@
         "max_events"
       ],
       "type": "object"
+    },
+    "MigrationExecutionPolicy": {
+      "oneOf": [
+        {
+          "const": "restart_with_fresh_evidence",
+          "description": "Recompute all results, gates and approvals from explicit target inputs.\nAny existing effect ledger blocks this policy. Finish the old run or\nexplicitly reconcile a separate new execution instead.",
+          "type": "string"
+        }
+      ]
+    },
+    "MigrationNode": {
+      "additionalProperties": false,
+      "properties": {
+        "node_id": {
+          "type": "string"
+        },
+        "workflow": {
+          "$ref": "#/$defs/VersionRef"
+        }
+      },
+      "required": [
+        "workflow",
+        "node_id"
+      ],
+      "type": "object"
+    },
+    "MigrationNodeImpact": {
+      "additionalProperties": false,
+      "properties": {
+        "approval_policy_changed": {
+          "type": "boolean"
+        },
+        "definition_changed": {
+          "type": "boolean"
+        },
+        "gate_changed": {
+          "type": "boolean"
+        },
+        "source": {
+          "$ref": "#/$defs/MigrationNode"
+        },
+        "target": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/MigrationNode"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "source",
+        "definition_changed",
+        "gate_changed",
+        "approval_policy_changed"
+      ],
+      "type": "object"
+    },
+    "MigrationPlan": {
+      "additionalProperties": false,
+      "properties": {
+        "added_nodes": {
+          "items": {
+            "$ref": "#/$defs/MigrationNode"
+          },
+          "type": "array"
+        },
+        "inputs_changed": {
+          "type": "boolean"
+        },
+        "invalidated_instances": {
+          "items": {
+            "$ref": "#/$defs/InvalidatedInstance"
+          },
+          "type": "array"
+        },
+        "invalidated_messages": {
+          "description": "Old callback IDs remain historical records. None authorize target nodes.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "nodes": {
+          "items": {
+            "$ref": "#/$defs/MigrationNodeImpact"
+          },
+          "type": "array"
+        },
+        "request": {
+          "$ref": "#/$defs/MigrationRequest"
+        },
+        "run_digest": {
+          "type": "string"
+        },
+        "run_id": {
+          "type": "string"
+        },
+        "schema_version": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "source_bundle_digest": {
+          "type": "string"
+        },
+        "source_revision": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "source_state_digest": {
+          "type": "string"
+        },
+        "target_bundle_digest": {
+          "type": "string"
+        },
+        "timers": {
+          "items": {
+            "$ref": "#/$defs/MigrationTimer"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "schema_version",
+        "run_id",
+        "run_digest",
+        "source_revision",
+        "source_state_digest",
+        "source_bundle_digest",
+        "target_bundle_digest",
+        "inputs_changed",
+        "request",
+        "nodes",
+        "added_nodes",
+        "invalidated_instances",
+        "invalidated_messages",
+        "timers"
+      ],
+      "type": "object"
+    },
+    "MigrationRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "decision_summary": {
+          "type": "string"
+        },
+        "execution_policy": {
+          "$ref": "#/$defs/MigrationExecutionPolicy"
+        },
+        "migration_id": {
+          "type": "string"
+        },
+        "node_mapping": {
+          "default": [],
+          "description": "Explicit overrides of the suggested identity mapping. Unspecified nodes\nmap to the same node ID in the selected target workflow, or to removal.",
+          "items": {
+            "$ref": "#/$defs/NodeMapping"
+          },
+          "type": "array"
+        },
+        "target_bundle": {
+          "$ref": "#/$defs/BundleSpec"
+        },
+        "target_inputs": {
+          "additionalProperties": true,
+          "type": "object"
+        },
+        "timer_policy": {
+          "$ref": "#/$defs/MigrationTimerPolicy"
+        }
+      },
+      "required": [
+        "migration_id",
+        "target_bundle",
+        "target_inputs",
+        "execution_policy",
+        "timer_policy",
+        "decision_summary"
+      ],
+      "type": "object"
+    },
+    "MigrationTimer": {
+      "additionalProperties": false,
+      "properties": {
+        "instance_id": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "old_deadline_unix_ms": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "source": {
+          "$ref": "#/$defs/MigrationNode"
+        },
+        "target": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/MigrationNode"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "target_timeout_ms": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "instance_id",
+        "source",
+        "old_deadline_unix_ms"
+      ],
+      "type": "object"
+    },
+    "MigrationTimerPolicy": {
+      "oneOf": [
+        {
+          "const": "cancel_and_rearm_on_resume",
+          "description": "Cancel old timers. Target nodes start their declared durations when the\npaused migrated run is explicitly resumed and reaches those nodes.",
+          "type": "string"
+        }
+      ]
     },
     "Node": {
       "additionalProperties": false,
@@ -1328,6 +1622,28 @@
           "type": "object"
         }
       ]
+    },
+    "NodeMapping": {
+      "additionalProperties": false,
+      "properties": {
+        "source": {
+          "$ref": "#/$defs/MigrationNode"
+        },
+        "target": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/MigrationNode"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "source"
+      ],
+      "type": "object"
     },
     "Policy": {
       "additionalProperties": false,

@@ -622,6 +622,23 @@
           {
             "additionalProperties": false,
             "properties": {
+              "migration": {
+                "$ref": "#/$defs/MigrationAuthority"
+              },
+              "type": {
+                "const": "migrated",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type",
+              "migration"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
               "at_unix_ms": {
                 "format": "uint64",
                 "minimum": 0,
@@ -1210,6 +1227,68 @@
           "reason",
           "evidence",
           "outcome"
+        ],
+        "type": "object"
+      },
+      "MigrationAuthority": {
+        "additionalProperties": false,
+        "description": "Fenced execution proof for a protected definition migration. The plan and\ncomplete target contract are retained by the corresponding kernel event.",
+        "properties": {
+          "actor": {
+            "type": "string"
+          },
+          "at_unix_ms": {
+            "format": "uint64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "epoch": {
+            "format": "uint64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "event_id": {
+            "type": "string"
+          },
+          "event_revision": {
+            "format": "uint64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "generation": {
+            "type": "string"
+          },
+          "plan_digest": {
+            "type": "string"
+          },
+          "previous_delivery_sequence": {
+            "format": "uint64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "retired_commands": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "source_revision": {
+            "format": "uint64",
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "epoch",
+          "generation",
+          "actor",
+          "plan_digest",
+          "source_revision",
+          "event_id",
+          "event_revision",
+          "previous_delivery_sequence",
+          "retired_commands",
+          "at_unix_ms"
         ],
         "type": "object"
       },

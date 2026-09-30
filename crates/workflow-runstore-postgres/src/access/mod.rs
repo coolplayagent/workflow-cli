@@ -9,6 +9,7 @@ mod artifact_download;
 mod artifact_policy;
 mod artifact_upload;
 mod effects;
+mod migration;
 mod operations;
 mod restoration;
 mod tasks;

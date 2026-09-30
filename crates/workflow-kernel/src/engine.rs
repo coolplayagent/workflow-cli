@@ -1,5 +1,6 @@
 mod inbox;
 mod lifecycle;
+mod migration;
 mod postconditions;
 use crate::bundle::{key, workflow_key};
 use crate::*;
@@ -12,6 +13,7 @@ use workflow_ir::*;
 #[derive(Clone, Debug)]
 pub struct Engine {
     bundle: Arc<CompiledBundle>,
+    initial_bundle: Arc<CompiledBundle>,
     state: Snapshot,
     limits: Limits,
     initial_inputs: Values,
@@ -76,6 +78,7 @@ impl Engine {
             next_token_sequence: 1,
         };
         let mut engine = Self {
+            initial_bundle: Arc::new(bundle.clone()),
             bundle: Arc::new(bundle),
             state,
             limits,
@@ -102,6 +105,49 @@ impl Engine {
     }
     pub fn bundle(&self) -> &CompiledBundle {
         &self.bundle
+    }
+    pub fn initial_bundle(&self) -> &CompiledBundle {
+        &self.initial_bundle
+    }
+    pub fn bundle_spec_at(&self, revision: u64) -> Result<&BundleSpec> {
+        if revision == 0 || revision > self.state.revision {
+            return Err(Error::new(
+                ErrorCode::InvalidRequest,
+                "revision is outside retained bundle history",
+            ));
+        }
+        for event in self.events.iter().rev() {
+            if event.expected_revision < revision
+                && let EventKind::MigrateDefinition { plan } = &event.kind
+            {
+                return Ok(&plan.request.target_bundle);
+            }
+        }
+        Ok(self.initial_bundle.spec())
+    }
+    /// Replay only recorded transitions under their frozen definitions. This
+    /// performs no model, task, clock or provider invocation.
+    pub fn at_revision(&self, revision: u64) -> Result<Self> {
+        if revision == 0 || revision > self.state.revision {
+            return Err(Error::new(
+                ErrorCode::InvalidRequest,
+                "revision is outside the retained history",
+            ));
+        }
+        if revision == self.state.revision {
+            return Ok(self.clone());
+        }
+        let (mut engine, _) = Self::start(
+            self.initial_bundle.as_ref().clone(),
+            &self.state.run_id,
+            self.initial_inputs.clone(),
+            self.started_at,
+            self.limits.clone(),
+        )?;
+        for event in self.events.iter().take((revision - 1) as usize) {
+            engine.apply(event.clone())?;
+        }
+        Ok(engine)
     }
     pub fn apply(&mut self, event: Event) -> Result<Transition> {
         workflow_worker::to_message(&event)?;
@@ -162,11 +208,22 @@ impl Engine {
                 "event budget exhausted; cancellation remains available",
             ));
         }
+        if let EventKind::MigrateDefinition { plan } = &event.kind {
+            let expected = self.plan_migration(&plan.request)?;
+            if &expected != plan.as_ref() {
+                return Err(Error::new(
+                    ErrorCode::InvalidRequest,
+                    "migration plan differs from the current source state or recomputed impact",
+                ));
+            }
+        }
         let mut next = self.clone();
         let mut commands = vec![];
         next.state.now_unix_ms = event.at_unix_ms;
         // Cancellation is available even if an ordinary transition budget is exhausted.
-        if matches!(event.kind, EventKind::Cancel) {
+        if let EventKind::MigrateDefinition { plan } = &event.kind {
+            next.migrate_definition(plan, &mut commands)?;
+        } else if matches!(event.kind, EventKind::Cancel) {
             next.state.pause = None;
             next.state.status = RunStatus::Cancelling;
             next.cancel_frame(1, &mut commands)?;
@@ -216,7 +273,7 @@ impl Engine {
     pub fn checkpoint(&self) -> Result<Checkpoint> {
         let mut checkpoint = Checkpoint {
             schema_version: 1,
-            bundle_digest: self.bundle.digest().into(),
+            bundle_digest: self.initial_bundle.digest().into(),
             run_id: self.state.run_id.clone(),
             inputs: self.initial_inputs.clone(),
             started_at_unix_ms: self.started_at,
@@ -506,7 +563,10 @@ impl Engine {
                 context_digest,
             } => self.retry_gate(*instance_id, context_digest, commands),
             EventKind::AdvanceTime => Ok(()),
-            EventKind::Cancel | EventKind::Pause { .. } | EventKind::Resume { .. } => {
+            EventKind::Cancel
+            | EventKind::Pause { .. }
+            | EventKind::Resume { .. }
+            | EventKind::MigrateDefinition { .. } => {
                 unreachable!("handled before timers")
             }
         }

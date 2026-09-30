@@ -3,10 +3,12 @@ mod effects;
 pub use effects::*;
 mod execution;
 mod inbox;
+mod migration;
 mod model;
 mod restoration;
 pub use execution::*;
 pub use inbox::*;
+pub use migration::*;
 pub use model::*;
 pub use restoration::*;
 use serde::{Deserialize, Serialize};
@@ -26,6 +28,7 @@ pub enum ErrorCode {
     AttemptInProgress,
     AttemptBudget,
     ManualReconciliation,
+    MigrationBlocked,
     RecoveryRequired,
     UnsupportedEffect,
     NotFound,
@@ -149,6 +152,9 @@ pub fn schema(kind: &str) -> Result<String> {
         "effect-observation" => schemars::schema_for!(workflow_effects::Observation),
         "recovery-acknowledgement" => schemars::schema_for!(RecoveryAcknowledgement),
         "restored-effect" => schemars::schema_for!(RestoredEffect),
+        "migration-request" => schemars::schema_for!(workflow_kernel::MigrationRequest),
+        "migration-plan" => schemars::schema_for!(workflow_kernel::MigrationPlan),
+        "storage-upgrade" => schemars::schema_for!(StorageUpgrade),
         "effect-resolution" => schemars::schema_for!(workflow_effects::ManualResolution),
         _ => {
             return Err(Error::new(

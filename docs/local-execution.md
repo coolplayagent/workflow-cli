@@ -167,31 +167,22 @@ waits, stale resume conflicts and killed pause writers at five commit phases.
 
 ## Explicit storage migration
 
-New databases use storage schema 10. Schema 1–9 databases from prior increments
-must be upgraded explicitly:
+New databases use storage schema 11. Schemas 1–10 require an explicit verified
+backup and upgrade; ordinary create/open never migrates a store:
 
 ```sh
-cargo run --locked -- run --artifacts /path/to/artifacts migrate /path/to/existing-runs.db
+cargo run --locked -- run --artifacts /path/to/artifacts storage-plan /path/to/existing-runs.db
+cargo run --locked -- run --artifacts /path/to/artifacts migrate /path/to/existing-runs.db /path/to/new-before-upgrade.sqlite
 ```
 
-Migration creates the execution journal/empty authority heads for schema 1,
-preserves existing leases/attempts for schema 2, validates all existing runs and
-updates the version in one transaction. Schema 3 introduced required artifact
-verification; schema 4 adds protected gate transitions and schema 5 protects model
-policy records and immutable policy bindings. Schema 6 protects durable pause/resume
-admission semantics from older executors; schema 7 adds durable Inbox matching.
-Schema 8 adds the managed effect journal; schema 9 protects ordered compensation.
-Schema 10 protects restore generations, recovery barriers and provider receipt imports.
-Evidence-bearing runs need
-`--artifacts` during migration; omit it only for runs without dependencies. Missing
-or corrupt dependencies roll back the version. Corrupt old runs roll back the
-tables and version together. Running migrate again on schema 10
-is harmless. Ordinary open/create never silently upgrades old data; foreign or
-future schemas are refused. Logical StartRun schema remains v1. Direct worker calls retain protocol 1;
-model-policy calls require protocol 2. See [model execution](model-execution.md).
-Use [consistent backup and fenced recovery](backup-recovery.md) for an explicit
-verified backup before operational migration. A backup protects its captured
-snapshot; later lost history still needs external reconciliation.
+The source digest is compared inside the upgrade transaction. All retained history,
+execution proofs and artifact dependencies must verify before version/journal
+commit. Failure keeps the old schema. See [version migration](version-migration.md)
+for source-bound plans, storage journals, verified rollback to a retained binary,
+shared image conversion and the separate explicit definition-migration operation.
+Logical StartRun remains schema 1; direct worker calls retain protocol 1 and model
+policy calls require protocol 2. A storage upgrade never restarts a definition or
+undoes an external business effect.
 
 ## Evidence and remaining scope
 
@@ -231,5 +222,5 @@ intents and settle provider observations under the same run lease. CLI hosts use
 [durable effects](durable-effects.md) for stable keys, query recovery, bounded
 retry, manual reconciliation and provider fencing limits. Storage schema 8 adds
 these policies and journal records; schema 9 adds [ordered compensation](ordered-compensation.md).
-Explicit migration to schema 10 accepts schemas 1–9; restored stores use the
+Explicit migration to schema 11 accepts schemas 1–10; restored stores use the
 [recovery barrier](backup-recovery.md) before further write admission.

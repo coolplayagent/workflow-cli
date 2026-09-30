@@ -1,0 +1,303 @@
+{
+  "schema_version": 1,
+  "bundle": {
+    "schema_version": 1,
+    "root": {
+      "id": "versioned-review",
+      "version": "1.0.0"
+    },
+    "workflows": [
+      {
+        "schema_version": 1,
+        "id": "versioned-review",
+        "version": "1.0.0",
+        "entry": "review",
+        "inputs": {
+          "review_digest": {
+            "value_type": {
+              "type": "string"
+            },
+            "required": true
+          }
+        },
+        "nodes": [
+          {
+            "id": "review",
+            "kind": {
+              "type": "wait",
+              "event": "local-review",
+              "timeout_ms": 600000
+            },
+            "inputs": {
+              "review_digest": {
+                "value_type": {
+                  "type": "string"
+                },
+                "required": true
+              }
+            },
+            "bindings": {
+              "review_digest": {
+                "source": "workflow_input",
+                "field": "review_digest"
+              }
+            }
+          },
+          {
+            "id": "done",
+            "kind": {
+              "type": "terminal",
+              "outcome": "succeeded"
+            }
+          },
+          {
+            "id": "declined",
+            "kind": {
+              "type": "terminal",
+              "outcome": "cancelled"
+            }
+          },
+          {
+            "id": "expired",
+            "kind": {
+              "type": "terminal",
+              "outcome": "failed"
+            }
+          },
+          {
+            "id": "inspect",
+            "kind": {
+              "type": "task",
+              "capability": {
+                "id": "workflow.validate",
+                "version": "1.0.0"
+              },
+              "policy": null
+            },
+            "inputs": {
+              "document": {
+                "required": true,
+                "value_type": {
+                  "type": "string"
+                }
+              },
+              "format": {
+                "required": true,
+                "value_type": {
+                  "type": "string"
+                }
+              }
+            },
+            "outputs": {
+              "diagnostics": {
+                "required": true,
+                "value_type": {
+                  "items": {
+                    "fields": {
+                      "code": {
+                        "type": "string"
+                      },
+                      "edge": {
+                        "type": "string"
+                      },
+                      "file": {
+                        "type": "string"
+                      },
+                      "message": {
+                        "type": "string"
+                      },
+                      "node": {
+                        "type": "string"
+                      },
+                      "path": {
+                        "type": "string"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "type": "array"
+                }
+              },
+              "digest": {
+                "required": false,
+                "value_type": {
+                  "type": "string"
+                }
+              },
+              "valid": {
+                "required": true,
+                "value_type": {
+                  "type": "boolean"
+                }
+              }
+            },
+            "bindings": {
+              "format": {
+                "source": "literal",
+                "value": "json"
+              },
+              "document": {
+                "source": "literal",
+                "value": "{\n  \"schema_version\": 1,\n  \"id\": \"requirements-review\",\n  \"version\": \"1.0.0\",\n  \"entry\": \"review\",\n  \"inputs\": {},\n  \"nodes\": [\n    {\n      \"id\": \"review\",\n      \"kind\": {\n        \"type\": \"wait\",\n        \"event\": \"design-review\",\n        \"timeout_ms\": 86400000\n      }\n    },\n    {\n      \"id\": \"implement\",\n      \"kind\": {\n        \"type\": \"task\",\n        \"capability\": {\n          \"id\": \"coding.implement\",\n          \"version\": \"1.0.0\"\n        },\n        \"policy\": null\n      }\n    },\n    {\n      \"id\": \"done\",\n      \"kind\": {\n        \"type\": \"terminal\",\n        \"outcome\": \"succeeded\"\n      }\n    },\n    {\n      \"id\": \"declined\",\n      \"kind\": {\n        \"type\": \"terminal\",\n        \"outcome\": \"cancelled\"\n      }\n    },\n    {\n      \"id\": \"expired\",\n      \"kind\": {\n        \"type\": \"terminal\",\n        \"outcome\": \"failed\"\n      }\n    }\n  ],\n  \"edges\": [\n    {\n      \"id\": \"approved\",\n      \"from\": \"review\",\n      \"to\": \"implement\",\n      \"route\": {\n        \"type\": \"accepted\"\n      }\n    },\n    {\n      \"id\": \"declined\",\n      \"from\": \"review\",\n      \"to\": \"declined\",\n      \"route\": {\n        \"type\": \"rejected\"\n      }\n    },\n    {\n      \"id\": \"expired\",\n      \"from\": \"review\",\n      \"to\": \"expired\",\n      \"route\": {\n        \"type\": \"timed_out\"\n      }\n    },\n    {\n      \"id\": \"implemented\",\n      \"from\": \"implement\",\n      \"to\": \"done\",\n      \"route\": {\n        \"type\": \"next\"\n      }\n    }\n  ]\n}\n"
+              }
+            }
+          }
+        ],
+        "edges": [
+          {
+            "id": "approved",
+            "from": "review",
+            "to": "inspect",
+            "route": {
+              "type": "accepted"
+            }
+          },
+          {
+            "id": "declined",
+            "from": "review",
+            "to": "declined",
+            "route": {
+              "type": "rejected"
+            }
+          },
+          {
+            "id": "expired",
+            "from": "review",
+            "to": "expired",
+            "route": {
+              "type": "timed_out"
+            }
+          },
+          {
+            "id": "inspected",
+            "from": "inspect",
+            "to": "done",
+            "route": {
+              "type": "next"
+            }
+          }
+        ]
+      }
+    ],
+    "capabilities": [
+      {
+        "capability": {
+          "id": "workflow.validate",
+          "version": "1.0.0"
+        },
+        "effects": {
+          "type": "read_only"
+        },
+        "error_codes": {
+          "invalid_definition": "invalid_input",
+          "invalid_format": "invalid_input"
+        },
+        "inputs": {
+          "document": {
+            "required": true,
+            "value_type": {
+              "type": "string"
+            }
+          },
+          "format": {
+            "required": true,
+            "value_type": {
+              "type": "string"
+            }
+          }
+        },
+        "outputs": {
+          "diagnostics": {
+            "required": true,
+            "value_type": {
+              "items": {
+                "fields": {
+                  "code": {
+                    "type": "string"
+                  },
+                  "edge": {
+                    "type": "string"
+                  },
+                  "file": {
+                    "type": "string"
+                  },
+                  "message": {
+                    "type": "string"
+                  },
+                  "node": {
+                    "type": "string"
+                  },
+                  "path": {
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              },
+              "type": "array"
+            }
+          },
+          "digest": {
+            "required": false,
+            "value_type": {
+              "type": "string"
+            }
+          },
+          "valid": {
+            "required": true,
+            "value_type": {
+              "type": "boolean"
+            }
+          }
+        },
+        "schema_version": 1,
+        "skill": {
+          "id": "workflow-capability",
+          "version": "1.0.0"
+        },
+        "timeout_ms": 60000,
+        "usage": "Validate an in-memory JSON/YAML workflow. Invalid definitions are a successful inspection with valid=false and diagnostics; digest is absent. No filesystem or model access."
+      }
+    ],
+    "wait_policies": [
+      {
+        "workflow": {
+          "id": "versioned-review",
+          "version": "1.0.0"
+        },
+        "node_id": "review",
+        "policy": {
+          "identity": {
+            "id": "design-approval",
+            "version": "1.0.0"
+          },
+          "kind": "human_approval",
+          "responders": [
+            "approver",
+            "reviewer"
+          ],
+          "subjects": {
+            "review_digest": "digest"
+          },
+          "max_validity_ms": 86400000,
+          "exception": {
+            "identity": {
+              "id": "design-exception",
+              "version": "1.0.0"
+            },
+            "responders": [
+              "emergency-reviewer"
+            ],
+            "codes": [
+              "incident-recovery"
+            ]
+          }
+        }
+      }
+    ]
+  },
+  "run_id": "versioned-v1",
+  "inputs": {
+    "review_digest": "sha256:ed426538e17ff336fdbe90b3d1d5193fa584cde5c537ee956c0bdb3564136921"
+  },
+  "started_at_unix_ms": 1000
+}

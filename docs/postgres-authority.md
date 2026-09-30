@@ -53,7 +53,7 @@ receipts verify storage semantics, not behavior of an actual release provider.
 Image tests check journal round trips, removed execution records, mismatched run
 identity, malformed columns, size bounds and multiple-run rejection.
 
-Images are limited to 64 MiB per run and use SQLite application schema 10 within
+Images are limited to 64 MiB per run and use SQLite application schema 11 within
 PostgreSQL schema 1. Each mutation rewrites and verifies the aggregate. This has
 deliberate memory, CPU and write-amplification costs; throughput has not been
 claimed. Large histories require a separately verified storage evolution. The
@@ -82,3 +82,7 @@ The authenticated host application facade is documented in
 [Authenticated PostgreSQL authority](authenticated-authority.md). It derives
 scope/actor from database-backed bearer identity and authorizes operations in the
 same transaction as run changes. The raw `PostgresRunStore` API remains trusted.
+
+Previous schema-10 images require a source-bound, administrator-authorized
+`plan_storage_upgrade` / `upgrade_storage` operation. Definition migration is a
+separate paused-run CAS operation; see [R11 migration](version-migration.md).

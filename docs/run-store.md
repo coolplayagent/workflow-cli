@@ -100,7 +100,7 @@ cannot silently turn back into pending delivery.
 
 These checks detect corruption and divergence; a database owner able to rewrite
 records and hashes is outside this integrity boundary. Foreign/future schema/application changes
-are refused. Explicit `run migrate` upgrades schema 1/2/3 to 4 transactionally; see
+are refused. Explicit `run migrate <db> <new-backup-file>` upgrades schemas 1–10 to 11 transactionally; see
 the local execution guide. No repair-by-overwrite is implemented. Recovery currently
 replays bounded histories and retained checkpoint prefixes on reads, favoring
 integrity evidence over latency. It is not an optimized constant-time snapshot
@@ -169,3 +169,7 @@ evidence, so dependency failures roll back the migration.
 Schema 10 adds durable restored ownership and external-effect reconciliation.
 Use [local backup/recovery](backup-recovery.md) for consistent SQLite images and
 retained artifact content; copying live files does not implement that protocol.
+
+Schema 11 adds protected definition migrations and retained storage-upgrade
+records. [Version migration](version-migration.md) describes reviewable plans,
+fresh result/approval policy, historical snapshots and verified storage rollback.

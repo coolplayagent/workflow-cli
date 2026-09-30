@@ -1,6 +1,7 @@
 use super::*;
 mod artifacts;
 mod effects;
+mod migration;
 mod restoration;
 mod waits;
 use std::sync::atomic::{AtomicU64, Ordering};
