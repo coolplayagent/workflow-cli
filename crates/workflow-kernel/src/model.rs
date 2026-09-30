@@ -106,6 +106,8 @@ pub struct NodeInstance {
     pub reason: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub gate_decision: Option<Box<workflow_gates::Decision>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub gate_exception: Option<Box<workflow_gates::ApprovalEvidence>>,
 }
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]

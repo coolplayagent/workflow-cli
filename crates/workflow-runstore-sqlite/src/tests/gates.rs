@@ -4,6 +4,7 @@ use workflow_artifact_local::LocalArtifactStore;
 use workflow_artifacts::{AccessScope, ArtifactReader, ArtifactStore, PublishSpec, Retention};
 use workflow_kernel::{GateContext, NodeState};
 use workflow_worker::{AdapterOutcome, Clock, WorkResult};
+mod release;
 struct Time(Cell<u64>);
 impl Clock for Time {
     fn now_unix_ms(&self) -> workflow_worker::Result<u64> {
@@ -279,12 +280,21 @@ fn fixture(valid: bool, attach: bool, max_age: u64) -> Fixture {
     fixture_with_gates(valid, attach, max_age, true)
 }
 fn fixture_with_gates(valid: bool, attach: bool, max_age: u64, gated: bool) -> Fixture {
-    let db = Db::new();
-    let mut artifacts = LocalArtifactStore::create(db.dir.join("artifacts")).unwrap();
-    let mut start: StartRun = workflow_worker::parse_message(
+    let start: StartRun = workflow_worker::parse_message(
         &std::fs::read(base().join("examples/gates/guarded-start.json")).unwrap(),
     )
     .unwrap();
+    fixture_start(start, valid, attach, max_age, gated)
+}
+fn fixture_start(
+    mut start: StartRun,
+    valid: bool,
+    attach: bool,
+    max_age: u64,
+    gated: bool,
+) -> Fixture {
+    let db = Db::new();
+    let mut artifacts = LocalArtifactStore::create(db.dir.join("artifacts")).unwrap();
     for g in &mut start.bundle.postconditions {
         g.policy.requirements[0].max_age_ms = max_age;
     }
@@ -768,7 +778,11 @@ fn recovery_recomputes_gate_evidence_and_rejects_a_forged_but_well_hashed_decisi
             kind: EventKind::GateEvaluated {
                 instance_id: snapshot.frames[&1].nodes["inspect"].instance_id,
                 context_digest: digest(&context).unwrap(),
-                evaluation: Box::new(workflow_kernel::GateEvaluation { request, decision }),
+                evaluation: Box::new(workflow_kernel::GateEvaluation {
+                    request,
+                    decision,
+                    exception: None,
+                }),
             },
         };
         assert_eq!(

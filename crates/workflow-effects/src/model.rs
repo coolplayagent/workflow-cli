@@ -25,6 +25,8 @@ pub struct EffectPolicy {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct EffectBinding {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub release: Option<crate::ReleasePolicy>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub depends_on: Vec<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -36,6 +38,8 @@ pub struct EffectBinding {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct EffectIntent {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub release: Option<crate::ReleaseIntent>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub dependencies: Vec<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -64,6 +68,8 @@ pub enum CallKind {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct EffectAttempt {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub release: Option<crate::ReleaseAuthorization>,
     pub intent: EffectIntent,
     pub attempt_id: String,
     pub epoch: u64,
@@ -76,6 +82,8 @@ pub struct EffectAttempt {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct EffectReceipt {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub release: Option<Box<crate::ReleaseReceipt>>,
     pub operation_key: String,
     pub intent_digest: String,
     pub target: VersionRef,

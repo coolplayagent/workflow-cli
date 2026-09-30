@@ -3,8 +3,10 @@ mod compensation;
 mod ledger;
 pub use compensation::compensation_key;
 mod model;
+mod release;
 pub use ledger::*;
 pub use model::*;
+pub use release::*;
 use workflow_ir::VersionRef;
 use workflow_worker::{Capability, EffectContract, Idempotency};
 pub use workflow_worker::{Error, ErrorCode, Result, Values, digest};
@@ -43,6 +45,9 @@ pub fn operation_key(run_digest: &str, instance_id: u64) -> Result<String> {
 impl EffectIntent {
     pub fn validate(&self) -> Result<()> {
         validate_policy(&self.policy)?;
+        if let Some(release) = &self.release {
+            release.validate(self)?;
+        }
         let c = Capability::new(self.capability.clone())?;
         if c.descriptor().effects == EffectContract::ReadOnly
             || self.schema_version != 1
@@ -123,6 +128,13 @@ impl EffectIntent {
 }
 impl EffectReceipt {
     pub fn validate(&self, intent: &EffectIntent) -> Result<()> {
+        match (&intent.release, &self.release) {
+            (Some(release), Some(receipt)) => {
+                receipt.validate(release, intent.created_at_unix_ms)?
+            }
+            (None, None) => {}
+            _ => return Err(invalid("release receipt and protected intent must match")),
+        }
         if self.operation_key != intent.operation_key
             || self.intent_digest != digest(intent)?
             || self.target != intent.policy.target
@@ -155,6 +167,20 @@ impl EffectAttempt {
     /// dispatch authority; a caller-computed digest is not a permission token.
     pub fn validate(&self) -> Result<()> {
         self.intent.validate()?;
+        match (&self.intent.release, self.kind, &self.release) {
+            (Some(intent), CallKind::Write, Some(grant)) => {
+                grant.validate(intent, self.issued_at_unix_ms)?;
+                if self.deadline_unix_ms > grant.expires_at_unix_ms {
+                    return Err(invalid("write outlives its release authorization"));
+                }
+            }
+            (_, CallKind::Query, None) | (None, CallKind::Write, None) => {}
+            _ => {
+                return Err(invalid(
+                    "write requires its current release authorization; queries do not grant writes",
+                ));
+            }
+        }
         if self.epoch == 0
             || !(1..=self.intent.policy.retry.max_calls).contains(&self.number)
             || self.prepared_revision == 0

@@ -410,6 +410,7 @@ fn effect_cli_claim_observe_and_inspect_preserve_the_exact_external_receipt() {
         serde_json::from_value(claimed["result"]["attempt"].clone()).unwrap();
     let observed = workflow_effects::Observation::Applied {
         receipt: workflow_effects::EffectReceipt {
+            release: None,
             operation_key: p.intent.operation_key.clone(),
             intent_digest: workflow_effects::digest(&p.intent).unwrap(),
             target: p.intent.policy.target.clone(),

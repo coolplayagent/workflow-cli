@@ -71,6 +71,7 @@ pub(super) fn dispatch(
 pub(super) fn receipt(a: &EffectAttempt) -> Observation {
     Observation::Applied {
         receipt: EffectReceipt {
+            release: None,
             operation_key: a.intent.operation_key.clone(),
             intent_digest: workflow_effects::digest(&a.intent).unwrap(),
             target: a.intent.policy.target.clone(),
@@ -627,6 +628,7 @@ fn effect_shared_compensation_order_and_manual_takeover() {
                         .collect();
                     Observation::Applied {
                         receipt: EffectReceipt {
+                            release: None,
                             operation_key: a.intent.operation_key.clone(),
                             intent_digest: workflow_effects::digest(&a.intent).unwrap(),
                             target: a.intent.policy.target.clone(),
@@ -678,6 +680,7 @@ fn effect_shared_compensation_order_and_manual_takeover() {
         evidence: "sandbox:cleanup-receipt".into(),
         outcome: ManualOutcome::Applied {
             receipt: EffectReceipt {
+                release: None,
                 operation_key: a.intent.operation_key.clone(),
                 intent_digest: workflow_effects::digest(&a.intent).unwrap(),
                 target: a.intent.policy.target.clone(),

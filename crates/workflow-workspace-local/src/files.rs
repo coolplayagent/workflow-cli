@@ -186,12 +186,19 @@ impl Dir {
         Ok((bytes, after.mode() & 0o111 != 0))
     }
     pub fn scan(&self) -> Result<Vec<FileEntry>> {
+        self.scan_inner(false)
+    }
+    pub(crate) fn scan_git_worktree(&self) -> Result<Vec<FileEntry>> {
+        self.scan_inner(true)
+    }
+    fn scan_inner(&self, ignore_git: bool) -> Result<Vec<FileEntry>> {
         fn visit(
             d: &Dir,
             prefix: &str,
             files: &mut Vec<FileEntry>,
             dirs: &mut usize,
             total: &mut u64,
+            ignore_git: bool,
         ) -> Result<()> {
             *dirs += 1;
             if *dirs > MAX_FILES {
@@ -201,6 +208,9 @@ impl Dir {
                 ));
             }
             for n in d.entries()? {
+                if ignore_git && prefix.is_empty() && n == ".git" {
+                    continue;
+                }
                 let p = if prefix.is_empty() {
                     n.clone()
                 } else {
@@ -208,7 +218,7 @@ impl Dir {
                 };
                 validate_path(&p)?;
                 if d.is_dir(&n)? {
-                    visit(&d.child(&n)?, &p, files, dirs, total)?;
+                    visit(&d.child(&n)?, &p, files, dirs, total, ignore_git)?;
                 } else {
                     let (bytes, executable) = d.read(&n)?;
                     *total += bytes.len() as u64;
@@ -229,7 +239,7 @@ impl Dir {
             Ok(())
         }
         let mut files = vec![];
-        visit(self, "", &mut files, &mut 0, &mut 0)?;
+        visit(self, "", &mut files, &mut 0, &mut 0, ignore_git)?;
         files.sort_by(|a, b| a.path.cmp(&b.path));
         validate_files(&files)?;
         Ok(files)

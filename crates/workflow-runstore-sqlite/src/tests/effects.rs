@@ -46,6 +46,7 @@ fn call(s: &mut SqliteRunStore, l: &Lease, c: &dyn Clock) -> EffectAttempt {
 fn applied(p: &EffectAttempt) -> Observation {
     Observation::Applied {
         receipt: EffectReceipt {
+            release: None,
             operation_key: p.intent.operation_key.clone(),
             intent_digest: digest(&p.intent).unwrap(),
             target: p.intent.policy.target.clone(),
@@ -722,6 +723,7 @@ fn real_http_write_then_killed_worker_is_queried_and_duplicate_delivery_creates_
     let gateway = Gateway::new(db.dir.join("provider.db"));
     let policy = &req.bundle.effect_bindings[0].policy;
     let binding = workflow_effect_http::HttpEffectBinding {
+        workspace: None,
         schema_version: 1,
         target: policy.target.clone(),
         call_identity: policy.call_identity.clone(),
@@ -833,6 +835,7 @@ fn loop_instances_use_distinct_effect_keys_and_restart_preserves_each_receipt() 
                     .bundle
                     .effect_bindings
                     .push(workflow_effects::EffectBinding {
+                        release: None,
                         depends_on: vec![],
                         compensates: None,
                         workflow: workflow_ir::VersionRef {
@@ -884,6 +887,7 @@ fn loop_instances_use_distinct_effect_keys_and_restart_preserves_each_receipt() 
         assert_eq!(*instance_id, p.intent.instance_id);
         assert!(keys.insert(p.intent.operation_key.clone()));
         let receipt = EffectReceipt {
+            release: None,
             operation_key: p.intent.operation_key.clone(),
             intent_digest: digest(&p.intent).unwrap(),
             target: p.intent.policy.target.clone(),
@@ -1035,6 +1039,7 @@ fn due_workflow_deadlines_block_new_writes_and_expiry_during_intent_commit_rolls
                         .bundle
                         .effect_bindings
                         .push(workflow_effects::EffectBinding {
+                            release: None,
                             depends_on: vec![],
                             compensates: None,
                             workflow: workflow_ir::VersionRef {

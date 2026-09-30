@@ -86,6 +86,7 @@ impl Sandbox {
                 let mut provider = db();
                 if attempt.kind == CallKind::Write {
                     let receipt = EffectReceipt {
+                        release: None,
                         operation_key: attempt.intent.operation_key.clone(),
                         intent_digest: digest.clone(),
                         target: attempt.intent.policy.target.clone(),
@@ -124,6 +125,7 @@ impl Sandbox {
     fn binding(&self, start: &StartRun) -> HttpEffectBinding {
         let policy = &start.bundle.effect_bindings[0].policy;
         HttpEffectBinding {
+            workspace: None,
             schema_version: 1,
             target: policy.target.clone(),
             call_identity: policy.call_identity.clone(),

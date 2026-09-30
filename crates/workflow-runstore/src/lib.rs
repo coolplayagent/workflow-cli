@@ -1,5 +1,7 @@
 //! Durable run storage port. Adapters commit state, events and command intents atomically.
+mod acceptance;
 mod effects;
+pub use acceptance::*;
 pub use effects::*;
 mod execution;
 mod inbox;
@@ -84,6 +86,7 @@ pub type Result<T> = std::result::Result<T, Error>;
 /// observe one consistent transaction. Events/receipts are trusted host inputs.
 /// Reading pending commands is not a lease or permission to execute them.
 pub trait RunStore {
+    fn acceptance(&mut self, run_id: &str) -> Result<AcceptanceManifest>;
     fn start(&mut self, request: &StartRun) -> Result<Committed>;
     fn apply(&mut self, event: &Event) -> Result<Committed>;
     fn get(&mut self, run_id: &str) -> Result<Snapshot>;

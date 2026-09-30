@@ -2,7 +2,8 @@ use crate::*;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
-use workflow_gates::{Decision, Policy, Request, Target};
+use workflow_gates::Policy;
+pub use workflow_gates::{GateContext, GateEvaluation};
 use workflow_ir::{Binding, NodeKind, TerminalOutcome, ValueType, VersionRef, Workflow};
 
 /// Mandatory success postcondition, frozen with its graph and policy in the run bundle.
@@ -18,20 +19,8 @@ pub struct Postcondition {
     /// The current frame's task whose resolved inputs identify the checked subject.
     pub input_node: String,
     pub artifacts: Binding,
-}
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
-#[serde(deny_unknown_fields)]
-pub struct GateContext {
-    pub policy: Policy,
-    pub target: Target,
-    /// Requirement ID -> exact node instance. Loop rounds cannot borrow older checks.
-    pub expected_instances: BTreeMap<String, u64>,
-}
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
-#[serde(deny_unknown_fields)]
-pub struct GateEvaluation {
-    pub request: Request,
-    pub decision: Decision,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub exception: Option<workflow_gates::ApprovalRequirement>,
 }
 fn invalid(message: impl Into<String>) -> Error {
     Error::new(ErrorCode::InvalidBundle, message)
@@ -154,19 +143,44 @@ pub(crate) fn validate(
         binding(w, &node.id, &g.repository, &ValueType::String)?;
         binding(w, &node.id, &g.revision, &ValueType::String)?;
         binding(w, &node.id, &g.artifacts, &links_type())?;
+        if let Some(exception) = &g.exception {
+            let wait = spec
+                .wait_policies
+                .iter()
+                .find(|p| p.workflow == g.workflow && p.node_id == exception.node_id)
+                .ok_or_else(|| invalid("exception needs a declared human approval wait"))?;
+            if wait.policy.kind != crate::WaitKind::HumanApproval
+                || wait.policy.exception.is_none()
+                || wait.policy.subjects.get(&exception.subject_field)
+                    != Some(&crate::SubjectKind::Digest)
+                || !precedes(w, &exception.node_id, &g.node_id)
+                || precedes(w, &g.node_id, &exception.node_id)
+            {
+                return Err(invalid(
+                    "exception requires a prior human wait with a separate exception policy and digest subject",
+                ));
+            }
+        }
         for q in &g.policy.requirements {
             let checker = w
                 .nodes
                 .iter()
                 .find(|n| n.id == q.node_id)
                 .ok_or_else(|| invalid("required checker task missing"))?;
-            let NodeKind::Task { capability, .. } = &checker.kind else {
+            let NodeKind::Task { capability, policy } = &checker.kind else {
                 return Err(invalid("required checker must be a task"));
             };
             if checker.id != node.id && precedes(w, &node.id, &checker.id) {
                 return Err(invalid("checker cannot depend on its own pending gate"));
             }
             let c = &capabilities[&crate::bundle::key(capability)];
+            if policy.is_some()
+                || c.descriptor().effects != workflow_worker::EffectContract::ReadOnly
+            {
+                return Err(invalid(
+                    "required checker must be an independent read-only task without a model policy",
+                ));
+            }
             if capability != &q.capability
                 || c.digest() != q.contract_digest
                 || !checker

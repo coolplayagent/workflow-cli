@@ -268,6 +268,7 @@ fn effect_driver_records_unknown_then_queries_without_repeating_the_write() {
                     self.queries.fetch_add(1, Ordering::Relaxed);
                     Ok(Observation::Applied {
                         receipt: EffectReceipt {
+                            release: None,
                             operation_key: p.intent.operation_key.clone(),
                             intent_digest: workflow_effects::digest(&p.intent)?,
                             target: p.intent.policy.target.clone(),

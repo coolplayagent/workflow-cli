@@ -14,6 +14,40 @@ pub struct GitSource {
     path: PathBuf,
 }
 impl GitSource {
+    /// Read actual file bytes (including untracked/ignored files), not Git's
+    /// index stat cache or assume-unchanged flags. This observation is not a lock
+    /// on a mutable working tree; callers must declare the remaining race.
+    pub fn verify_current_worktree(&self, expected: &SourceRevision) -> Result<()> {
+        if expected.repository != self.repository {
+            return Err(corrupt("release repository differs"));
+        }
+        let head = || -> Result<String> {
+            String::from_utf8(self.command(&["rev-parse", "--verify", "HEAD"], vec![], 128)?)
+                .map(|v| v.trim().to_owned())
+                .map_err(|_| corrupt("invalid workspace HEAD"))
+        };
+        if head()? != expected.revision {
+            return Err(corrupt("workspace HEAD differs from checked revision"));
+        }
+        let source = self.read(expected)?;
+        let expected_files: Vec<_> = source
+            .files
+            .iter()
+            .map(|f| FileEntry {
+                path: f.path.clone(),
+                digest: content_digest(&f.bytes),
+                bytes: f.bytes.len() as u64,
+                executable: f.executable,
+            })
+            .collect();
+        let current = files::Dir::open(&self.path)?.scan_git_worktree()?;
+        if current != expected_files || head()? != expected.revision {
+            return Err(corrupt(
+                "workspace bytes changed since the checked revision",
+            ));
+        }
+        Ok(())
+    }
     pub fn open(repository: &str, path: impl AsRef<Path>) -> Result<Self> {
         if repository.trim().is_empty() || repository.len() > 1024 {
             return Err(Error::new(

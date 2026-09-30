@@ -232,14 +232,39 @@ fn typed_model_success_cannot_skip_a_frozen_postcondition() {
     .unwrap();
     let mut gate = gated.bundle.postconditions[0].clone();
     gate.workflow = start.bundle.root.clone();
-    let task = &start.bundle.model_policies[0].task;
-    gate.policy.requirements[0].capability = task.capability.clone();
-    gate.policy.requirements[0].contract_digest = workflow_worker::Capability::new(task.clone())
+    // The model's Boolean output is a proposal, never the required checker.
+    // Execute a separate direct task; its missing report must still block the
+    // model node even after both tasks return correctly typed success outputs.
+    let mut checker = gated.bundle.workflows[0]
+        .nodes
+        .iter()
+        .find(|n| n.id == "inspect")
         .unwrap()
-        .digest()
-        .into();
+        .clone();
+    checker.id = "independent-check".into();
+    let workflow = &mut start.bundle.workflows[0];
+    workflow.entry = checker.id.clone();
+    workflow.nodes.push(checker);
+    workflow.edges.push(
+        serde_json::from_value(serde_json::json!({
+            "id":"checked", "from":"independent-check", "to":"inspect", "route":{"type":"next"}
+        }))
+        .unwrap(),
+    );
+    gate.policy.requirements[0].node_id = "independent-check".into();
     start.bundle.postconditions.push(gate);
-    let (lease, p) = prepare(&mut store, &start);
+    let (lease, checker) = prepare(&mut store, &start);
+    let checked = workflow_builtin_capabilities::worker()
+        .unwrap()
+        .execute_with_clock(&checker.request, &checker.grant, &Time(1000))
+        .unwrap()
+        .into_result();
+    store
+        .finish_task(&lease, &checker.attempt_id, &checked, &Time(1000))
+        .unwrap();
+    let Claimed::Task { attempt: p } = store.claim_next(&lease, &Time(1000)).unwrap() else {
+        panic!("model task")
+    };
     let model = Planner {
         calls: AtomicUsize::new(0),
         unavailable: false,

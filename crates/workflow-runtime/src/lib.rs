@@ -109,6 +109,7 @@ pub fn drive_with_effects(
             EffectClaim::Waiting { .. } => EffectProgress::Stop("effect_backoff"),
             EffectClaim::Manual { .. } => EffectProgress::Stop("effect_uncertain"),
             EffectClaim::Call { attempt } => {
+                s.validate_effect_dispatch(&attempt, clock)?;
                 let observed = match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
                     effects.execute(&attempt, clock)
                 })) {

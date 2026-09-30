@@ -132,8 +132,7 @@ impl SqliteRunStore {
                         r.engine.snapshot().revision,
                     )?;
                     let deadline = evaluation
-                        .decision
-                        .expires_at_unix_ms
+                        .admission_deadline()
                         .unwrap_or(l.expires_at_unix_ms)
                         .min(l.expires_at_unix_ms);
                     let event = Event {

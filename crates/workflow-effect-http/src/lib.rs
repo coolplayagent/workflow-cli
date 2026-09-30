@@ -11,6 +11,10 @@ use workflow_worker::{Capability, CapabilityDescriptor, Clock};
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct HttpEffectBinding {
+    /// Optional host-owned checkout. Checked by bytes immediately before writes;
+    /// the release must explicitly acknowledge the non-atomic workspace race.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub workspace: Option<ReleaseWorkspace>,
     pub schema_version: u32,
     pub target: VersionRef,
     pub call_identity: VersionRef,
@@ -23,6 +27,12 @@ pub struct HttpEffectBinding {
     pub credential: Option<workflow_credentials::LeaseRef>,
     #[serde(default)]
     pub allow_loopback_http: bool,
+}
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct ReleaseWorkspace {
+    pub repository: String,
+    pub path: std::path::PathBuf,
 }
 impl HttpEffectBinding {
     /// Shared production execution requires a broker-issued lease. The only
@@ -68,6 +78,10 @@ impl HttpEffect {
             .is_some_and(|a| a.is_loopback());
         Capability::new(binding.capability.clone())?;
         if binding.schema_version != 1
+            || binding
+                .workspace
+                .as_ref()
+                .is_some_and(|w| !w.path.is_absolute() || w.repository.trim().is_empty())
             || binding.endpoint.len() > 2048
             || url.host().is_none()
             || !url.username().is_empty()
@@ -113,6 +127,21 @@ impl HttpEffect {
         credential_expires: u64,
     ) -> Result<Observation> {
         attempt.validate()?;
+        if attempt.kind == CallKind::Write
+            && let Some(workspace) = &self.binding.workspace
+        {
+            let release = attempt.intent.release.as_ref().ok_or_else(invalid)?;
+            if !matches!(
+                release.policy.target_check,
+                TargetCheck::ObserveThenReconcile { .. }
+            ) || workspace.repository != release.subject.source_revision.repository
+            {
+                return Err(invalid());
+            }
+            workflow_workspace_local::GitSource::open(&workspace.repository, &workspace.path)
+                .and_then(|source| source.verify_current_worktree(&release.subject.source_revision))
+                .map_err(|_| invalid())?;
+        }
         let now = clock.now_unix_ms()?;
         if attempt.intent.policy.target != self.binding.target
             || attempt.intent.policy.call_identity != self.binding.call_identity
@@ -174,8 +203,10 @@ impl HttpEffect {
             return Ok(unknown());
         }
         let observed = reply.observation;
-        if let Observation::Applied { receipt } = &observed {
-            receipt.validate(&attempt.intent)?;
+        if let Observation::Applied { receipt } = &observed
+            && receipt.validate(&attempt.intent).is_err()
+        {
+            return Ok(unknown());
         }
         // Receipt validation and request kind/error-code checks are repeated by
         // the durable authority. Late, truthful receipts are retained under a live lease.

@@ -10,6 +10,7 @@ workflow-credentials = { path = "../workflow-credentials" }
 workflow-effects = { path = "../workflow-effects" }
 workflow-ir = { path = "../workflow-ir" }
 workflow-worker = { path = "../workflow-worker" }
+workflow-workspace-local = { path = "../workflow-workspace-local" }
 serde.workspace = true
 serde_json.workspace = true
 schemars.workspace = true

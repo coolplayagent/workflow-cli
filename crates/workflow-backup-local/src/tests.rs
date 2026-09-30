@@ -308,6 +308,7 @@ fn provider_apply(
     } else {
         let result = workflow_effects::Observation::Applied {
             receipt: workflow_effects::EffectReceipt {
+                release: None,
                 operation_key: p.intent.operation_key.clone(),
                 intent_digest: workflow_effects::digest(&p.intent).unwrap(),
                 target: p.intent.policy.target.clone(),

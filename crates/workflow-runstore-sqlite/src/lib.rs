@@ -7,6 +7,7 @@ mod image;
 mod inbox;
 mod migration;
 pub use image::{AdmissionWindow, ImageBinding, RunImage};
+mod acceptance;
 mod reads;
 mod recovery;
 mod restoration;
@@ -94,6 +95,9 @@ impl SqliteRunStore {
     }
 }
 impl RunStore for SqliteRunStore {
+    fn acceptance(&mut self, run_id: &str) -> Result<AcceptanceManifest> {
+        self.acceptance_manifest(run_id)
+    }
     fn bundle(&mut self, id: &str) -> Result<BundleSpec> {
         self.read(id, |r| Ok(r.engine.bundle().spec().clone()))
     }

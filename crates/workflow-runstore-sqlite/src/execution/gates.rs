@@ -156,5 +156,18 @@ pub(crate) fn evaluate(
     };
     use workflow_gates::PolicyEvaluator;
     let decision = workflow_gates::DeterministicPolicyEvaluator.evaluate(&request, &source, now)?;
-    Ok(GateEvaluation { request, decision })
+    let exception = if decision.verdict != workflow_gates::Verdict::Pass {
+        context
+            .exception
+            .as_ref()
+            .filter(|a| a.exception.is_some() && now < a.expires_at_unix_ms)
+            .cloned()
+    } else {
+        None
+    };
+    Ok(GateEvaluation {
+        request,
+        decision,
+        exception,
+    })
 }

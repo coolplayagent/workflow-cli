@@ -308,6 +308,7 @@ fn real_postgres_parity_fencing_atomicity_and_outage_contract() {
     };
     let observation = workflow_effects::Observation::Applied {
         receipt: workflow_effects::EffectReceipt {
+            release: None,
             operation_key: attempt.intent.operation_key.clone(),
             intent_digest: workflow_worker::digest(&attempt.intent).unwrap(),
             target: attempt.intent.policy.target.clone(),

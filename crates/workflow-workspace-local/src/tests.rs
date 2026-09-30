@@ -306,6 +306,45 @@ impl Fixture {
     }
 }
 #[test]
+fn release_worktree_check_reads_actual_bytes_including_ignored_and_index_hidden_files() {
+    let f = Fixture::new();
+    let source = f.source();
+    let repo = f.dir.join("repo");
+    source
+        .verify_current_worktree(&f.spec.source_revision)
+        .unwrap();
+    git(
+        &repo,
+        &["update-index", "--assume-unchanged", "input.txt"],
+        None,
+    );
+    fs::write(repo.join("input.txt"), b"hidden edit\n").unwrap();
+    assert!(
+        source
+            .verify_current_worktree(&f.spec.source_revision)
+            .is_err()
+    );
+    fs::write(repo.join("input.txt"), b"original\n").unwrap();
+    git(
+        &repo,
+        &["update-index", "--no-assume-unchanged", "input.txt"],
+        None,
+    );
+    source
+        .verify_current_worktree(&f.spec.source_revision)
+        .unwrap();
+    fs::write(repo.join("ignored-private"), b"untracked content").unwrap();
+    assert!(
+        source
+            .verify_current_worktree(&f.spec.source_revision)
+            .is_err()
+    );
+    fs::remove_file(repo.join("ignored-private")).unwrap();
+    let mut changed = f.spec.source_revision.clone();
+    changed.revision = "b".repeat(40);
+    assert!(source.verify_current_worktree(&changed).is_err());
+}
+#[test]
 fn physical_attempt_isolation_and_exact_duplicate_preserve_edits_and_never_change_source() {
     use std::os::unix::fs::MetadataExt;
     let f = Fixture::new();

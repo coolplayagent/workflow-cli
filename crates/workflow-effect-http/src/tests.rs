@@ -19,6 +19,7 @@ fn fixture() -> EffectAttempt {
     let run_digest = digest(&"http-test").unwrap();
     let inputs = serde_json::from_value(spec["inputs"].clone()).unwrap();
     let intent = EffectIntent {
+        release: None,
         dependencies: vec![],
         compensates: None,
         schema_version: 1,
@@ -38,6 +39,7 @@ fn fixture() -> EffectAttempt {
         created_at_unix_ms: 1000,
     };
     EffectAttempt {
+        release: None,
         intent,
         attempt_id: "request-one".into(),
         epoch: 1,
@@ -50,6 +52,7 @@ fn fixture() -> EffectAttempt {
 }
 fn binding(p: &EffectAttempt, endpoint: String) -> HttpEffectBinding {
     HttpEffectBinding {
+        workspace: None,
         schema_version: 1,
         target: p.intent.policy.target.clone(),
         call_identity: p.intent.policy.call_identity.clone(),
@@ -136,6 +139,7 @@ fn replies_require_exact_attempt_binding_and_typed_provider_receipts() {
                 },
                 observation: Observation::Applied {
                     receipt: EffectReceipt {
+                        release: None,
                         operation_key: p.intent.operation_key.clone(),
                         intent_digest: digest(&p.intent).unwrap(),
                         target: p.intent.policy.target.clone(),
@@ -162,6 +166,7 @@ fn successful_secret_reflections_leave_effect_unknown_for_reconciliation() {
         let key = "sandbox-private-provider-key";
         let (url, server) = server("200 OK", move |p| {
             let receipt = EffectReceipt {
+                release: None,
                 operation_key: p.intent.operation_key.clone(),
                 intent_digest: digest(&p.intent).unwrap(),
                 target: p.intent.policy.target.clone(),

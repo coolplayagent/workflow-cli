@@ -6,7 +6,7 @@ use workflow_gates::*;
 use workflow_worker::Clock;
 mod source;
 
-pub const HELP: &str = "EVIDENCE CHECKS\n  workflow gate evaluate <run-db> <artifact-store> <request.json>\n  workflow gate revalidate <run-db> <artifact-store> <request.json> <decision.json>\n  workflow schema <gate-request|gate-decision>\n\nReads verified execution history and artifact bytes; does not change a run or authorize an effect.\nOnly PASS exits 0. FAIL, UNKNOWN and rejected evidence exit 1; usage/I/O exit 2.\nUse a host-controlled policy and freshly observed target. Time comes from the host clock.\n";
+pub const HELP: &str = "EVIDENCE CHECKS\n  workflow gate review-digest <request.json>\n  workflow gate evaluate <run-db> <artifact-store> <request.json>\n  workflow gate revalidate <run-db> <artifact-store> <request.json> <decision.json>\n  workflow schema <gate-request|gate-decision>\n\nReads verified execution history and artifact bytes; does not change a run or authorize an effect.\nOnly PASS exits 0. FAIL, UNKNOWN and rejected evidence exit 1; usage/I/O exit 2.\nUse a host-controlled policy and freshly observed target. Time comes from the host clock.\n";
 fn read<T: DeserializeOwned>(path: &str) -> Result<T> {
     let mut bytes = vec![];
     std::fs::File::open(path)
@@ -19,6 +19,13 @@ fn read<T: DeserializeOwned>(path: &str) -> Result<T> {
 }
 fn execute(args: &[&str]) -> Result<(serde_json::Value, i32)> {
     match args {
+        ["gate", "review-digest", request] => {
+            let request: Request = read(request)?;
+            Ok((
+                json!({"review_digest":review_digest(&request.policy,&request.target)?}),
+                0,
+            ))
+        }
         ["schema", kind @ ("gate-request" | "gate-decision")] => {
             Ok((parse_message(schema(&kind[5..])?.as_bytes())?, 0))
         }

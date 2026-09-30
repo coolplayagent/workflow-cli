@@ -6,7 +6,7 @@ use workflow_runstore_postgres::access::{
     ArtifactUploadRequest, AuthenticatedService, CapabilityRule, Role,
 };
 use workflow_service::*;
-pub const HELP: &str = "REMOTE SERVICE\n  workflow service serve <server-binding.json>\n  workflow service fence-restored <isolated-server-binding.json> <restore-request.json> <private-administrator-output>\n  workflow service init-artifacts <server-binding.json>\n  workflow service init-effects <server-binding.json>\n  workflow service migrate-access <server-binding.json>\n  workflow service bootstrap <server-binding.json> <tenant> <project> <actor> <private-token-output>\n  workflow service issue <server-binding.json> <admin-secret-ref.json> <provision.json> <private-token-output>\n  workflow remote call <client-binding.json> <request.json>\n  workflow remote audit-export <client-binding.json> <new-private-output>\n  workflow remote validate <client-binding.json> <file.json|file.yaml>\n  workflow remote artifact-upload <client-binding.json> <assignment-id> <request-id> <artifact-type.json> <content-file>\n  workflow remote artifact-download <client-binding.json> <download-request.json> <private-output>\n  workflow remote work <client-binding.json> <iterations> <poll-ms>\n  workflow remote work-models <client-binding.json> <bundle.json> <model-bindings.json> <iterations> <poll-ms>\n  workflow remote work-effects <client-binding.json> <effect-bindings.json> <iterations> <poll-ms>\n  workflow remote schedule <client-binding.json> <scheduler.json> <iterations> <poll-ms>\n\nTLS and a scoped bearer are required. Bindings contain secret references, never literal tokens.\nCredential creation is a trusted local administrative operation with exclusive 0600 output.\nwork executes registered builtin read-only capabilities; work-models adds frozen model policies using host provider bindings; work-effects also invokes explicitly bound gateways. Scheduler effects require effects:true. Iterations are bounded; service managers may supervise commands.\n";
+pub const HELP: &str = "REMOTE SERVICE\n  workflow service serve <server-binding.json>\n  workflow service fence-restored <isolated-server-binding.json> <restore-request.json> <private-administrator-output>\n  workflow service init-artifacts <server-binding.json>\n  workflow service init-effects <server-binding.json>\n  workflow service migrate-access <server-binding.json>\n  workflow service bootstrap <server-binding.json> <tenant> <project> <actor> <private-token-output>\n  workflow service issue <server-binding.json> <admin-secret-ref.json> <provision.json> <private-token-output>\n  workflow remote call <client-binding.json> <request.json>\n  workflow remote audit-export <client-binding.json> <new-private-output>\n  workflow remote acceptance <client-binding.json> <run-id> <new-private-output>\n  workflow remote validate <client-binding.json> <file.json|file.yaml>\n  workflow remote artifact-upload <client-binding.json> <assignment-id> <request-id> <artifact-type.json> <content-file>\n  workflow remote artifact-download <client-binding.json> <download-request.json> <private-output>\n  workflow remote work <client-binding.json> <iterations> <poll-ms>\n  workflow remote work-models <client-binding.json> <bundle.json> <model-bindings.json> <iterations> <poll-ms>\n  workflow remote work-effects <client-binding.json> <effect-bindings.json> <iterations> <poll-ms>\n  workflow remote schedule <client-binding.json> <scheduler.json> <iterations> <poll-ms>\n\nTLS and a scoped bearer are required. Bindings contain secret references, never literal tokens.\nCredential creation is a trusted local administrative operation with exclusive 0600 output.\nwork executes registered builtin read-only capabilities; work-models adds frozen model policies using host provider bindings; work-effects also invokes explicitly bound gateways. Scheduler effects require effects:true. Iterations are bounded; service managers may supervise commands.\n";
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 struct Provision {
@@ -305,6 +305,28 @@ pub fn run(args: &[&str], stdout: &mut impl Write, stderr: &mut impl Write) -> i
                 Ok(
                     json!({"tenant":report.tenant,"project":report.project,"entries":report.entries.len(),"digest":report.digest}),
                 )
+            }
+            ["remote", "acceptance", binding, run_id, output] => {
+                let client = RemoteClient::new(read(binding)?)?;
+                let Response::Acceptance(report) = client.call(&Request {
+                    protocol_version: PROTOCOL_VERSION,
+                    request_id: "acceptance".into(),
+                    operation: Operation::Acceptance {
+                        run_id: (*run_id).into(),
+                    },
+                })?
+                else {
+                    return Err(Error::new(
+                        ErrorCode::InvalidRequest,
+                        "acceptance response differs",
+                    ));
+                };
+                report.verify()?;
+                let bytes = serde_json::to_vec_pretty(&report).map_err(|_| {
+                    Error::new(ErrorCode::InvalidRequest, "acceptance encoding failed")
+                })?;
+                write_private_output(Path::new(output), &bytes)?;
+                Ok(json!({"run_id":report.run_id,"status":report.status,"digest":report.digest}))
             }
             ["remote", "call", binding, request] => {
                 serde_json::to_value(RemoteClient::new(read(binding)?)?.call(&read(request)?)?)

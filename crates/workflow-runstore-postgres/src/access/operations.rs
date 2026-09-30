@@ -72,6 +72,11 @@ impl Identity {
     }
 }
 impl AuthenticatedService {
+    pub fn acceptance(&mut self, token: &str, run: &str) -> Result<AcceptanceManifest> {
+        self.transact(token, READ, "acceptance", run, |tx, who| {
+            who.read(tx, run, |s| s.acceptance(run))
+        })
+    }
     /// Bounded control commands, never arbitrary task outcomes or state writes.
     pub fn control(&mut self, token: &str, request: &RunControlRequest) -> Result<Committed> {
         self.transact(

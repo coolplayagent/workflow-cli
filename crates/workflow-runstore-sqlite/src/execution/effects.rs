@@ -147,6 +147,7 @@ fn intent(r: &Recovered, e: &OutboxEntry, now: u64, a: &Authority) -> Result<Eff
         None
     };
     let result = EffectIntent {
+        release: super::release::freeze(r, e, binding)?,
         dependencies,
         compensates,
         schema_version: 1,
@@ -301,6 +302,13 @@ fn commit_record(
     Ok(committed)
 }
 impl EffectStore for SqliteRunStore {
+    fn validate_effect_dispatch(
+        &mut self,
+        attempt: &EffectAttempt,
+        clock: &dyn Clock,
+    ) -> Result<()> {
+        self.validate_effect_delivery(attempt, clock.now_unix_ms()?)
+    }
     fn claim_effect(&mut self, l: &Lease, clock: &dyn Clock) -> Result<EffectClaim> {
         self.claim_effect_internal(l, clock, |_| {})
     }
@@ -540,10 +548,22 @@ impl SqliteRunStore {
                 })
             }
             Decision::Call(kind) => {
+                let release = super::release::authorize(
+                    &r,
+                    &a,
+                    &frozen,
+                    kind,
+                    self.artifacts.as_deref(),
+                    now,
+                    r.engine.snapshot().revision,
+                )?;
                 let mut deadline = now
                     .saturating_add(frozen.capability.timeout_ms)
                     .min(l.expires_at_unix_ms);
                 if kind == CallKind::Write {
+                    if let Some(grant) = &release {
+                        deadline = deadline.min(grant.expires_at_unix_ms);
+                    }
                     deadline = deadline.min(frozen.write_deadline());
                     if let Some(timer) = pending_timer_deadline(r.engine.snapshot()) {
                         if now >= timer {
@@ -556,6 +576,7 @@ impl SqliteRunStore {
                     }
                 }
                 let p = EffectAttempt {
+                    release,
                     intent: frozen,
                     attempt_id: format!("effect-call-{}-{}-{number}", original.sequence, l.epoch),
                     epoch: l.epoch,
@@ -663,6 +684,7 @@ pub(super) fn verify(
     a: &Authority,
     record: &EffectRecord,
     transition: &Option<EffectTransition>,
+    artifacts: Option<&dyn workflow_artifacts::ArtifactReader>,
 ) -> Result<()> {
     let effect = a
         .effects
@@ -675,6 +697,21 @@ pub(super) fn verify(
         ));
     }
     if let EffectChange::Prepared { attempt, .. } = &record.change {
+        if attempt.release
+            != super::release::authorize(
+                r,
+                a,
+                &attempt.intent,
+                attempt.kind,
+                artifacts,
+                attempt.issued_at_unix_ms,
+                attempt.prepared_revision,
+            )?
+        {
+            return Err(corrupt(
+                "release authorization differs from the verified execution history",
+            ));
+        }
         if attempt.attempt_id
             != format!(
                 "effect-call-{}-{}-{}",
