@@ -2,20 +2,73 @@ use super::*;
 use serde_json::json;
 use workflow_artifacts::{ArtifactLink, ArtifactReader, ArtifactRef, Producer};
 use workflow_gates::{CheckOutcome, EvidenceSource, ExecutedCheck, Request, Verdict};
+mod exceptions;
 fn gated() -> (BundleSpec, Values) {
+    bundle_fixture("gates/guarded-start.json")
+}
+fn bundle_fixture(path: &str) -> (BundleSpec, Values) {
     let root = if let Ok(d) = std::env::var("TEST_SRCDIR") {
         PathBuf::from(d).join(std::env::var("TEST_WORKSPACE").unwrap())
     } else {
         PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..")
     };
-    let value: serde_json::Value = workflow_worker::parse_message(
-        &std::fs::read(root.join("examples/gates/guarded-start.json")).unwrap(),
-    )
-    .unwrap();
+    let value: serde_json::Value =
+        workflow_worker::parse_message(&std::fs::read(root.join("examples").join(path)).unwrap())
+            .unwrap();
     (
         serde_json::from_value(value["bundle"].clone()).unwrap(),
         serde_json::from_value(value["inputs"].clone()).unwrap(),
     )
+}
+#[test]
+fn model_task_cannot_certify_its_own_proposed_quality_result() {
+    let (mut b, _) = bundle_fixture("models/start.json");
+    CompiledBundle::compile(b.clone()).unwrap();
+    let checker = workflow_worker::Capability::new(
+        b.capabilities
+            .iter()
+            .find(|c| c.capability.id == "sop.inspect")
+            .unwrap()
+            .clone(),
+    )
+    .unwrap();
+    b.postconditions = gated().0.postconditions;
+    for gate in &mut b.postconditions {
+        gate.workflow = b.root.clone();
+        for requirement in &mut gate.policy.requirements {
+            requirement.capability = checker.descriptor().capability.clone();
+            requirement.contract_digest = checker.digest().into();
+        }
+    }
+    // Matching typed Boolean outputs and a valid model policy do not turn
+    // model-authored output into an independent executed quality check.
+    let error = CompiledBundle::compile(b).unwrap_err();
+    assert_eq!(error.code, ErrorCode::InvalidBundle);
+    assert!(error.message.contains("independent read-only task"));
+}
+#[test]
+fn write_capability_cannot_serve_as_the_independent_checker() {
+    let (mut b, _) = gated();
+    let checker = &mut b.capabilities[0];
+    checker.effects = EffectContract::Write {
+        irreversible: false,
+        idempotency: workflow_worker::Idempotency::None,
+        query: None,
+        compensation: None,
+    };
+    let digest = workflow_worker::Capability::new(checker.clone())
+        .unwrap()
+        .digest()
+        .to_owned();
+    for gate in &mut b.postconditions {
+        gate.policy.requirements[0].contract_digest = digest.clone();
+    }
+    let error = CompiledBundle::compile(b.clone()).unwrap_err();
+    assert_eq!(error.code, ErrorCode::InvalidBundle);
+    assert!(error.message.contains("independent read-only task"));
+    // The write descriptor itself is valid; the quality-oracle role is refused.
+    b.postconditions.clear();
+    CompiledBundle::compile(b).unwrap();
 }
 fn run(bundle: BundleSpec, inputs: Values) -> Engine {
     Engine::start(
@@ -114,7 +167,11 @@ fn evaluation(c: &GateContext, passed: Option<bool>, now: u64) -> GateEvaluation
         evidence: vec![reference.link()],
     };
     let decision = workflow_gates::evaluate(&request, &Source { reference, check }, now).unwrap();
-    GateEvaluation { request, decision }
+    GateEvaluation {
+        request,
+        decision,
+        exception: None,
+    }
 }
 fn observation(e: &Engine, frame: u64, node: &str, passed: Option<bool>) -> Event {
     let c = context(e, frame, node);

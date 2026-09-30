@@ -2530,6 +2530,7 @@ dependencies = [
  "workflow-effects",
  "workflow-ir",
  "workflow-worker",
+ "workflow-workspace-local",
 ]
 
 [[package]]
@@ -2539,6 +2540,8 @@ dependencies = [
  "schemars",
  "serde",
  "serde_json",
+ "workflow-artifacts",
+ "workflow-gates",
  "workflow-ir",
  "workflow-validator",
  "workflow-worker",

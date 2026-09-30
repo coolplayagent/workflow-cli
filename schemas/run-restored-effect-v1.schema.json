@@ -2,6 +2,125 @@
   "ok": true,
   "result": {
     "$defs": {
+      "ApprovalEvidence": {
+        "additionalProperties": false,
+        "properties": {
+          "actor": {
+            "type": "string"
+          },
+          "applied_at_unix_ms": {
+            "format": "uint64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "approval_policy": {
+            "$ref": "#/$defs/VersionRef"
+          },
+          "correlation_id": {
+            "type": "string"
+          },
+          "exception": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/ExceptionClaim"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "expires_at_unix_ms": {
+            "format": "uint64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "instance_id": {
+            "format": "uint64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "message_id": {
+            "type": "string"
+          },
+          "node_id": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "received_at_unix_ms": {
+            "format": "uint64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "review_digest": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "node_id",
+          "instance_id",
+          "message_id",
+          "correlation_id",
+          "actor",
+          "approval_policy",
+          "review_digest",
+          "reason",
+          "received_at_unix_ms",
+          "applied_at_unix_ms",
+          "expires_at_unix_ms"
+        ],
+        "type": "object"
+      },
+      "ApprovalRequirement": {
+        "additionalProperties": false,
+        "properties": {
+          "node_id": {
+            "type": "string"
+          },
+          "subject_field": {
+            "description": "A declared digest subject on the human wait, binding policy and target.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "node_id",
+          "subject_field"
+        ],
+        "type": "object"
+      },
+      "ArtifactLink": {
+        "additionalProperties": false,
+        "properties": {
+          "artifact_id": {
+            "type": "string"
+          },
+          "digest": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "artifact_id",
+          "digest"
+        ],
+        "type": "object"
+      },
+      "ArtifactType": {
+        "additionalProperties": false,
+        "properties": {
+          "content": {
+            "$ref": "#/$defs/ContentSchema"
+          },
+          "identity": {
+            "$ref": "#/$defs/VersionRef"
+          }
+        },
+        "required": [
+          "identity",
+          "content"
+        ],
+        "type": "object"
+      },
       "CapabilityDescriptor": {
         "additionalProperties": false,
         "properties": {
@@ -80,6 +199,53 @@
           "receipt"
         ],
         "type": "object"
+      },
+      "ContentSchema": {
+        "oneOf": [
+          {
+            "additionalProperties": false,
+            "properties": {
+              "format": {
+                "const": "bytes",
+                "type": "string"
+              }
+            },
+            "required": [
+              "format"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "format": {
+                "const": "utf8",
+                "type": "string"
+              }
+            },
+            "required": [
+              "format"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "format": {
+                "const": "json",
+                "type": "string"
+              },
+              "value_type": {
+                "$ref": "#/$defs/ValueType"
+              }
+            },
+            "required": [
+              "format",
+              "value_type"
+            ],
+            "type": "object"
+          }
+        ]
       },
       "EffectContract": {
         "oneOf": [
@@ -192,6 +358,16 @@
           "policy": {
             "$ref": "#/$defs/EffectPolicy"
           },
+          "release": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/ReleaseIntent"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "run_digest": {
             "type": "string"
           },
@@ -267,6 +443,16 @@
           "provider_receipt": {
             "type": "string"
           },
+          "release": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/ReleaseReceipt"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "resource_id": {
             "type": "string"
           },
@@ -281,6 +467,22 @@
           "resource_id",
           "provider_receipt",
           "outputs"
+        ],
+        "type": "object"
+      },
+      "ExceptionClaim": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "policy": {
+            "$ref": "#/$defs/VersionRef"
+          }
+        },
+        "required": [
+          "policy",
+          "code"
         ],
         "type": "object"
       },
@@ -309,6 +511,42 @@
         "required": [
           "value_type",
           "required"
+        ],
+        "type": "object"
+      },
+      "GateContext": {
+        "additionalProperties": false,
+        "properties": {
+          "exception": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/ApprovalEvidence"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "expected_instances": {
+            "additionalProperties": {
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "description": "Requirement ID -> exact node instance; later loop rounds cannot reuse it.",
+            "type": "object"
+          },
+          "policy": {
+            "$ref": "#/$defs/Policy"
+          },
+          "target": {
+            "$ref": "#/$defs/Target"
+          }
+        },
+        "required": [
+          "policy",
+          "target",
+          "expected_instances"
         ],
         "type": "object"
       },
@@ -415,6 +653,197 @@
         ],
         "type": "object"
       },
+      "Policy": {
+        "additionalProperties": false,
+        "properties": {
+          "identity": {
+            "$ref": "#/$defs/VersionRef"
+          },
+          "requirements": {
+            "items": {
+              "$ref": "#/$defs/Requirement"
+            },
+            "type": "array"
+          },
+          "schema_version": {
+            "format": "uint32",
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "schema_version",
+          "identity",
+          "requirements"
+        ],
+        "type": "object"
+      },
+      "ReleaseApproval": {
+        "additionalProperties": false,
+        "properties": {
+          "approval": {
+            "$ref": "#/$defs/ApprovalRequirement"
+          },
+          "gate_node": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "gate_node",
+          "approval"
+        ],
+        "type": "object"
+      },
+      "ReleaseIntent": {
+        "additionalProperties": false,
+        "properties": {
+          "approvals": {
+            "items": {
+              "$ref": "#/$defs/ApprovalEvidence"
+            },
+            "type": "array"
+          },
+          "gates": {
+            "items": {
+              "$ref": "#/$defs/GateContext"
+            },
+            "type": "array"
+          },
+          "policy": {
+            "$ref": "#/$defs/ReleasePolicy"
+          },
+          "subject": {
+            "$ref": "#/$defs/ReleaseSubject"
+          }
+        },
+        "required": [
+          "policy",
+          "subject",
+          "gates",
+          "approvals"
+        ],
+        "type": "object"
+      },
+      "ReleasePolicy": {
+        "additionalProperties": false,
+        "properties": {
+          "approvals": {
+            "items": {
+              "$ref": "#/$defs/ReleaseApproval"
+            },
+            "type": "array"
+          },
+          "gate_nodes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "subject_field": {
+            "description": "Required task input containing the exact ReleaseSubject object.",
+            "type": "string"
+          },
+          "target_check": {
+            "$ref": "#/$defs/TargetCheck"
+          }
+        },
+        "required": [
+          "gate_nodes",
+          "subject_field",
+          "approvals",
+          "target_check"
+        ],
+        "type": "object"
+      },
+      "ReleaseReceipt": {
+        "additionalProperties": false,
+        "properties": {
+          "authorization_digest": {
+            "type": "string"
+          },
+          "observed_at_unix_ms": {
+            "format": "uint64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "subject": {
+            "$ref": "#/$defs/ReleaseSubject",
+            "description": "Actual subject observed by the gateway, never merely copied from input."
+          },
+          "target_check": {
+            "$ref": "#/$defs/TargetCheck"
+          }
+        },
+        "required": [
+          "subject",
+          "target_check",
+          "authorization_digest",
+          "observed_at_unix_ms"
+        ],
+        "type": "object"
+      },
+      "ReleaseSubject": {
+        "additionalProperties": false,
+        "properties": {
+          "artifacts": {
+            "items": {
+              "$ref": "#/$defs/ArtifactLink"
+            },
+            "type": "array"
+          },
+          "input_digest": {
+            "type": "string"
+          },
+          "source_revision": {
+            "$ref": "#/$defs/SourceRevision"
+          }
+        },
+        "required": [
+          "source_revision",
+          "input_digest",
+          "artifacts"
+        ],
+        "type": "object"
+      },
+      "Requirement": {
+        "additionalProperties": false,
+        "properties": {
+          "capability": {
+            "$ref": "#/$defs/VersionRef"
+          },
+          "contract_digest": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "max_age_ms": {
+            "format": "uint64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "node_id": {
+            "type": "string"
+          },
+          "pass_field": {
+            "description": "Required Boolean in the accepted worker output; artifact text is not a verdict.",
+            "type": "string"
+          },
+          "report_type": {
+            "$ref": "#/$defs/ArtifactType"
+          }
+        },
+        "required": [
+          "id",
+          "node_id",
+          "capability",
+          "contract_digest",
+          "report_type",
+          "pass_field",
+          "max_age_ms"
+        ],
+        "type": "object"
+      },
       "RetryPolicy": {
         "additionalProperties": false,
         "properties": {
@@ -447,6 +876,94 @@
           "total_write_ms"
         ],
         "type": "object"
+      },
+      "SourceRevision": {
+        "additionalProperties": false,
+        "properties": {
+          "repository": {
+            "type": "string"
+          },
+          "revision": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "repository",
+          "revision"
+        ],
+        "type": "object"
+      },
+      "Target": {
+        "additionalProperties": false,
+        "properties": {
+          "action": {
+            "$ref": "#/$defs/VersionRef"
+          },
+          "artifacts": {
+            "items": {
+              "$ref": "#/$defs/ArtifactLink"
+            },
+            "type": "array"
+          },
+          "input_digest": {
+            "description": "Digest of the common inputs actually checked by each required task.",
+            "type": "string"
+          },
+          "run_digest": {
+            "type": "string"
+          },
+          "run_id": {
+            "type": "string"
+          },
+          "source_revision": {
+            "$ref": "#/$defs/SourceRevision"
+          }
+        },
+        "required": [
+          "run_id",
+          "run_digest",
+          "action",
+          "source_revision",
+          "input_digest",
+          "artifacts"
+        ],
+        "type": "object"
+      },
+      "TargetCheck": {
+        "oneOf": [
+          {
+            "additionalProperties": false,
+            "description": "Gateway atomically compares the full subject and applies the operation.",
+            "properties": {
+              "type": {
+                "const": "atomic_compare",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "description": "Gateway observes before writing; the declared query is required after\nambiguous outcomes. This mode does not claim to close the external race.",
+            "properties": {
+              "remaining_race": {
+                "type": "string"
+              },
+              "type": {
+                "const": "observe_then_reconcile",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type",
+              "remaining_race"
+            ],
+            "type": "object"
+          }
+        ]
       },
       "ValueType": {
         "oneOf": [

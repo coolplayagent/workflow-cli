@@ -21,6 +21,9 @@ pub struct Request {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)]
 pub enum Operation {
+    Acceptance {
+        run_id: String,
+    },
     ExportAudit,
     AssignmentForPrincipal {
         assignment_id: String,
@@ -211,6 +214,7 @@ pub struct Reply {
     deny_unknown_fields
 )]
 pub enum Response {
+    Acceptance(Box<AcceptanceManifest>),
     AuditExport(AuditExport),
     StorageUpgrade(StorageUpgrade),
     MigrationPlan(Box<MigrationPlan>),
@@ -265,6 +269,9 @@ impl Request {
         }
         match &self.operation {
             Operation::ExportAudit => service.export_audit(token).map(Response::AuditExport),
+            Operation::Acceptance { run_id } => service
+                .acceptance(token, run_id)
+                .map(|m| Response::Acceptance(Box::new(m))),
             Operation::AssignmentForPrincipal {
                 assignment_id,
                 principal,
@@ -504,6 +511,7 @@ impl Request {
                 | (Operation::Publish { .. }, Response::Published(_))
                 | (Operation::Start { .. }, Response::Committed(_))
                 | (Operation::Get { .. }, Response::Snapshot(_))
+                | (Operation::Acceptance { .. }, Response::Acceptance(_))
                 | (Operation::History { .. }, Response::History(_))
                 | (Operation::Waits { .. }, Response::Waits(_))
                 | (Operation::Inbox { .. }, Response::Inbox(_))

@@ -48,6 +48,59 @@ pub struct Request {
     pub evidence: Vec<Evidence>,
 }
 
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct ApprovalRequirement {
+    pub node_id: String,
+    /// A declared digest subject on the human wait, binding policy and target.
+    pub subject_field: String,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct ApprovalEvidence {
+    pub node_id: String,
+    pub instance_id: u64,
+    pub message_id: String,
+    pub correlation_id: String,
+    pub actor: String,
+    pub approval_policy: VersionRef,
+    pub review_digest: String,
+    pub reason: String,
+    pub received_at_unix_ms: u64,
+    pub applied_at_unix_ms: u64,
+    pub expires_at_unix_ms: u64,
+    pub exception: Option<ExceptionClaim>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct ExceptionClaim {
+    pub policy: VersionRef,
+    pub code: String,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct GateContext {
+    pub policy: Policy,
+    pub target: Target,
+    /// Requirement ID -> exact node instance; later loop rounds cannot reuse it.
+    pub expected_instances: BTreeMap<String, u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub exception: Option<ApprovalEvidence>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct GateEvaluation {
+    pub request: Request,
+    pub decision: Decision,
+    /// Explicit permission to accept this scope despite the unchanged verdict.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub exception: Option<ApprovalEvidence>,
+}
+
 /// Returned only by a trusted execution-history adapter, never deserialized from gate input.
 #[derive(Clone, Debug, PartialEq)]
 pub struct ExecutedCheck {

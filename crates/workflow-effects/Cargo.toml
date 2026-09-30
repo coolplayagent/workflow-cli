@@ -12,3 +12,5 @@ schemars.workspace = true
 workflow-ir = { path = "../workflow-ir" }
 workflow-validator = { path = "../workflow-validator" }
 workflow-worker = { path = "../workflow-worker" }
+workflow-gates = { path = "../workflow-gates" }
+workflow-artifacts = { path = "../workflow-artifacts" }

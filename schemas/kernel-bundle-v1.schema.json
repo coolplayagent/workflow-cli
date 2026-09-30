@@ -1,5 +1,22 @@
 {
   "$defs": {
+    "ApprovalRequirement": {
+      "additionalProperties": false,
+      "properties": {
+        "node_id": {
+          "type": "string"
+        },
+        "subject_field": {
+          "description": "A declared digest subject on the human wait, binding policy and target.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "node_id",
+        "subject_field"
+      ],
+      "type": "object"
+    },
     "ArtifactType": {
       "additionalProperties": false,
       "properties": {
@@ -388,6 +405,16 @@
         },
         "policy": {
           "$ref": "#/$defs/EffectPolicy"
+        },
+        "release": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ReleasePolicy"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "workflow": {
           "$ref": "#/$defs/VersionRef"
@@ -870,6 +897,16 @@
         "artifacts": {
           "$ref": "#/$defs/Binding"
         },
+        "exception": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ApprovalRequirement"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
         "input_node": {
           "description": "The current frame's task whose resolved inputs identify the checked subject.",
           "type": "string"
@@ -899,6 +936,53 @@
         "revision",
         "input_node",
         "artifacts"
+      ],
+      "type": "object"
+    },
+    "ReleaseApproval": {
+      "additionalProperties": false,
+      "properties": {
+        "approval": {
+          "$ref": "#/$defs/ApprovalRequirement"
+        },
+        "gate_node": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "gate_node",
+        "approval"
+      ],
+      "type": "object"
+    },
+    "ReleasePolicy": {
+      "additionalProperties": false,
+      "properties": {
+        "approvals": {
+          "items": {
+            "$ref": "#/$defs/ReleaseApproval"
+          },
+          "type": "array"
+        },
+        "gate_nodes": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "subject_field": {
+          "description": "Required task input containing the exact ReleaseSubject object.",
+          "type": "string"
+        },
+        "target_check": {
+          "$ref": "#/$defs/TargetCheck"
+        }
+      },
+      "required": [
+        "gate_nodes",
+        "subject_field",
+        "approvals",
+        "target_check"
       ],
       "type": "object"
     },
@@ -1099,6 +1183,42 @@
         "artifact"
       ],
       "type": "string"
+    },
+    "TargetCheck": {
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "description": "Gateway atomically compares the full subject and applies the operation.",
+          "properties": {
+            "type": {
+              "const": "atomic_compare",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "Gateway observes before writing; the declared query is required after\nambiguous outcomes. This mode does not claim to close the external race.",
+          "properties": {
+            "remaining_race": {
+              "type": "string"
+            },
+            "type": {
+              "const": "observe_then_reconcile",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "remaining_race"
+          ],
+          "type": "object"
+        }
+      ]
     },
     "TerminalOutcome": {
       "enum": [

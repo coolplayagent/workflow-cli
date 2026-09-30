@@ -51,6 +51,19 @@ fn approval(bundle: &BundleSpec, node: &MigrationNode) -> Result<String> {
 
 impl Engine {
     pub fn plan_migration(&self, request: &MigrationRequest) -> Result<MigrationPlan> {
+        let protected = |spec: &BundleSpec| {
+            spec.effect_bindings.iter().any(|b| b.release.is_some())
+                || (!spec.postconditions.is_empty()
+                    && spec
+                        .wait_policies
+                        .iter()
+                        .any(|w| w.policy.kind == WaitKind::HumanApproval))
+        };
+        if protected(self.initial_bundle.spec()) || protected(self.bundle.spec()) {
+            return Err(invalid(
+                "a protected delivery run keeps its original graph and checks; changed contracts require a new run",
+            ));
+        }
         if self.state.status != RunStatus::Running || self.state.pause.is_none() {
             return Err(invalid(
                 "definition migration requires a paused running source",

@@ -1,9 +1,86 @@
 use super::*;
-use workflow_gates::{Reason, Verdict};
+use workflow_gates::Verdict;
 fn rejected(message: &str) -> Error {
     Error::new(ErrorCode::InvalidGateResult, message)
 }
 impl Engine {
+    /// Resolve only an applied, authenticated-by-ingress approval in this exact
+    /// frame. A digest value or human annotation without that inbox fact is not
+    /// permission. Ordinary and exception approvals retain distinct identities.
+    pub fn approval_evidence(
+        &self,
+        frame_id: u64,
+        requirement: &workflow_gates::ApprovalRequirement,
+        policy: &workflow_gates::Policy,
+        target: &workflow_gates::Target,
+        now: u64,
+    ) -> Result<Option<workflow_gates::ApprovalEvidence>> {
+        let frame = self
+            .state
+            .frames
+            .get(&frame_id)
+            .ok_or_else(|| rejected("approval frame missing"))?;
+        let node = frame
+            .nodes
+            .get(&requirement.node_id)
+            .ok_or_else(|| rejected("approval node missing"))?;
+        let wait = self
+            .bundle
+            .wait_policy(&frame.workflow, &requirement.node_id)
+            .filter(|p| {
+                p.kind == WaitKind::HumanApproval
+                    && p.subjects.get(&requirement.subject_field) == Some(&SubjectKind::Digest)
+            })
+            .ok_or_else(|| rejected("declared human approval digest subject required"))?;
+        if node.state != NodeState::Succeeded {
+            return Ok(None);
+        }
+        let review = workflow_gates::review_digest(policy, target)?;
+        if node
+            .inputs
+            .get(&requirement.subject_field)
+            .and_then(serde_json::Value::as_str)
+            != Some(&review)
+        {
+            return Err(rejected(
+                "approval belongs to another policy, action or delivery subject",
+            ));
+        }
+        let applied: Vec<_> = self
+            .state
+            .inbox
+            .values()
+            .filter(|e| {
+                e.message.target.instance_id == node.instance_id
+                    && e.message.decision == SignalDecision::Approve
+                    && matches!(e.status, SignalStatus::Applied { .. })
+            })
+            .collect();
+        if applied.len() != 1 {
+            return Err(rejected("approval has no unique applied inbox fact"));
+        }
+        let entry = applied[0];
+        let SignalStatus::Applied { at_unix_ms, .. } = entry.status else {
+            unreachable!()
+        };
+        if now < at_unix_ms || now >= entry.message.expires_at_unix_ms {
+            return Ok(None);
+        }
+        Ok(Some(workflow_gates::ApprovalEvidence {
+            node_id: requirement.node_id.clone(),
+            instance_id: node.instance_id,
+            message_id: entry.message.message_id.clone(),
+            correlation_id: entry.message.correlation_id.clone(),
+            actor: entry.message.source.clone(),
+            approval_policy: wait.identity.clone(),
+            review_digest: review,
+            reason: entry.message.reason.clone(),
+            received_at_unix_ms: entry.received_at_unix_ms,
+            applied_at_unix_ms: at_unix_ms,
+            expires_at_unix_ms: entry.message.expires_at_unix_ms,
+            exception: entry.message.exception.clone(),
+        }))
+    }
     fn gate_value(&self, frame: u64, id: &str, b: &Binding) -> Result<serde_json::Value> {
         let f = &self.state.frames[&frame];
         let value = match b {
@@ -70,7 +147,8 @@ impl Engine {
         };
         let artifacts = serde_json::from_value(self.gate_value(frame, id, &g.artifacts)?)
             .map_err(|_| rejected("artifact links required"))?;
-        let context = GateContext {
+        let mut context = GateContext {
+            exception: None,
             expected_instances: g
                 .policy
                 .requirements
@@ -80,13 +158,24 @@ impl Engine {
             target: workflow_gates::Target {
                 run_id: self.state.run_id.clone(),
                 run_digest: self.state.run_digest.clone(),
-                action: g.action,
+                action: g.action.clone(),
                 source_revision: source,
                 input_digest: workflow_worker::digest(&f.nodes[&g.input_node].inputs)?,
                 artifacts,
             },
-            policy: g.policy,
+            policy: g.policy.clone(),
         };
+        if let Some(requirement) = &g.exception {
+            context.exception = self
+                .approval_evidence(
+                    frame,
+                    requirement,
+                    &context.policy,
+                    &context.target,
+                    self.state.now_unix_ms,
+                )?
+                .filter(|approval| approval.exception.is_some());
+        }
         workflow_gates::validate(&workflow_gates::Request {
             policy: context.policy.clone(),
             target: context.target.clone(),
@@ -120,10 +209,21 @@ impl Engine {
         if context_digest != workflow_worker::digest(context)? {
             return Err(rejected("gate context changed"));
         }
-        validate_evaluation(context, evaluation, self.state.now_unix_ms)?;
+        workflow_gates::validate_evaluation(context, evaluation, self.state.now_unix_ms)
+            .map_err(|e| rejected(&e.message))?;
         let context = context.clone();
         self.touch()?;
         self.record_mut(frame, &id).gate_decision = Some(Box::new(evaluation.decision.clone()));
+        self.record_mut(frame, &id).gate_exception = evaluation.exception.clone().map(Box::new);
+        if evaluation.exception.is_some() {
+            return self.finish(
+                frame,
+                &id,
+                NodeState::Succeeded,
+                None,
+                Some("postcondition_exception".into()),
+            );
+        }
         match evaluation.decision.verdict {
             Verdict::Pass => self.finish(
                 frame,
@@ -179,98 +279,4 @@ impl Engine {
         });
         Ok(())
     }
-}
-/// Structural validation of a trusted host observation. Storage additionally
-/// recomputes it from its own verified ledger; raw simulation events are not proof.
-fn validate_evaluation(context: &GateContext, e: &GateEvaluation, now: u64) -> Result<()> {
-    workflow_gates::validate(&e.request)?;
-    let d = &e.decision;
-    if e.request.policy != context.policy
-        || e.request.target != context.target
-        || d.schema_version != 1
-        || d.evaluated_at_unix_ms != now
-        || d.request_digest != workflow_gates::digest(&e.request)?
-        || d.policy_digest != workflow_gates::digest(&context.policy)?
-        || d.target_digest != workflow_gates::digest(&context.target)?
-        || d.checks.len() != context.policy.requirements.len()
-        || d.artifacts.len() != context.target.artifacts.len()
-    {
-        return Err(rejected(
-            "gate decision does not bind the frozen policy, target, checks and time",
-        ));
-    }
-    let mut seen = BTreeSet::new();
-    for f in &d.checks {
-        let q = context
-            .policy
-            .requirements
-            .iter()
-            .find(|q| q.id == f.requirement_id)
-            .ok_or_else(|| rejected("unknown check finding"))?;
-        let link = e
-            .request
-            .evidence
-            .iter()
-            .find(|e| e.requirement_id == q.id)
-            .map(|e| &e.report);
-        if !seen.insert(&q.id) || f.report.as_ref() != link {
-            return Err(rejected("duplicate/mismatched check finding"));
-        }
-        if let Some(producer) = &f.producer
-            && (producer.run_id != context.target.run_id
-                || producer.input_digest != context.target.input_digest
-                || producer.node_instance_id
-                    != format!("instance-{}", context.expected_instances[&q.id]))
-        {
-            return Err(rejected(
-                "gate evidence belongs to another run, input or node instance",
-            ));
-        }
-        if f.verdict == Verdict::Pass {
-            let completed = f
-                .completed_at_unix_ms
-                .ok_or_else(|| rejected("PASS requires completion time"))?;
-            if f.reason != Reason::Passed
-                || f.report.is_none()
-                || f.producer.is_none()
-                || completed == 0
-                || completed > now
-                || completed.checked_add(q.max_age_ms) != f.expires_at_unix_ms
-                || f.expires_at_unix_ms.is_none_or(|expiry| now >= expiry)
-            {
-                return Err(rejected(
-                    "PASS requires current verified evidence and exclusive expiry",
-                ));
-            }
-        }
-    }
-    let mut seen = BTreeSet::new();
-    for f in &d.artifacts {
-        if !context.target.artifacts.contains(&f.artifact)
-            || !seen.insert(&f.artifact.artifact_id)
-            || (f.verdict == Verdict::Pass && f.reason != Reason::Passed)
-        {
-            return Err(rejected("invalid artifact finding"));
-        }
-    }
-    let verdict = if d.checks.iter().any(|f| f.verdict == Verdict::Fail) {
-        Verdict::Fail
-    } else if d.checks.iter().all(|f| f.verdict == Verdict::Pass)
-        && d.artifacts.iter().all(|f| f.verdict == Verdict::Pass)
-    {
-        Verdict::Pass
-    } else {
-        Verdict::Unknown
-    };
-    let expiry = if verdict == Verdict::Pass {
-        d.checks.iter().filter_map(|f| f.expires_at_unix_ms).min()
-    } else {
-        None
-    };
-    if verdict != d.verdict || expiry != d.expires_at_unix_ms {
-        return Err(rejected(
-            "gate aggregate verdict or expiry differs from mandatory checks",
-        ));
-    }
-    Ok(())
 }

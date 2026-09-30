@@ -187,6 +187,17 @@
           },
           "target": {
             "$ref": "#/$defs/VersionRef"
+          },
+          "workspace": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/ReleaseWorkspace"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Optional host-owned checkout. Checked by bytes immediately before writes;\nthe release must explicitly acknowledge the non-atomic workspace race."
           }
         },
         "required": [
@@ -272,6 +283,22 @@
           "tenant",
           "project",
           "actor"
+        ],
+        "type": "object"
+      },
+      "ReleaseWorkspace": {
+        "additionalProperties": false,
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "repository": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "repository",
+          "path"
         ],
         "type": "object"
       },

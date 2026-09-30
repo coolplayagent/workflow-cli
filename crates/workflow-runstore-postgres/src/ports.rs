@@ -54,6 +54,9 @@ impl MigrationStore for PostgresRunStore {
     }
 }
 impl RunStore for PostgresRunStore {
+    fn acceptance(&mut self, id: &str) -> Result<AcceptanceManifest> {
+        self.read(id, |s| s.acceptance(id))
+    }
     fn start(&mut self, r: &StartRun) -> Result<Committed> {
         self.change(&r.run_id, true, |s, _| s.start(r))
     }
@@ -190,6 +193,15 @@ impl InboxStore for PostgresRunStore {
     }
 }
 impl EffectStore for PostgresRunStore {
+    fn validate_effect_dispatch(
+        &mut self,
+        attempt: &workflow_effects::EffectAttempt,
+        _: &dyn Clock,
+    ) -> Result<()> {
+        self.change(&attempt.intent.run_id, false, |s, c| {
+            s.validate_effect_dispatch(attempt, c)
+        })
+    }
     fn claim_effect(&mut self, l: &Lease, _: &dyn Clock) -> Result<EffectClaim> {
         self.change(&l.run_id, false, |s, c| s.claim_effect(l, c))
     }

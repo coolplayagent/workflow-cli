@@ -1,7 +1,8 @@
 # Mandatory runtime postconditions
 
 A successful worker invocation is an observation. A business step with a frozen
-postcondition releases successors only after its own evidence decision is PASS.
+postcondition releases successors only after its own evidence decision is PASS
+or a separately authorized, explicitly recorded scoped exception.
 A successful terminal can declare a separate postcondition, so a passing task
 alone need not complete the business process. This integration uses the portable
 [evidence checker](evidence-gates.md) without adding I/O to the kernel.
@@ -34,6 +35,7 @@ an exact workflow and either a task or a successful terminal. It carries:
 | `repository`, `revision` | String bindings for the target source identity |
 | `input_node` | This task or an ancestor task whose resolved inputs define the common checked input digest |
 | `artifacts` | Binding for an array of exact `{artifact_id, digest}` links |
+| `exception` | Optional prior human wait and digest subject; retains the original non-PASS verdict |
 
 Bindings use the IR's literal, workflow-input or node-output shape. Referenced
 fields must be required and have the exact type. Outputs must come from the node
@@ -126,11 +128,11 @@ are authority boundaries; this is not remote authentication or a signature.
 
 ## Compatibility, evidence and limits
 
-Run storage schema **4** prevents older binaries from accepting the new protected
-transition semantics. `run --artifacts <store> migrate <db>` upgrades schemas
-1/2/3 transactionally after verifying every run. Evidence-bearing runs require
-the reader during migration. Missing/corrupt dependencies roll back the version;
-legacy empty postconditions and absent decisions preserve old canonical digests.
+Run storage is schema **11**. The [version migration](version-migration.md)
+procedure upgrades old storage explicitly with a verified backup and source CAS.
+Evidence-bearing runs require the reader during migration. Missing/corrupt
+dependencies reject the upgrade; legacy absent optional fields preserve old
+canonical digests. Old closed-schema binaries reject new protected contracts.
 The artifact catalog remains schema 1 and the wire schema family remains v1 with
 new variants/optional fields; clients must refresh generated schemas.
 
@@ -142,15 +144,15 @@ cancellation/takeover, independent process races and termination around commit.
 The runnable example uses actual compiler execution. Process-crash checks do not
 establish power-loss recovery or business benefit.
 
-R03 remains open for current-workspace observation, authenticated remote facts,
-human approvals/exceptions and a final acceptance manifest. An internal node PASS
-cannot authorize an external write. An effect adapter must reobserve/revalidate
-the target and atomically compare it when applying the action, with reconciliation
-where that external service cannot close the race. The built-in driver does not
-automatically publish reports; host/worker adapters must supply retained reports
-when settling their actual results.
+The [protected release and acceptance contract](release-acceptance.md) adds
+current write authorization, authenticated shared evidence, scoped approvals and
+exceptions, actual local workspace observation and final manifests. An internal
+node PASS alone cannot authorize an external write. The built-in driver does not
+automatically publish reports; host/worker adapters supply retained reports when
+settling their actual results.
 
 The [workspace port and local adapter](workspaces.md) now provide independent
 attempt files and current observations. Their example supplies actual captured
-report evidence to these existing gates. Automatic workspace observation during
-execution/decision consumption remains a required subsequent integration.
+report evidence to these gates. Protected HTTP effect bindings can additionally
+verify a host-owned Git checkout immediately before write dispatch, with the
+remaining non-atomic race explicitly declared.

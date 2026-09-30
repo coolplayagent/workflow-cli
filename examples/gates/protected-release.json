@@ -1,0 +1,606 @@
+{
+  "schema_version": 1,
+  "bundle": {
+    "schema_version": 1,
+    "root": {
+      "id": "protected-release",
+      "version": "1.0.0"
+    },
+    "workflows": [
+      {
+        "schema_version": 1,
+        "id": "protected-release",
+        "version": "1.0.0",
+        "entry": "inspect",
+        "inputs": {
+          "document": {
+            "required": true,
+            "value_type": {
+              "type": "string"
+            }
+          },
+          "format": {
+            "required": true,
+            "value_type": {
+              "type": "string"
+            }
+          },
+          "release_name": {
+            "value_type": {
+              "type": "string"
+            },
+            "required": true
+          },
+          "delivery": {
+            "required": true,
+            "value_type": {
+              "type": "object",
+              "fields": {
+                "source_revision": {
+                  "type": "object",
+                  "fields": {
+                    "repository": {
+                      "type": "string"
+                    },
+                    "revision": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "input_digest": {
+                  "type": "string"
+                },
+                "artifacts": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "fields": {
+                      "artifact_id": {
+                        "type": "string"
+                      },
+                      "digest": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "nodes": [
+          {
+            "id": "inspect",
+            "kind": {
+              "type": "task",
+              "capability": {
+                "id": "workflow.validate",
+                "version": "1.0.0"
+              },
+              "policy": null
+            },
+            "inputs": {
+              "document": {
+                "required": true,
+                "value_type": {
+                  "type": "string"
+                }
+              },
+              "format": {
+                "required": true,
+                "value_type": {
+                  "type": "string"
+                }
+              }
+            },
+            "outputs": {
+              "diagnostics": {
+                "required": true,
+                "value_type": {
+                  "items": {
+                    "fields": {
+                      "code": {
+                        "type": "string"
+                      },
+                      "edge": {
+                        "type": "string"
+                      },
+                      "file": {
+                        "type": "string"
+                      },
+                      "message": {
+                        "type": "string"
+                      },
+                      "node": {
+                        "type": "string"
+                      },
+                      "path": {
+                        "type": "string"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "type": "array"
+                }
+              },
+              "digest": {
+                "required": false,
+                "value_type": {
+                  "type": "string"
+                }
+              },
+              "valid": {
+                "required": true,
+                "value_type": {
+                  "type": "boolean"
+                }
+              }
+            },
+            "bindings": {
+              "document": {
+                "source": "workflow_input",
+                "field": "document"
+              },
+              "format": {
+                "source": "workflow_input",
+                "field": "format"
+              }
+            }
+          },
+          {
+            "id": "accepted",
+            "kind": {
+              "type": "terminal",
+              "outcome": "succeeded"
+            }
+          },
+          {
+            "id": "publish",
+            "kind": {
+              "type": "task",
+              "capability": {
+                "id": "sandbox.release",
+                "version": "2.0.0"
+              },
+              "policy": null
+            },
+            "inputs": {
+              "release_name": {
+                "value_type": {
+                  "type": "string"
+                },
+                "required": true
+              },
+              "delivery": {
+                "required": true,
+                "value_type": {
+                  "type": "object",
+                  "fields": {
+                    "source_revision": {
+                      "type": "object",
+                      "fields": {
+                        "repository": {
+                          "type": "string"
+                        },
+                        "revision": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "input_digest": {
+                      "type": "string"
+                    },
+                    "artifacts": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "fields": {
+                          "artifact_id": {
+                            "type": "string"
+                          },
+                          "digest": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "outputs": {
+              "release_id": {
+                "value_type": {
+                  "type": "string"
+                },
+                "required": true
+              }
+            },
+            "bindings": {
+              "release_name": {
+                "source": "workflow_input",
+                "field": "release_name"
+              },
+              "delivery": {
+                "source": "workflow_input",
+                "field": "delivery"
+              }
+            }
+          }
+        ],
+        "edges": [
+          {
+            "id": "checked",
+            "from": "inspect",
+            "to": "publish",
+            "route": {
+              "type": "next"
+            }
+          },
+          {
+            "id": "published",
+            "from": "publish",
+            "to": "accepted",
+            "route": {
+              "type": "next"
+            }
+          }
+        ]
+      }
+    ],
+    "capabilities": [
+      {
+        "capability": {
+          "id": "workflow.validate",
+          "version": "1.0.0"
+        },
+        "effects": {
+          "type": "read_only"
+        },
+        "error_codes": {
+          "invalid_definition": "invalid_input",
+          "invalid_format": "invalid_input"
+        },
+        "inputs": {
+          "document": {
+            "required": true,
+            "value_type": {
+              "type": "string"
+            }
+          },
+          "format": {
+            "required": true,
+            "value_type": {
+              "type": "string"
+            }
+          }
+        },
+        "outputs": {
+          "diagnostics": {
+            "required": true,
+            "value_type": {
+              "items": {
+                "fields": {
+                  "code": {
+                    "type": "string"
+                  },
+                  "edge": {
+                    "type": "string"
+                  },
+                  "file": {
+                    "type": "string"
+                  },
+                  "message": {
+                    "type": "string"
+                  },
+                  "node": {
+                    "type": "string"
+                  },
+                  "path": {
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              },
+              "type": "array"
+            }
+          },
+          "digest": {
+            "required": false,
+            "value_type": {
+              "type": "string"
+            }
+          },
+          "valid": {
+            "required": true,
+            "value_type": {
+              "type": "boolean"
+            }
+          }
+        },
+        "schema_version": 1,
+        "skill": {
+          "id": "workflow-capability",
+          "version": "1.0.0"
+        },
+        "timeout_ms": 60000,
+        "usage": "Validate an in-memory JSON/YAML workflow. Invalid definitions are a successful inspection with valid=false and diagnostics; digest is absent. No filesystem or model access."
+      },
+      {
+        "schema_version": 1,
+        "capability": {
+          "id": "sandbox.release",
+          "version": "2.0.0"
+        },
+        "inputs": {
+          "release_name": {
+            "value_type": {
+              "type": "string"
+            },
+            "required": true
+          },
+          "delivery": {
+            "required": true,
+            "value_type": {
+              "type": "object",
+              "fields": {
+                "source_revision": {
+                  "type": "object",
+                  "fields": {
+                    "repository": {
+                      "type": "string"
+                    },
+                    "revision": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "input_digest": {
+                  "type": "string"
+                },
+                "artifacts": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "fields": {
+                      "artifact_id": {
+                        "type": "string"
+                      },
+                      "digest": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "outputs": {
+          "release_id": {
+            "value_type": {
+              "type": "string"
+            },
+            "required": true
+          }
+        },
+        "timeout_ms": 30000,
+        "error_codes": {
+          "bad_input": "invalid_input",
+          "forbidden": "permission_denied",
+          "rejected": "business_rejected",
+          "retry": "transient"
+        },
+        "effects": {
+          "type": "write",
+          "idempotency": {
+            "mode": "key",
+            "scope": "sandbox.releases",
+            "retention_ms": 3600000
+          },
+          "query": {
+            "id": "sandbox.release-query",
+            "version": "1.0.0"
+          },
+          "compensation": null
+        },
+        "usage": "Create a release in an explicitly configured sandbox gateway. The gateway must deduplicate by operation key and expose provider-backed lookup. This fixture does not publish a real release.",
+        "skill": null
+      },
+      {
+        "schema_version": 1,
+        "capability": {
+          "id": "sandbox.release-query",
+          "version": "1.0.0"
+        },
+        "inputs": {},
+        "outputs": {},
+        "timeout_ms": 30000,
+        "error_codes": {},
+        "effects": {
+          "type": "read_only"
+        },
+        "usage": "Effect-protocol lookup by the original immutable intent. Returned receipts use the write capability output contract. Not a direct Worker call.",
+        "skill": null
+      }
+    ],
+    "postconditions": [
+      {
+        "workflow": {
+          "id": "protected-release",
+          "version": "1.0.0"
+        },
+        "node_id": "inspect",
+        "policy": {
+          "schema_version": 1,
+          "identity": {
+            "id": "gated-definition-policy",
+            "version": "1.0.0"
+          },
+          "requirements": [
+            {
+              "id": "definition-valid",
+              "node_id": "inspect",
+              "capability": {
+                "id": "workflow.validate",
+                "version": "1.0.0"
+              },
+              "contract_digest": "sha256:987de0468899049a3360a730f2b6b3c22a3166af90340f9849627c2c8176d523",
+              "report_type": {
+                "identity": {
+                  "id": "gated.validation-report",
+                  "version": "1.0.0"
+                },
+                "content": {
+                  "format": "json",
+                  "value_type": {
+                    "type": "object",
+                    "fields": {
+                      "valid": {
+                        "type": "boolean"
+                      }
+                    }
+                  }
+                }
+              },
+              "pass_field": "valid",
+              "max_age_ms": 60000
+            }
+          ]
+        },
+        "action": {
+          "id": "sandbox.release",
+          "version": "2.0.0"
+        },
+        "repository": {
+          "source": "literal",
+          "value": "fixture-repository"
+        },
+        "revision": {
+          "source": "literal",
+          "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "input_node": "inspect",
+        "artifacts": {
+          "source": "literal",
+          "value": []
+        }
+      },
+      {
+        "workflow": {
+          "id": "protected-release",
+          "version": "1.0.0"
+        },
+        "node_id": "accepted",
+        "policy": {
+          "schema_version": 1,
+          "identity": {
+            "id": "gated-definition-policy",
+            "version": "1.0.0"
+          },
+          "requirements": [
+            {
+              "id": "definition-valid",
+              "node_id": "inspect",
+              "capability": {
+                "id": "workflow.validate",
+                "version": "1.0.0"
+              },
+              "contract_digest": "sha256:987de0468899049a3360a730f2b6b3c22a3166af90340f9849627c2c8176d523",
+              "report_type": {
+                "identity": {
+                  "id": "gated.validation-report",
+                  "version": "1.0.0"
+                },
+                "content": {
+                  "format": "json",
+                  "value_type": {
+                    "type": "object",
+                    "fields": {
+                      "valid": {
+                        "type": "boolean"
+                      }
+                    }
+                  }
+                }
+              },
+              "pass_field": "valid",
+              "max_age_ms": 60000
+            }
+          ]
+        },
+        "action": {
+          "id": "sandbox.release",
+          "version": "2.0.0"
+        },
+        "repository": {
+          "source": "literal",
+          "value": "fixture-repository"
+        },
+        "revision": {
+          "source": "literal",
+          "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "input_node": "inspect",
+        "artifacts": {
+          "source": "literal",
+          "value": []
+        }
+      }
+    ],
+    "effect_bindings": [
+      {
+        "workflow": {
+          "id": "protected-release",
+          "version": "1.0.0"
+        },
+        "node_id": "publish",
+        "policy": {
+          "identity": {
+            "id": "protected-release-policy",
+            "version": "1.0.0"
+          },
+          "target": {
+            "id": "sandbox-releases",
+            "version": "1.0.0"
+          },
+          "call_identity": {
+            "id": "sandbox-publisher",
+            "version": "1.0.0"
+          },
+          "retry": {
+            "max_calls": 6,
+            "initial_backoff_ms": 10,
+            "max_backoff_ms": 100,
+            "total_write_ms": 60000
+          }
+        },
+        "release": {
+          "gate_nodes": [
+            "inspect"
+          ],
+          "subject_field": "delivery",
+          "approvals": [],
+          "target_check": {
+            "type": "atomic_compare"
+          }
+        }
+      }
+    ]
+  },
+  "run_id": "protected-release",
+  "inputs": {
+    "format": "json",
+    "document": "{\n  \"schema_version\": 1,\n  \"id\": \"requirements-review\",\n  \"version\": \"1.0.0\",\n  \"entry\": \"review\",\n  \"inputs\": {},\n  \"nodes\": [\n    {\n      \"id\": \"review\",\n      \"kind\": {\n        \"type\": \"wait\",\n        \"event\": \"design-review\",\n        \"timeout_ms\": 86400000\n      }\n    },\n    {\n      \"id\": \"implement\",\n      \"kind\": {\n        \"type\": \"task\",\n        \"capability\": {\n          \"id\": \"coding.implement\",\n          \"version\": \"1.0.0\"\n        },\n        \"policy\": null\n      }\n    },\n    {\n      \"id\": \"done\",\n      \"kind\": {\n        \"type\": \"terminal\",\n        \"outcome\": \"succeeded\"\n      }\n    },\n    {\n      \"id\": \"declined\",\n      \"kind\": {\n        \"type\": \"terminal\",\n        \"outcome\": \"cancelled\"\n      }\n    },\n    {\n      \"id\": \"expired\",\n      \"kind\": {\n        \"type\": \"terminal\",\n        \"outcome\": \"failed\"\n      }\n    }\n  ],\n  \"edges\": [\n    {\n      \"id\": \"approved\",\n      \"from\": \"review\",\n      \"to\": \"implement\",\n      \"route\": {\n        \"type\": \"accepted\"\n      }\n    },\n    {\n      \"id\": \"declined\",\n      \"from\": \"review\",\n      \"to\": \"declined\",\n      \"route\": {\n        \"type\": \"rejected\"\n      }\n    },\n    {\n      \"id\": \"expired\",\n      \"from\": \"review\",\n      \"to\": \"expired\",\n      \"route\": {\n        \"type\": \"timed_out\"\n      }\n    },\n    {\n      \"id\": \"implemented\",\n      \"from\": \"implement\",\n      \"to\": \"done\",\n      \"route\": {\n        \"type\": \"next\"\n      }\n    }\n  ]\n}\n",
+    "release_name": "candidate-1",
+    "delivery": {
+      "source_revision": {
+        "repository": "fixture-repository",
+        "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "input_digest": "sha256:83b7c357f08e61ca1545c2098e5da6f2f06a62b6f426757b59b6c1974ae06ac9",
+      "artifacts": []
+    }
+  },
+  "started_at_unix_ms": 1000
+}

@@ -6,6 +6,7 @@ pub(crate) mod effects;
 pub(crate) mod gates;
 mod leases;
 mod proof;
+mod release;
 mod tasks;
 use workflow_worker::Clock;
 pub(crate) const SCHEMA:&str="

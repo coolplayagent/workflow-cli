@@ -227,6 +227,7 @@ impl AuthenticatedService {
                 let at = now(tx)? as u64;
                 who.read(tx, &a.lease.run_id, |s| {
                     check_attempt(s, &a, at)?;
+                    s.validate_effect_delivery(&a.attempt, at)?;
                     let snapshot = s.get(&a.lease.run_id)?;
                     let node = snapshot
                         .frames

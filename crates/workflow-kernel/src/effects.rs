@@ -40,6 +40,52 @@ pub(crate) fn validate(
     let mut compensators = BTreeMap::new();
     for b in &spec.effect_bindings {
         let w = &workflows[&key(&b.workflow)];
+        if let Some(release) = &b.release {
+            let node = w
+                .nodes
+                .iter()
+                .find(|n| n.id == b.node_id)
+                .ok_or_else(|| invalid("release node missing"))?;
+            let NodeKind::Task { capability, .. } = &node.kind else {
+                return Err(invalid("release requires a write task"));
+            };
+            let cap = caps[&key(capability)].descriptor();
+            let has_query = matches!(&cap.effects, EffectContract::Write { query: Some(_), .. });
+            release.validate(has_query)?;
+            if !node.inputs.get(&release.subject_field).is_some_and(|f| {
+                f.required && f.value_type == workflow_effects::release_subject_type()
+            }) {
+                return Err(invalid(
+                    "release requires an exact required delivery subject input",
+                ));
+            }
+            for gate in &release.gate_nodes {
+                if !precedes(w, gate, &b.node_id)
+                    || !spec.postconditions.iter().any(|p| {
+                        p.workflow == b.workflow && p.node_id == *gate && p.action == *capability
+                    })
+                {
+                    return Err(invalid(
+                        "each release gate must bind this action and precede every path to the write",
+                    ));
+                }
+            }
+            for required in &release.approvals {
+                if !precedes(w, &required.approval.node_id, &b.node_id)
+                    || !spec.wait_policies.iter().any(|p| {
+                        p.workflow == b.workflow
+                            && p.node_id == required.approval.node_id
+                            && p.policy.kind == crate::WaitKind::HumanApproval
+                            && p.policy.subjects.get(&required.approval.subject_field)
+                                == Some(&crate::SubjectKind::Digest)
+                    })
+                {
+                    return Err(invalid(
+                        "release approval requires a preceding scoped human wait",
+                    ));
+                }
+            }
+        }
         if b.depends_on.len() > 128
             || b.depends_on.iter().collect::<BTreeSet<_>>().len() != b.depends_on.len()
         {

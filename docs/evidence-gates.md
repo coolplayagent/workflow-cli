@@ -96,8 +96,9 @@ Each decision records request/policy/target digests, evaluation time, earliest
 expiry, per-requirement reason, evidence link, verified producer and completion
 time, plus per-artifact integrity findings. Preserve the full request with the
 decision for review; digests do not substitute for the policy/target documents.
-No approval is implied or included. A complete final acceptance manifest with
-human approvals is still pending R03/R06 integration.
+The pure checker implies no approval. Runtime integration records separately
+authorized exceptions and includes decisions and human approvals in the
+[final acceptance manifest](release-acceptance.md).
 
 ## Revalidation and authority boundaries
 
@@ -118,26 +119,29 @@ policy. A manifest's repository/revision remains a host claim: neither metadata
 nor a digest proves that a worker actually inspected a clean checkout. The CLI
 cannot authenticate a remote worker, turn model-authored JSON into trusted host
 facts, or prevent a caller from supplying an old target as if it were current.
-Future remote adapters must enforce these obligations before implementing the
-same `EvidenceSource` port.
+The authenticated shared execution service enforces worker grants and artifact
+provenance before supplying this same `EvidenceSource` port.
 
-A PASS has no authority to execute an external action. To consume a decision, the
-future runtime/effect adapter must re-observe the current target, check expiry,
-revalidate, and atomically compare the exact target when applying the action. If
+A PASS has no authority by itself to execute an external action. The protected
+runtime/effect contract revalidates evidence before dispatch and requires the
+adapter to observe and compare the exact target when applying the action. If
 an external service cannot do this, a remaining race and a reconciliation path
 must be represented explicitly. Evidence may become unavailable or a mutable
 external target may change after a read. This increment does not close that race.
 
-## Acceptance evidence and remaining R03 work
+## Acceptance evidence
 
 Tests exercise actual compiler output and ledger settlement, forged report
 assertions, missing/uncommitted/substituted references, corrupt payloads, exact
 revision/input/tool/type/provenance checks, strict Boolean results, stale/future
 reports, changed actions/policies, decision tampering and schema parity. The
-in-memory port and local adapter use the same evaluator; no cloud transport or
-cloud identity acceptance is claimed.
+in-memory port, local adapter and authenticated shared reducer use the same
+evaluator. The protected release CLI matrix additionally uses real TLS,
+PostgreSQL, worker credentials and scoped evidence upload.
 
 Mandatory task/terminal gates and declared bounded repair now use this checker
-through the [runtime integration](runtime-postconditions.md). R03 remains open for
-action authorization/consumption, current-workspace verification, independent
-approval/exception authority, and the final acceptance manifest. R06 adds authenticated human responses and durable event waits.
+through the [runtime integration](runtime-postconditions.md). The
+[protected delivery contract](release-acceptance.md) documents action
+authorization, current-workspace verification, independent approval/exception
+authority, final manifests and the local/shared acceptance matrix. R06 provides
+the authenticated human responses and durable event waits used by this contract.

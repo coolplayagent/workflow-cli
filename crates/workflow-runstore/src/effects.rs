@@ -21,6 +21,11 @@ pub enum EffectClaim {
     Idle,
 }
 pub trait EffectStore: ExecutionStore {
+    fn validate_effect_dispatch(
+        &mut self,
+        attempt: &EffectAttempt,
+        clock: &dyn Clock,
+    ) -> Result<()>;
     fn claim_effect(&mut self, lease: &Lease, clock: &dyn Clock) -> Result<EffectClaim>;
     fn observe_effect(
         &mut self,

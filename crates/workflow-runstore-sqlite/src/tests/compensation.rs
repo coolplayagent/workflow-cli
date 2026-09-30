@@ -173,6 +173,7 @@ impl EffectAdapter for Provider {
         };
         let observation = Observation::Applied {
             receipt: EffectReceipt {
+                release: None,
                 operation_key: p.intent.operation_key.clone(),
                 intent_digest: workflow_effects::digest(&p.intent)?,
                 target: p.intent.policy.target.clone(),

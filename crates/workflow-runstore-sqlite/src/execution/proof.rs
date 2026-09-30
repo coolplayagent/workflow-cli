@@ -307,7 +307,7 @@ fn verify_at(
             }
         }
         ExecutionAction::Effect { record, transition } => {
-            super::effects::verify(r, a, record, transition)?
+            super::effects::verify(r, a, record, transition, artifacts)?
         }
         ExecutionAction::Prepared { attempt } => {
             let paused = r

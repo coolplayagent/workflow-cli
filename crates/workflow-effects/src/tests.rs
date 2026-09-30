@@ -11,6 +11,7 @@ fn reference(id: &str) -> VersionRef {
 fn intent() -> EffectIntent {
     let run_digest = digest(&"run-one").unwrap();
     EffectIntent {
+        release: None,
         dependencies: vec![],
         compensates: None,
         schema_version: 1,
@@ -59,6 +60,7 @@ fn intent() -> EffectIntent {
 }
 fn prepare(i: EffectIntent) -> EffectRecord {
     let attempt = EffectAttempt {
+        release: None,
         intent: i,
         attempt_id: "a1".into(),
         epoch: 1,
@@ -147,6 +149,7 @@ fn new_instances_and_runs_never_reuse_the_previous_operation_key() {
 fn record_applied(ledger: &mut BTreeMap<String, EffectState>, i: EffectIntent) -> EffectReceipt {
     apply(ledger, &prepare(i.clone())).unwrap();
     let receipt = EffectReceipt {
+        release: None,
         operation_key: i.operation_key.clone(),
         intent_digest: digest(&i).unwrap(),
         target: i.policy.target.clone(),

@@ -368,6 +368,7 @@ impl Engine {
                     winner_edge: None,
                     reason: None,
                     gate_decision: None,
+                    gate_exception: None,
                 },
             );
         }

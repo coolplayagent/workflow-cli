@@ -1,5 +1,92 @@
 {
   "$defs": {
+    "ApprovalEvidence": {
+      "additionalProperties": false,
+      "properties": {
+        "actor": {
+          "type": "string"
+        },
+        "applied_at_unix_ms": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "approval_policy": {
+          "$ref": "#/$defs/VersionRef"
+        },
+        "correlation_id": {
+          "type": "string"
+        },
+        "exception": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ExceptionClaim"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "expires_at_unix_ms": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "instance_id": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "message_id": {
+          "type": "string"
+        },
+        "node_id": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "received_at_unix_ms": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "review_digest": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "node_id",
+        "instance_id",
+        "message_id",
+        "correlation_id",
+        "actor",
+        "approval_policy",
+        "review_digest",
+        "reason",
+        "received_at_unix_ms",
+        "applied_at_unix_ms",
+        "expires_at_unix_ms"
+      ],
+      "type": "object"
+    },
+    "ApprovalRequirement": {
+      "additionalProperties": false,
+      "properties": {
+        "node_id": {
+          "type": "string"
+        },
+        "subject_field": {
+          "description": "A declared digest subject on the human wait, binding policy and target.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "node_id",
+        "subject_field"
+      ],
+      "type": "object"
+    },
     "ArtifactFinding": {
       "additionalProperties": false,
       "properties": {
@@ -539,6 +626,16 @@
         "policy": {
           "$ref": "#/$defs/EffectPolicy"
         },
+        "release": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ReleasePolicy"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
         "workflow": {
           "$ref": "#/$defs/VersionRef"
         }
@@ -1008,6 +1105,17 @@
       "properties": {
         "decision": {
           "$ref": "#/$defs/Decision"
+        },
+        "exception": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ApprovalEvidence"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Explicit permission to accept this scope despite the unchanged verdict."
         },
         "request": {
           "$ref": "#/$defs/Request"
@@ -1649,6 +1757,16 @@
         "artifacts": {
           "$ref": "#/$defs/Binding"
         },
+        "exception": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ApprovalRequirement"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
         "input_node": {
           "description": "The current frame's task whose resolved inputs identify the checked subject.",
           "type": "string"
@@ -1727,6 +1845,53 @@
         "artifact_unavailable"
       ],
       "type": "string"
+    },
+    "ReleaseApproval": {
+      "additionalProperties": false,
+      "properties": {
+        "approval": {
+          "$ref": "#/$defs/ApprovalRequirement"
+        },
+        "gate_node": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "gate_node",
+        "approval"
+      ],
+      "type": "object"
+    },
+    "ReleasePolicy": {
+      "additionalProperties": false,
+      "properties": {
+        "approvals": {
+          "items": {
+            "$ref": "#/$defs/ReleaseApproval"
+          },
+          "type": "array"
+        },
+        "gate_nodes": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "subject_field": {
+          "description": "Required task input containing the exact ReleaseSubject object.",
+          "type": "string"
+        },
+        "target_check": {
+          "$ref": "#/$defs/TargetCheck"
+        }
+      },
+      "required": [
+        "gate_nodes",
+        "subject_field",
+        "approvals",
+        "target_check"
+      ],
+      "type": "object"
     },
     "RemainingPolicy": {
       "enum": [
@@ -2068,6 +2233,42 @@
         "artifacts"
       ],
       "type": "object"
+    },
+    "TargetCheck": {
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "description": "Gateway atomically compares the full subject and applies the operation.",
+          "properties": {
+            "type": {
+              "const": "atomic_compare",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "Gateway observes before writing; the declared query is required after\nambiguous outcomes. This mode does not claim to close the external race.",
+          "properties": {
+            "remaining_race": {
+              "type": "string"
+            },
+            "type": {
+              "const": "observe_then_reconcile",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "remaining_race"
+          ],
+          "type": "object"
+        }
+      ]
     },
     "TaskResult": {
       "oneOf": [

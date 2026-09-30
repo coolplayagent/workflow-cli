@@ -49,12 +49,7 @@ pub struct WaitPolicyBinding {
     pub policy: WaitPolicy,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
-#[serde(deny_unknown_fields)]
-pub struct ExceptionClaim {
-    pub policy: VersionRef,
-    pub code: String,
-}
+pub use workflow_gates::ExceptionClaim;
 
 fn invalid(message: &str) -> Error {
     Error::new(ErrorCode::InvalidBundle, message)

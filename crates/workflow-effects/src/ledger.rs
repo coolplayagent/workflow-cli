@@ -210,6 +210,21 @@ pub fn apply(ledger: &mut BTreeMap<String, EffectState>, r: &EffectRecord) -> Re
             s.status = match observation {
                 Observation::Applied { receipt } => {
                     receipt.validate(&s.intent)?;
+                    if let Some(proof) = &receipt.release {
+                        let authorized = s.calls.iter().any(|call| {
+                            call.attempt.release.as_ref().is_some_and(|grant| {
+                                digest(grant).is_ok_and(|d| d == proof.authorization_digest)
+                                    && proof.observed_at_unix_ms >= call.attempt.issued_at_unix_ms
+                                    && proof.observed_at_unix_ms < call.attempt.deadline_unix_ms
+                                    && proof.observed_at_unix_ms <= r.at_unix_ms
+                            })
+                        });
+                        if !authorized {
+                            return Err(invalid(
+                                "provider target observation has no matching live write authorization",
+                            ));
+                        }
+                    }
                     EffectStatus::Applied {
                         receipt: receipt.clone(),
                     }
