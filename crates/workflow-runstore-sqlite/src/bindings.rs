@@ -69,6 +69,23 @@ pub fn bundle_bindings(bundle: &CompiledBundle) -> Result<Vec<ImageBinding>> {
             &digest(p)?,
         );
     }
+    for binding in &bundle.spec().wait_policies {
+        let p = &binding.policy;
+        add(
+            "wait_policy",
+            &p.identity.id,
+            &p.identity.version,
+            &digest(p)?,
+        );
+        if let Some(exception) = &p.exception {
+            add(
+                "wait_exception",
+                &exception.identity.id,
+                &exception.identity.version,
+                &digest(exception)?,
+            );
+        }
+    }
     entries.sort_by(|a, b| (&a.kind, &a.id, &a.version).cmp(&(&b.kind, &b.id, &b.version)));
     for pair in entries.windows(2) {
         if (&pair[0].kind, &pair[0].id, &pair[0].version)

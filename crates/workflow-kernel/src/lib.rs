@@ -5,12 +5,14 @@ mod engine;
 mod inbox;
 mod model;
 mod postconditions;
+mod wait_policy;
 pub use bundle::*;
 pub use engine::Engine;
 pub use inbox::*;
 pub use model::*;
 pub use postconditions::*;
 use serde::{Deserialize, Serialize};
+pub use wait_policy::*;
 pub use workflow_worker::Values;
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]

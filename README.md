@@ -117,6 +117,7 @@ the CLI exits 0.
 - [R08 local acceptance and supported environments](docs/local-acceptance.md)
 - [Authenticated HTTPS service, remote schedulers and workers](docs/remote-service.md)
 - [Durable event Inbox and callback matching](docs/event-inbox.md)
+- [Authenticated approvals, external events and R06 acceptance](docs/approval-acceptance.md)
 - [Durable write effects and gateway protocol](docs/durable-effects.md)
 - [Authenticated remote effects and R05 acceptance](docs/remote-effects.md)
 - [Ordered compensation and manual takeover](docs/ordered-compensation.md)

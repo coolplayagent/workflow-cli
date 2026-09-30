@@ -256,6 +256,7 @@ fn commit_record(
     a: &mut Authority,
     l: &Lease,
     record: EffectRecord,
+    artifacts: Option<&dyn workflow_artifacts::ArtifactReader>,
     hook: &impl Fn(&str),
 ) -> Result<Committed> {
     // Derive status from the record before touching kernel state. The final
@@ -288,7 +289,7 @@ fn commit_record(
             at_unix_ms: record.at_unix_ms,
             kind: event_kind(r, &original, result)?,
         };
-        let committed = crate::writes::persist_event(c, r, &event, hook)?;
+        let committed = crate::writes::persist_event(c, r, &event, artifacts, hook)?;
         crate::writes::persist_receipt(c, r, &receipt(l, &pending))?;
         let transition = EffectTransition {
             event_id: event.event_id,
@@ -378,7 +379,15 @@ impl EffectStore for SqliteRunStore {
                 resolution: resolution.clone(),
             },
         };
-        let committed = commit_record(&tx, &mut r, &mut a, l, record, &|_| {})?;
+        let committed = commit_record(
+            &tx,
+            &mut r,
+            &mut a,
+            l,
+            record,
+            self.artifacts.as_deref(),
+            &|_| {},
+        )?;
         let end = commit_guard(&self.admission, clock, l, now, l.expires_at_unix_ms)?;
         check_signal_admission(&committed.snapshot, end)?;
         tx.commit().map_err(storage)?;
@@ -448,7 +457,13 @@ impl SqliteRunStore {
                     at_unix_ms: now,
                     kind: event_kind(&r, &original, TaskResult::Cancelled)?,
                 };
-                let c = crate::writes::persist_event(&tx, &mut r, &event, &hook)?;
+                let c = crate::writes::persist_event(
+                    &tx,
+                    &mut r,
+                    &event,
+                    self.artifacts.as_deref(),
+                    &hook,
+                )?;
                 (Some(event.event_id), Some(c.snapshot.revision), c)
             };
             crate::writes::persist_receipt(&tx, &r, &receipt(l, &pending))?;
@@ -517,7 +532,15 @@ impl SqliteRunStore {
                             reason: reason.clone(),
                         },
                     };
-                    let committed = commit_record(&tx, &mut r, &mut a, l, record, &hook)?;
+                    let committed = commit_record(
+                        &tx,
+                        &mut r,
+                        &mut a,
+                        l,
+                        record,
+                        self.artifacts.as_deref(),
+                        &hook,
+                    )?;
                     let end = commit_guard(&self.admission, clock, l, now, l.expires_at_unix_ms)?;
                     check_signal_admission(&committed.snapshot, end)?;
                 }
@@ -626,7 +649,15 @@ impl SqliteRunStore {
                 observation: observation.clone(),
             },
         };
-        let committed = commit_record(&tx, &mut r, &mut a, l, record, &hook)?;
+        let committed = commit_record(
+            &tx,
+            &mut r,
+            &mut a,
+            l,
+            record,
+            self.artifacts.as_deref(),
+            &hook,
+        )?;
         let end = commit_guard(&self.admission, clock, l, now, l.expires_at_unix_ms)?;
         if committed.transition.revision > r.events.last().map_or(1, |e| e.revision) {
             check_signal_admission(&committed.snapshot, end)?;
@@ -866,6 +897,7 @@ impl SqliteRunStore {
                     resolution: import.resolution.clone(),
                 },
             },
+            self.artifacts.as_deref(),
             &|_| {},
         )?;
         let end = commit_guard(&self.admission, clock, l, now, l.expires_at_unix_ms)?;

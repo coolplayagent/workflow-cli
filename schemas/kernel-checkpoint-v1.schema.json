@@ -418,6 +418,22 @@
       ],
       "type": "object"
     },
+    "ExceptionClaim": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "type": "string"
+        },
+        "policy": {
+          "$ref": "#/$defs/VersionRef"
+        }
+      },
+      "required": [
+        "policy",
+        "code"
+      ],
+      "type": "object"
+    },
     "Finding": {
       "additionalProperties": false,
       "properties": {
@@ -673,6 +689,16 @@
         },
         "decision": {
           "$ref": "#/$defs/SignalDecision"
+        },
+        "exception": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ExceptionClaim"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "expires_at_unix_ms": {
           "format": "uint64",

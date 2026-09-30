@@ -134,6 +134,9 @@ pub enum Operation {
     Approve {
         request: Box<SignalSubmission>,
     },
+    Signal {
+        request: Box<SignalSubmission>,
+    },
     Revoke {
         credential_id: String,
     },
@@ -195,6 +198,7 @@ pub enum Response {
     Assignment(Box<PreparedTask>),
     Finished(TaskReceipt),
     Approved(Box<SignalReceipt>),
+    SignalReceived(Box<SignalReceipt>),
     Unit,
     Audit(Page<AuditEntry, i64>),
     Outstanding(Page<OutstandingAssignment, String>),
@@ -351,6 +355,9 @@ impl Request {
             Operation::Approve { request } => service
                 .approve(token, request)
                 .map(|r| Response::Approved(Box::new(r))),
+            Operation::Signal { request } => service
+                .signal(token, request)
+                .map(|r| Response::SignalReceived(Box::new(r))),
             Operation::Revoke { credential_id } => {
                 service.revoke(token, credential_id).map(|_| Response::Unit)
             }
@@ -418,6 +425,7 @@ impl Request {
                 | (Operation::Finish { .. }, Response::Finished(_))
                 | (Operation::Fail { .. }, Response::Unit)
                 | (Operation::Approve { .. }, Response::Approved(_))
+                | (Operation::Signal { .. }, Response::SignalReceived(_))
                 | (Operation::Revoke { .. }, Response::Unit)
                 | (Operation::Audit { .. }, Response::Audit(_))
                 | (Operation::Outstanding { .. }, Response::Outstanding(_))

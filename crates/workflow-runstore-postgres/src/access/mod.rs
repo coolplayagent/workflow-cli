@@ -31,6 +31,7 @@ pub enum Role {
     Viewer,
     Runner,
     Approver,
+    SignalSource,
     Scheduler,
     Worker,
     Recovery,
@@ -43,6 +44,7 @@ impl Role {
             Self::Viewer => "viewer",
             Self::Runner => "runner",
             Self::Approver => "approver",
+            Self::SignalSource => "signal_source",
             Self::Scheduler => "scheduler",
             Self::Worker => "worker",
             Self::Recovery => "recovery",
@@ -324,6 +326,25 @@ impl AuthenticatedService {
         effects::initialize(&mut tx)?;
         tx.commit().map_err(storage)
     }
+    /// Explicit trusted-host migration. Requests never change the access schema.
+    pub fn migrate_access(client: &mut Client) -> Result<()> {
+        let mut tx = client.transaction().map_err(storage)?;
+        PostgresRunStore::transaction_settings(&mut tx)?;
+        tx.query_one("SELECT pg_advisory_xact_lock(57465232)", &[])
+            .map_err(storage)?;
+        check_schema(&mut tx)?;
+        let v: i32 = tx.query_one(
+            "SELECT version FROM workflow_access.schema_version WHERE singleton=true FOR UPDATE", &[]
+        ).map_err(storage)?.get(0);
+        if v == 1 {
+            tx.batch_execute("ALTER TABLE workflow_access.credentials DROP CONSTRAINT credentials_role_check;
+                ALTER TABLE workflow_access.credentials ADD CONSTRAINT credentials_role_check
+                CHECK(role IN ('administrator','definition_maintainer','viewer','runner','approver','signal_source','scheduler','worker','recovery'));
+                UPDATE workflow_access.schema_version SET version=2 WHERE singleton=true;")
+                .map_err(storage)?;
+        }
+        tx.commit().map_err(storage)
+    }
     pub fn open(mut client: Client) -> Result<Self> {
         let mut tx = client.transaction().map_err(storage)?;
         check_schema(&mut tx)?;
@@ -391,7 +412,7 @@ fn check_schema(tx: &mut Transaction<'_>) -> Result<()> {
         )
         .map_err(storage)?
         .get(0);
-    if v != 1 {
+    if !matches!(v, 1 | 2) {
         return Err(Error::new(
             ErrorCode::UnsupportedStorage,
             "unsupported access schema",

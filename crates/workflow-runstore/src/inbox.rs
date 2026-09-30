@@ -21,10 +21,19 @@ pub struct SignalReceipt {
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct WaitRegistration {
+    pub workflow_id: String,
+    pub workflow_version: String,
+    pub node_id: String,
+    /// The frozen definition's accepted, rejected and timed_out destinations.
+    pub routes: std::collections::BTreeMap<String, String>,
     pub target: WaitTarget,
     pub correlation_id: String,
     pub deadline_unix_ms: u64,
     pub paused: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub policy: Option<workflow_kernel::WaitPolicy>,
+    #[serde(default, skip_serializing_if = "Values::is_empty")]
+    pub subjects: Values,
 }
 
 /// Call only for a newly reduced transition, before acknowledging its commit.

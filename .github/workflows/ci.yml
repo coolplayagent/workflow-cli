@@ -16,6 +16,7 @@ jobs:
       - run: cargo test --workspace --locked
       - run: cargo build -p workflow-cli --locked
       - run: python3 examples/validation/baseline.py target/debug/workflow
+      - run: python3 examples/approval/local-demo.py target/debug/workflow
   bazel:
     runs-on: ubuntu-24.04
     steps:

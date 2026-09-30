@@ -64,7 +64,13 @@ impl SqliteRunStore {
                         reason: "restored backup; inspect recovery barrier before resuming".into(),
                     },
                 };
-                crate::writes::persist_event(&tx, &mut r, &event, |_| {})?;
+                crate::writes::persist_event(
+                    &tx,
+                    &mut r,
+                    &event,
+                    self.artifacts.as_deref(),
+                    |_| {},
+                )?;
             }
             result.push((id, recovery));
         }

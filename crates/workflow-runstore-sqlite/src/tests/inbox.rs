@@ -86,6 +86,7 @@ fn early_callback_expiring_during_task_settlement_cannot_commit_approval_and_ret
         run_id: request.run_id.clone(),
         run_digest: snapshot.run_digest.clone(),
         message: SignalMessage {
+            exception: None,
             schema_version: 1,
             message_id: "early".into(),
             correlation_id: workflow_kernel::signal_correlation(&snapshot.run_digest, &target)
@@ -177,6 +178,7 @@ fn submission(store: &mut SqliteRunStore) -> SignalSubmission {
         run_id: id,
         run_digest: snapshot.run_digest,
         message: SignalMessage {
+            exception: None,
             schema_version: 1,
             message_id: "provider-event-1".into(),
             correlation_id: wait.correlation_id,
@@ -498,4 +500,141 @@ fn killed_inbox_writers_recover_the_entire_signal_transition_or_nothing() {
         );
         store.verify(&s.run_id).unwrap();
     }
+}
+
+#[test]
+fn approval_subject_content_is_verified_atomically_and_retained_across_recovery() {
+    use workflow_artifact_local::LocalArtifactStore;
+    use workflow_artifacts::*;
+    use workflow_ir::{Binding, Field, ValueType, VersionRef};
+    use workflow_kernel::{SubjectKind, WaitKind, WaitPolicy, WaitPolicyBinding};
+    let db = Db::new();
+    let root = db.dir.join("approval-artifacts");
+    let mut artifacts = LocalArtifactStore::create(&root).unwrap();
+    let mut request = start(&scenario("review-approved"));
+    let bytes = b"reviewed design revision one";
+    let reference = artifacts
+        .publish(
+            &PublishSpec {
+                schema_version: 1,
+                artifact_type: ArtifactType {
+                    identity: VersionRef {
+                        id: "design".into(),
+                        version: "1.0.0".into(),
+                    },
+                    content: ContentSchema::Utf8,
+                },
+                producer: Producer {
+                    run_id: request.run_id.clone(),
+                    node_instance_id: "source".into(),
+                    attempt_id: "source-attempt".into(),
+                    request_digest: format!("sha256:{}", "a".repeat(64)),
+                    input_digest: format!("sha256:{}", "b".repeat(64)),
+                },
+                source_revision: SourceRevision {
+                    repository: "fixture".into(),
+                    revision: "c".repeat(40),
+                },
+                inputs: vec![],
+                access: AccessScope::Run {
+                    run_id: request.run_id.clone(),
+                },
+                retention: Retention::RunDependency,
+            },
+            &mut bytes.as_slice(),
+        )
+        .unwrap();
+    let field_type = ValueType::Object {
+        fields: std::collections::BTreeMap::from([
+            ("artifact_id".into(), ValueType::String),
+            ("digest".into(), ValueType::String),
+        ]),
+    };
+    let wait = request.bundle.workflows[0]
+        .nodes
+        .iter_mut()
+        .find(|n| n.id == "review")
+        .unwrap();
+    wait.inputs.insert(
+        "subjects".into(),
+        Field {
+            value_type: field_type,
+            required: true,
+        },
+    );
+    wait.bindings.insert(
+        "subjects".into(),
+        Binding::Literal {
+            value: serde_json::json!(reference.link()),
+        },
+    );
+    request.bundle.wait_policies.push(WaitPolicyBinding {
+        workflow: request.bundle.root.clone(),
+        node_id: "review".into(),
+        policy: WaitPolicy {
+            identity: VersionRef {
+                id: "review-policy".into(),
+                version: "1.0.0".into(),
+            },
+            kind: WaitKind::HumanApproval,
+            responders: ["trusted-ci".into()].into(),
+            subjects: [("subjects".into(), SubjectKind::Artifact)].into(),
+            max_validity_ms: 86400000,
+            exception: None,
+        },
+    });
+    let mut store = db.store().with_artifacts(Box::new(artifacts));
+    let initial = store.start(&request).unwrap().snapshot;
+    let signal = submission(&mut store);
+    let registration = store
+        .waits(&request.run_id, 0, 100)
+        .unwrap()
+        .items
+        .remove(0);
+    assert_eq!(
+        registration.subjects["subjects"],
+        serde_json::json!(reference.link())
+    );
+    assert_eq!(
+        registration.policy,
+        Some(request.bundle.wait_policies[0].policy.clone())
+    );
+    let object = root
+        .join("objects")
+        .join(&reference.manifest.content_digest[7..]);
+    std::fs::write(&object, b"changed after review").unwrap();
+    assert_eq!(
+        store.receive_signal(&signal, &Time(1001)).unwrap_err().code,
+        workflow_runstore::ErrorCode::ArtifactRejected
+    );
+    assert_eq!(store.get(&request.run_id).unwrap(), initial);
+    assert!(
+        store
+            .inbox(&request.run_id, 0, 100)
+            .unwrap()
+            .items
+            .is_empty()
+    );
+    std::fs::write(&object, bytes).unwrap();
+    let accepted = store.receive_signal(&signal, &Time(1001)).unwrap();
+    assert!(matches!(
+        accepted.entry.status,
+        SignalStatus::Applied { .. }
+    ));
+    drop(store);
+    let mut store = SqliteRunStore::open(&db.path)
+        .unwrap()
+        .with_artifacts(Box::new(LocalArtifactStore::open(&root).unwrap()));
+    assert!(
+        store
+            .receive_signal(&signal, &Time(5000))
+            .unwrap()
+            .duplicate
+    );
+    store.verify(&request.run_id).unwrap();
+    std::fs::write(&object, b"corrupt historical approval subject").unwrap();
+    assert_eq!(
+        store.verify(&request.run_id).unwrap_err().code,
+        workflow_runstore::ErrorCode::ArtifactRejected
+    );
 }

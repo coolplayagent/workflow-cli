@@ -31,7 +31,8 @@ roles. Administrative issuance always inherits the administrator's scope.
 | Definition maintainer | Validate definitions; publish an immutable bundle; read runs |
 | Runner | Validate definitions; start only a published bundle; read runs; pause/resume/cancel with CAS |
 | Viewer | Read run state, history, inbox and waits |
-| Approver | Read runs; submit a decision with the authenticated actor stamped as source |
+| Approver | Read runs; submit a human decision bound to a frozen responder/subject policy |
+| SignalSource | Read runs; deliver external events to a frozen event policy; cannot approve human waits |
 | Scheduler | Read runs, acquire/release ownership, advance timers, dispatch authorized tasks/effects |
 | Worker | Retrieve its own task and return results; publish/read artifacts within its explicit capability policy |
 | Recovery | Read runs, audit and unresolved assignments; acquire/release ownership for audited effect reconciliation; control runs; acknowledge an existing recovery barrier; clean expired artifact transfers |
@@ -135,3 +136,11 @@ can inspect scoped artifacts. Short-lived grants bind scope and credential, and
 every phase participates in the same revocation and final-time transaction checks.
 The verified PostgreSQL catalog supplies artifact evidence to result settlement
 and recovery. It adds version-1 storage without modifying run images.
+
+Approval and signal endpoints require a `wait_policies` binding; previously
+published unbound waits remain readable but cannot receive remote responses.
+Publish a new protected bundle for new runs. Existing local trusted-admin Inbox
+semantics remain supported. Access schema 1 installations explicitly run
+`workflow service migrate-access server-binding.json` before issuing a
+`signal_source` credential; new installations create schema 2. See
+[durable approval acceptance](approval-acceptance.md).

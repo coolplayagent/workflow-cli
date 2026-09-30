@@ -182,6 +182,12 @@
           "minimum": 0,
           "type": "integer"
         },
+        "wait_policies": {
+          "items": {
+            "$ref": "#/$defs/WaitPolicyBinding"
+          },
+          "type": "array"
+        },
         "workflows": {
           "items": {
             "$ref": "#/$defs/Workflow"
@@ -885,6 +891,50 @@
       "required": [
         "requirement_id",
         "report"
+      ],
+      "type": "object"
+    },
+    "ExceptionClaim": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "type": "string"
+        },
+        "policy": {
+          "$ref": "#/$defs/VersionRef"
+        }
+      },
+      "required": [
+        "policy",
+        "code"
+      ],
+      "type": "object"
+    },
+    "ExceptionPolicy": {
+      "additionalProperties": false,
+      "properties": {
+        "codes": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "uniqueItems": true
+        },
+        "identity": {
+          "$ref": "#/$defs/VersionRef"
+        },
+        "responders": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "identity",
+        "responders",
+        "codes"
       ],
       "type": "object"
     },
@@ -1662,6 +1712,16 @@
         "decision": {
           "$ref": "#/$defs/SignalDecision"
         },
+        "exception": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ExceptionClaim"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
         "expires_at_unix_ms": {
           "format": "uint64",
           "minimum": 0,
@@ -1717,6 +1777,13 @@
         "revision"
       ],
       "type": "object"
+    },
+    "SubjectKind": {
+      "enum": [
+        "digest",
+        "artifact"
+      ],
+      "type": "string"
     },
     "Target": {
       "additionalProperties": false,
@@ -1946,6 +2013,82 @@
       "required": [
         "id",
         "version"
+      ],
+      "type": "object"
+    },
+    "WaitKind": {
+      "enum": [
+        "human_approval",
+        "external_event"
+      ],
+      "type": "string"
+    },
+    "WaitPolicy": {
+      "additionalProperties": false,
+      "properties": {
+        "exception": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ExceptionPolicy"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "identity": {
+          "$ref": "#/$defs/VersionRef"
+        },
+        "kind": {
+          "$ref": "#/$defs/WaitKind"
+        },
+        "max_validity_ms": {
+          "description": "Response expiry must be within this duration of durable receipt.",
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "responders": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "uniqueItems": true
+        },
+        "subjects": {
+          "additionalProperties": {
+            "$ref": "#/$defs/SubjectKind"
+          },
+          "description": "Names of required wait inputs whose exact values are being reviewed.",
+          "type": "object"
+        }
+      },
+      "required": [
+        "identity",
+        "kind",
+        "responders",
+        "subjects",
+        "max_validity_ms"
+      ],
+      "type": "object"
+    },
+    "WaitPolicyBinding": {
+      "additionalProperties": false,
+      "properties": {
+        "node_id": {
+          "type": "string"
+        },
+        "policy": {
+          "$ref": "#/$defs/WaitPolicy"
+        },
+        "workflow": {
+          "$ref": "#/$defs/VersionRef"
+        }
+      },
+      "required": [
+        "workflow",
+        "node_id",
+        "policy"
       ],
       "type": "object"
     },

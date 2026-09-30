@@ -2,6 +2,45 @@ use crate::*;
 use workflow_kernel::{EventKind, InboxEntry, NodeState, WaitTarget};
 use workflow_worker::Clock;
 
+/// Every accepted subject remains a recovery dependency. A newly applied early
+/// callback is checked by the same transaction that releases its successors.
+pub(crate) fn verify_subjects(
+    engine: &workflow_kernel::Engine,
+    artifacts: Option<&dyn workflow_artifacts::ArtifactReader>,
+) -> Result<()> {
+    for entry in engine.snapshot().inbox.values() {
+        if !matches!(entry.status, workflow_kernel::SignalStatus::Applied { .. }) {
+            continue;
+        }
+        for link in engine.wait_subjects(entry.message.target.instance_id)? {
+            let reader = artifacts.ok_or_else(|| {
+                Error::new(
+                    ErrorCode::ArtifactUnavailable,
+                    "approval subject store unavailable",
+                )
+            })?;
+            let reference = reader.verify(&link).map_err(|_| {
+                Error::new(
+                    ErrorCode::ArtifactRejected,
+                    "approval subject is missing or corrupt",
+                )
+            })?;
+            if reference.manifest.spec.access
+                != (workflow_artifacts::AccessScope::Run {
+                    run_id: engine.snapshot().run_id.clone(),
+                })
+                || reference.link() != link
+            {
+                return Err(Error::new(
+                    ErrorCode::ArtifactRejected,
+                    "approval subject belongs to another run",
+                ));
+            }
+        }
+    }
+    Ok(())
+}
+
 impl SqliteRunStore {
     pub(crate) fn receive_signal_internal(
         &mut self,
@@ -61,7 +100,8 @@ impl SqliteRunStore {
                 message: Box::new(submission.message.clone()),
             },
         };
-        let committed = crate::writes::persist_event(&tx, &mut r, &event, &hook)?;
+        let committed =
+            crate::writes::persist_event(&tx, &mut r, &event, self.artifacts.as_deref(), &hook)?;
         let entry = committed.snapshot.inbox[&submission.message.message_id].clone();
         let receipt = SignalReceipt {
             run_id: submission.run_id.clone(),
@@ -136,7 +176,38 @@ impl InboxStore for SqliteRunStore {
                             input_digest: digest(&node.inputs)?,
                             event: event.clone(),
                         };
+                        let policy = r.engine.bundle().wait_policy(&frame.workflow, id).cloned();
+                        let subjects = policy
+                            .as_ref()
+                            .map(|p| {
+                                p.subjects
+                                    .keys()
+                                    .filter_map(|key| {
+                                        node.inputs.get(key).map(|v| (key.clone(), v.clone()))
+                                    })
+                                    .collect()
+                            })
+                            .unwrap_or_default();
                         items.push(WaitRegistration {
+                            workflow_id: frame.workflow.id.clone(),
+                            workflow_version: frame.workflow.version.clone(),
+                            node_id: id.clone(),
+                            routes: workflow
+                                .edges
+                                .iter()
+                                .filter(|edge| edge.from == *id)
+                                .filter_map(|edge| {
+                                    let route = match edge.route {
+                                        workflow_ir::Route::Accepted => "accepted",
+                                        workflow_ir::Route::Rejected => "rejected",
+                                        workflow_ir::Route::TimedOut => "timed_out",
+                                        _ => return None,
+                                    };
+                                    Some((route.into(), edge.to.clone()))
+                                })
+                                .collect(),
+                            policy,
+                            subjects,
                             correlation_id: workflow_kernel::signal_correlation(
                                 &s.run_digest,
                                 &target,

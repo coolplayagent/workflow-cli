@@ -219,6 +219,7 @@ fn review(s: &mut SqliteRunStore, c: &dyn Clock, decision: SignalDecision) {
             run_id: ID.into(),
             run_digest: snapshot.run_digest,
             message: workflow_kernel::SignalMessage {
+                exception: None,
                 schema_version: 1,
                 message_id: "sandbox-review".into(),
                 correlation_id: wait.correlation_id,

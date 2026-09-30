@@ -97,7 +97,8 @@ impl SqliteRunStore {
                 result: proof::task_result(result)?,
             },
         };
-        let committed = crate::writes::persist_event(&tx, &mut r, &event, &hook)?;
+        let committed =
+            crate::writes::persist_event(&tx, &mut r, &event, self.artifacts.as_deref(), &hook)?;
         crate::writes::persist_receipt(&tx, &r, &receipt(l, &entry))?;
         append(
             &tx,

@@ -63,7 +63,8 @@ impl SqliteRunStore {
             at_unix_ms: now,
             kind: EventKind::AdvanceTime,
         };
-        let committed = crate::writes::persist_event(&tx, &mut r, &e, |_| {})?;
+        let committed =
+            crate::writes::persist_event(&tx, &mut r, &e, self.artifacts.as_deref(), |_| {})?;
         append(
             &tx,
             &mut a,
@@ -147,7 +148,13 @@ impl SqliteRunStore {
                             evaluation: Box::new(evaluation),
                         },
                     };
-                    let committed = crate::writes::persist_event(&tx, &mut r, &event, &hook)?;
+                    let committed = crate::writes::persist_event(
+                        &tx,
+                        &mut r,
+                        &event,
+                        self.artifacts.as_deref(),
+                        &hook,
+                    )?;
                     crate::writes::persist_receipt(&tx, &r, &receipt(l, &entry))?;
                     append(
                         &tx,
@@ -270,7 +277,8 @@ impl SqliteRunStore {
                     result: TaskResult::Cancelled,
                 },
             };
-            let c = crate::writes::persist_event(&tx, &mut r, &e, |_| {})?;
+            let c =
+                crate::writes::persist_event(&tx, &mut r, &e, self.artifacts.as_deref(), |_| {})?;
             (Some(e.event_id), Some(c.snapshot.revision))
         } else {
             (None, None)
