@@ -7,18 +7,24 @@ use workflow_kernel::{EventKind, NodeState, TaskResult};
 
 fn binding<'a>(r: &'a Recovered, entry: &OutboxEntry) -> Result<Option<&'a EffectBinding>> {
     let Command::ExecuteTask {
-        frame_id, node_id, ..
+        definition_digest,
+        node_id,
+        ..
     } = &entry.command
     else {
         return Err(corrupt("effect requires its original execute intent"));
     };
-    let workflow = &r.engine.snapshot().frames[frame_id].workflow;
-    Ok(r.engine
-        .bundle()
-        .spec()
-        .effect_bindings
+    let bundle = r.engine.bundle_spec_at(entry.revision)?;
+    let workflow = bundle
+        .workflows
         .iter()
-        .find(|b| &b.workflow == workflow && &b.node_id == node_id))
+        .find(|w| w.digest().is_ok_and(|d| &d == definition_digest))
+        .ok_or_else(|| corrupt("effect command definition is missing from its retained version"))?;
+    Ok(bundle.effect_bindings.iter().find(|b| {
+        b.workflow.id == workflow.id
+            && b.workflow.version == workflow.version
+            && &b.node_id == node_id
+    }))
 }
 pub(super) fn original<'a>(r: &'a Recovered, entry: &'a OutboxEntry) -> Result<&'a OutboxEntry> {
     match &entry.command {
@@ -187,24 +193,7 @@ fn pending_timer_deadline(snapshot: &Snapshot) -> Option<u64> {
         .min()
 }
 pub(super) fn snapshot_at(r: &Recovered, revision: u64) -> Result<Snapshot> {
-    let cp = r.engine.checkpoint()?;
-    if revision == 0 || revision > r.engine.snapshot().revision {
-        return Err(corrupt("effect revision outside run history"));
-    }
-    let (mut engine, _) = workflow_kernel::Engine::start(
-        r.engine.bundle().clone(),
-        &cp.run_id,
-        cp.inputs,
-        cp.started_at_unix_ms,
-        cp.limits,
-    )?;
-    for e in &r.events {
-        if e.revision > revision {
-            break;
-        }
-        engine.apply(e.event.clone())?;
-    }
-    Ok(engine.snapshot().clone())
+    Ok(r.engine.at_revision(revision)?.snapshot().clone())
 }
 fn outcome(status: &EffectStatus) -> Option<TaskResult> {
     match status {
@@ -782,8 +771,16 @@ pub(super) fn verify_coverage(r: &Recovered, records: &[ExecutionRecord]) -> Res
         }
     }
     let mut receipts = BTreeSet::new();
+    let retired: BTreeSet<_> = records
+        .iter()
+        .filter_map(|record| match &record.action {
+            ExecutionAction::Migrated { migration } => Some(migration.retired_commands.iter()),
+            _ => None,
+        })
+        .flatten()
+        .collect();
     for e in &r.outbox {
-        if e.receipt.is_some() && managed(r, e)? {
+        if e.receipt.is_some() && !retired.contains(&e.command_id) && managed(r, e)? {
             receipts.insert(e.command_id.as_str());
         }
     }

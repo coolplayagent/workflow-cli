@@ -220,7 +220,92 @@ pub(super) fn verify(
     action: &ExecutionAction,
     artifacts: Option<&dyn workflow_artifacts::ArtifactReader>,
 ) -> Result<()> {
+    let revision = match action {
+        ExecutionAction::Prepared { attempt } => Some(attempt.prepared_revision),
+        ExecutionAction::Finished { event_revision, .. }
+        | ExecutionAction::GateChecked { event_revision, .. }
+        | ExecutionAction::TimerAdvanced { event_revision, .. } => {
+            Some(event_revision.saturating_sub(1))
+        }
+        ExecutionAction::Handled {
+            command_id,
+            event_revision,
+            ..
+        } => Some(event_revision.map_or(entry(r, command_id)?.revision, |v| v.saturating_sub(1))),
+        ExecutionAction::Migrated { migration } => Some(migration.source_revision),
+        _ => None,
+    };
+    if let Some(revision) = revision
+        && r.events.iter().any(|e| {
+            e.revision > revision && matches!(e.event.kind, EventKind::MigrateDefinition { .. })
+        })
+    {
+        let mut historical = r.clone();
+        historical.engine = r.engine.at_revision(revision)?;
+        return verify_at(&historical, a, action, artifacts);
+    }
+    verify_at(r, a, action, artifacts)
+}
+fn verify_at(
+    r: &Recovered,
+    a: &Authority,
+    action: &ExecutionAction,
+    artifacts: Option<&dyn workflow_artifacts::ArtifactReader>,
+) -> Result<()> {
     match action {
+        ExecutionAction::Migrated { migration } => {
+            migration.validate(&a.run_id)?;
+            let event = stored_event(
+                r,
+                &migration.event_id,
+                migration.event_revision,
+                migration.at_unix_ms,
+            )?;
+            let EventKind::MigrateDefinition { plan } = &event.kind else {
+                return Err(corrupt("migration proof has no definition migration event"));
+            };
+            if digest(plan)? != migration.plan_digest
+                || plan.source_revision != migration.source_revision
+                || migration_event_id(&plan.request.migration_id)? != migration.event_id
+                || event.expected_revision != migration.source_revision
+                || r.engine.snapshot().revision != migration.source_revision
+                || &r.engine.plan_migration(&plan.request)? != plan.as_ref()
+            {
+                return Err(corrupt(
+                    "definition migration proof differs from the reviewed source and plan",
+                ));
+            }
+            let previous: Vec<_> = r
+                .outbox
+                .iter()
+                .filter(|e| e.revision <= migration.source_revision)
+                .collect();
+            if migration.previous_delivery_sequence > previous.len() as u64
+                || previous.iter().any(|e| e.receipt.is_none())
+            {
+                return Err(corrupt(
+                    "migration did not retire every prior pending command",
+                ));
+            }
+            let retired: Vec<_> = previous
+                .into_iter()
+                .filter(|e| e.sequence > migration.previous_delivery_sequence)
+                .collect();
+            if retired.iter().map(|e| &e.command_id).collect::<Vec<_>>()
+                != migration.retired_commands.iter().collect::<Vec<_>>()
+            {
+                return Err(corrupt(
+                    "migration command retirement differs from source outbox",
+                ));
+            }
+            for entry in retired {
+                if entry.receipt.as_ref().unwrap().delivery_id
+                    != migration_delivery_id(&migration.plan_digest, entry.sequence)?
+                {
+                    return Err(corrupt("retired command is missing its migration receipt"));
+                }
+            }
+        }
         ExecutionAction::Effect { record, transition } => {
             super::effects::verify(r, a, record, transition)?
         }
@@ -230,7 +315,7 @@ pub(super) fn verify(
                 .iter()
                 .take_while(|e| e.revision <= attempt.prepared_revision)
                 .filter_map(|e| match e.event.kind {
-                    EventKind::Pause { .. } => Some(true),
+                    EventKind::Pause { .. } | EventKind::MigrateDefinition { .. } => Some(true),
                     EventKind::Resume { .. } | EventKind::Cancel => Some(false),
                     _ => None,
                 })

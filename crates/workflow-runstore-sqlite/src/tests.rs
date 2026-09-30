@@ -724,6 +724,7 @@ mod execution;
 mod gates;
 
 mod inbox;
+mod migration;
 mod models;
 
 mod effects;

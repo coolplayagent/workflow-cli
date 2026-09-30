@@ -16,6 +16,27 @@ pub(crate) fn lock_bindings(c: &Connection, bundle: &CompiledBundle, create: boo
     }
     Ok(())
 }
+/// Read-only compatibility preflight. New version identities are allowed;
+/// rebinding any identity already retained by this store is refused.
+pub(crate) fn compatible(c: &Connection, bundle: &CompiledBundle) -> Result<()> {
+    for binding in bundle_bindings(bundle)? {
+        let prior: Option<String> = c
+            .query_row(
+                "SELECT digest FROM binding_locks WHERE kind=?1 AND id=?2 AND version=?3",
+                params![binding.kind, binding.id, binding.version],
+                |r| r.get(0),
+            )
+            .optional()
+            .map_err(storage)?;
+        if prior.is_some_and(|digest| digest != binding.digest) {
+            return Err(Error::new(
+                ErrorCode::BindingConflict,
+                "target changes a retained immutable version; publish a new identity",
+            ));
+        }
+    }
+    Ok(())
+}
 
 /// The complete immutable identity catalog, computed without starting a run.
 /// Publishers and transaction reducers use the same digests and sorted lock order.

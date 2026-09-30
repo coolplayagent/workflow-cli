@@ -108,6 +108,34 @@ pub(crate) fn read(
         return Err(corrupt("gate events and fenced execution proofs differ"));
     }
     effects::verify_coverage(r, &records)?;
+    let migration_events: std::collections::BTreeSet<_> = r
+        .events
+        .iter()
+        .filter(|e| {
+            matches!(
+                e.event.kind,
+                workflow_kernel::EventKind::MigrateDefinition { .. }
+            )
+        })
+        .map(|e| e.event.event_id.as_str())
+        .collect();
+    let migrations: Vec<_> = records
+        .iter()
+        .filter_map(|r| match &r.action {
+            ExecutionAction::Migrated { migration } => Some(migration.event_id.as_str()),
+            _ => None,
+        })
+        .collect();
+    if migrations.len() != migration_events.len()
+        || migrations
+            .into_iter()
+            .collect::<std::collections::BTreeSet<_>>()
+            != migration_events
+    {
+        return Err(corrupt(
+            "definition migration events and fenced authority proofs differ",
+        ));
+    }
     if count != number(authority.sequence)? || chain != expected {
         return Err(corrupt("execution journal disagrees with its head"));
     }

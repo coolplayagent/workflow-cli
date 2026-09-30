@@ -5,6 +5,7 @@ mod db;
 mod execution;
 mod image;
 mod inbox;
+mod migration;
 pub use image::{AdmissionWindow, ImageBinding, RunImage};
 mod reads;
 mod recovery;

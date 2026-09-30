@@ -43,6 +43,9 @@ pub enum Claimed {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)]
 pub enum ExecutionAction {
+    Migrated {
+        migration: Box<crate::MigrationAuthority>,
+    },
     Restored {
         recovery: crate::RecoveryBarrier,
         at_unix_ms: u64,

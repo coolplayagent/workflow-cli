@@ -9,10 +9,11 @@ pub(crate) fn verify_subjects(
     artifacts: Option<&dyn workflow_artifacts::ArtifactReader>,
 ) -> Result<()> {
     for entry in engine.snapshot().inbox.values() {
-        if !matches!(entry.status, workflow_kernel::SignalStatus::Applied { .. }) {
+        let workflow_kernel::SignalStatus::Applied { revision, .. } = entry.status else {
             continue;
-        }
-        for link in engine.wait_subjects(entry.message.target.instance_id)? {
+        };
+        let accepted = engine.at_revision(revision)?;
+        for link in accepted.wait_subjects(entry.message.target.instance_id)? {
             let reader = artifacts.ok_or_else(|| {
                 Error::new(
                     ErrorCode::ArtifactUnavailable,

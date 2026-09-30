@@ -119,6 +119,15 @@ impl SqliteRunStore {
         hook: impl Fn(&str),
     ) -> Result<Committed> {
         workflow_worker::to_message(event)?;
+        if matches!(
+            event.kind,
+            workflow_kernel::EventKind::MigrateDefinition { .. }
+        ) {
+            return Err(Error::new(
+                ErrorCode::InvalidRequest,
+                "definition migration requires the fenced migration operation",
+            ));
+        }
         if matches!(event.kind, workflow_kernel::EventKind::GateEvaluated { .. }) {
             return Err(Error::new(
                 ErrorCode::InvalidRequest,

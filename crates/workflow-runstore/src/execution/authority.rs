@@ -132,6 +132,35 @@ impl Authority {
     }
     fn reduce(&mut self, action: &ExecutionAction) -> Result<()> {
         let now = match action {
+            ExecutionAction::Migrated { migration } => {
+                migration.validate(&self.run_id)?;
+                self.current(migration.epoch, migration.at_unix_ms)?;
+                if self.recovery.is_some() || !self.effects.is_empty() {
+                    return Err(Error::new(
+                        ErrorCode::MigrationBlocked,
+                        "definition migration cannot replay a recovery barrier or retained business effects",
+                    ));
+                }
+                if self.attempts.values().any(|a| {
+                    a.outcome.is_none()
+                        && a.prepared.epoch == migration.epoch
+                        && a.prepared.request.deadline_unix_ms > migration.at_unix_ms
+                }) {
+                    return Err(Error::new(
+                        ErrorCode::AttemptInProgress,
+                        "drain live task attempts before definition migration",
+                    ));
+                }
+                if !self.generations.insert(migration.generation.clone()) {
+                    return Err(Error::new(
+                        ErrorCode::InvalidRequest,
+                        "migration generation was already used",
+                    ));
+                }
+                self.generation = Some(migration.generation.clone());
+                self.released = true;
+                migration.at_unix_ms
+            }
             ExecutionAction::Restored {
                 recovery,
                 at_unix_ms,

@@ -11,6 +11,7 @@ pub(crate) struct Seed {
     pub started_at_unix_ms: u64,
     pub limits: Limits,
 }
+#[derive(Clone)]
 pub(crate) struct Recovered {
     pub engine: Engine,
     pub events: Vec<RecordedEvent>,
@@ -110,6 +111,10 @@ pub(crate) fn recover(
         let event: Event = decode(&text, &hash)?;
         if event.event_id != event_id || rev != full.snapshot().revision + 1 {
             return Err(corrupt("event sequence/identity mismatch"));
+        }
+        if let workflow_kernel::EventKind::MigrateDefinition { plan } = &event.kind {
+            let target = CompiledBundle::compile(plan.request.target_bundle.clone())?;
+            crate::migration::retained_bundle(c, &target, false)?;
         }
         let t = full.apply(event.clone()).map_err(|e| corrupt(e.message))?;
         if t.duplicate || t.revision != rev {
