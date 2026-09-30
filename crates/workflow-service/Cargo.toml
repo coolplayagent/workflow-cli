@@ -30,6 +30,8 @@ libc = "0.2"
 getrandom = "0.4.3"
 
 [dev-dependencies]
+workflow-models = { path = "../workflow-models" }
+workflow-model-http = { path = "../workflow-model-http" }
 workflow-effect-http = { path = "../workflow-effect-http" }
 workflow-runstore-sqlite = { path = "../workflow-runstore-sqlite" }
 workflow-runtime = { path = "../workflow-runtime" }

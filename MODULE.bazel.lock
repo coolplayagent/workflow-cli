@@ -498,7 +498,7 @@
           "REPO_MAPPING:rules_rust+,bazel_skylib bazel_skylib+",
           "REPO_MAPPING:rules_rust+,bazel_tools bazel_tools",
           "REPO_MAPPING:rules_rust+,rules_cc rules_cc+",
-          "FILE:@@//Cargo.lock e02f0ac34220b6d65e4741449bf1ff456a9af3f58a3f1428f84e0555e1eadcc6",
+          "FILE:@@//Cargo.lock 814692121070903be30544a9a0879a1f1e02c551898be073aea8e06021f60ab8",
           "FILE:@@//Cargo.toml ac3a1296e62b382cbff85c5f7257e7a28660bf2e7081ad840e2e4d08e488aa81",
           "FILE:@@//crates/workflow-ir/Cargo.toml 81e0c679680f0f693efaa82b49261b0bad5a629adf72b97c2824748740b665b3",
           "FILE:@@//crates/workflow-validator/Cargo.toml 661c46420b2f4f69530fd81e6a26ccf8dcd0443ff5f61dd9db2f5a208cd2011e",
@@ -522,7 +522,7 @@
           "FILE:@@//crates/workflow-model-http/Cargo.toml 492fc360505d54951fbed822623312564f9b08eebf1e04e318f4eb501e64d99a",
           "FILE:@@//crates/workflow-runstore-postgres/Cargo.toml 0001009c4dad9fcdee77aabfcb55ecd0bcfce2e7db2bc0151308213a1de907d2",
           "FILE:@@//crates/workflow-runtime/Cargo.toml c7648884812c4c514ce2c0076e37b429ca784c3008b91360cc6f9629da7e95be",
-          "FILE:@@//crates/workflow-service/Cargo.toml 9bff6a6e39dbc97f8f0ddc273980804c9265515a585733e557a5929ff7266a36",
+          "FILE:@@//crates/workflow-service/Cargo.toml d93912c2b636d6e22c7af0125d3023944527bc6c8d06cac1b64418c98f1d5630",
           "FILE:@@//crates/workflow-workspace-local/Cargo.toml cd6fe1eb1ed2efce803aee4d6e2aaff189059e497da1b416370a255d9ebca01f",
           "FILE:@@//crates/workflow-workspaces/Cargo.toml eba5fc770a5b3c88681ac838c07ca903f110bf82f9af8bdc1393c018ddc20a27"
         ],

@@ -207,6 +207,7 @@ fn https_effect_worker_crash_recovers_provider_receipt_without_duplicate_write()
     let successor = credential(&mut service, &admin, "successor", Role::Scheduler);
     let cap = workflow_worker::Capability::new(start.bundle.capabilities[0].clone()).unwrap();
     let rule = CapabilityRule {
+        model_policy: None,
         id: cap.descriptor().capability.id.clone(),
         version: cap.descriptor().capability.version.clone(),
         contract_digest: cap.digest().into(),

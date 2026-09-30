@@ -93,6 +93,8 @@ The [workflow-workspace Skill](skills/workflow-workspace/SKILL.md) and [workspac
 cover host-managed attempt directories and typed output capture.
 The [workflow-model Skill](skills/workflow-model/SKILL.md) and [model execution guide](docs/model-execution.md)
 cover frozen policies, provider replacement and explicit decision replay.
+The [R02 acceptance guide](docs/model-boundaries-acceptance.md) covers the component
+interfaces and shared local/remote model contracts.
 
 ```sh
 cargo run --locked -- kernel replay examples/kernel/review-approved.json

@@ -50,3 +50,4 @@ jobs:
       - run: cargo test -p workflow-service --locked -- --ignored --nocapture --test-threads=1
       - run: cargo build -p workflow-cli --locked
       - run: python3 examples/validation/https-cli.py target/debug/workflow
+      - run: python3 examples/models/https-cli.py target/debug/workflow

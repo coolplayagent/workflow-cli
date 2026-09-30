@@ -1,6 +1,7 @@
 use super::*;
 mod artifacts;
 mod effects;
+mod models;
 mod validation;
 mod waits;
 use serde_json::{Value, json};
@@ -46,7 +47,7 @@ fn db() -> postgres::Client {
     )
     .unwrap()
 }
-fn call(c: &RemoteClient, operation: Operation) -> Result<Response> {
+fn call(c: &(impl TaskTransport + ?Sized), operation: Operation) -> Result<Response> {
     c.call(&Request {
         protocol_version: 1,
         request_id: "test".into(),
@@ -122,6 +123,7 @@ impl Harness {
         let child = Command::new(std::env::current_exe().unwrap())
             .args(["--exact", "tests::service_child", "--nocapture"])
             .env("WORKFLOW_SERVICE_CHILD", spec.to_string())
+            .env("WORKFLOW_MODEL_FIXTURE_KEY", "sandbox-model-key")
             .stdout(Stdio::from(log.try_clone().unwrap()))
             .stderr(Stdio::from(log))
             .spawn()
@@ -190,6 +192,7 @@ fn service_child() {
     };
     let s: Value = serde_json::from_str(&spec).unwrap();
     match s["kind"].as_str().unwrap() {
+        "model_worker" => models::model_worker(&s),
         "effect_worker_crash" => effects::crashing_worker(&s),
         "server" => {
             let binding: ServerBinding =
@@ -473,6 +476,7 @@ fn credential(
             .map(|d| {
                 let c = workflow_worker::Capability::new(d).unwrap();
                 CapabilityRule {
+                    model_policy: None,
                     effect: None,
                     id: c.descriptor().capability.id.clone(),
                     version: c.descriptor().capability.version.clone(),

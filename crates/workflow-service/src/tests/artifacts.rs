@@ -61,6 +61,7 @@ fn tls_artifact_transfer_resume_binding_and_result_recovery_contract() {
             "producer",
             Role::Worker,
             &[CapabilityRule {
+                model_policy: None,
                 effect: None,
                 id: "fixture.report".into(),
                 version: "1.0.0".into(),

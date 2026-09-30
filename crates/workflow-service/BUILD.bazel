@@ -15,5 +15,5 @@ rust_test(
     size = "small",
     crate = ":workflow_service",
     data = ["//:fixtures"],
-    deps = ["//crates/workflow-effect-http:workflow_effect_http", "//crates/workflow-runstore-sqlite:workflow_runstore_sqlite", "//crates/workflow-runtime:workflow_runtime", "//crates/workflow-builtin-capabilities:workflow_builtin_capabilities"] + all_crate_deps(normal_dev = True),
+    deps = ["//crates/workflow-models:workflow_models", "//crates/workflow-model-http:workflow_model_http", "//crates/workflow-effect-http:workflow_effect_http", "//crates/workflow-runstore-sqlite:workflow_runstore_sqlite", "//crates/workflow-runtime:workflow_runtime", "//crates/workflow-builtin-capabilities:workflow_builtin_capabilities"] + all_crate_deps(normal_dev = True),
 )

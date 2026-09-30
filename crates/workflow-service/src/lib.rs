@@ -6,11 +6,13 @@ mod client;
 mod execution;
 mod protocol;
 mod server;
+mod transport;
 pub use binding::*;
 pub use client::*;
 pub use execution::*;
 pub use protocol::*;
 pub use server::*;
+pub use transport::{InProcessTransport, TaskTransport};
 pub use workflow_runstore::{Error, ErrorCode, Result};
 
 fn invalid() -> Error {

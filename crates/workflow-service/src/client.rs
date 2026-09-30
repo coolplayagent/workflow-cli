@@ -39,6 +39,7 @@ impl RemoteClient {
             .http1_only()
             .no_proxy()
             .redirect(reqwest::redirect::Policy::none())
+            .retry(reqwest::retry::never())
             .connect_timeout(Duration::from_secs(5))
             .timeout(Duration::from_millis(binding.timeout_ms))
             .build()
@@ -49,20 +50,9 @@ impl RemoteClient {
     /// can rotate credentials without changing the workflow or recreating client.
     /// No automatic replay: an unavailable reply may follow a committed mutation.
     pub fn call(&self, request: &Request) -> Result<Response> {
-        request.validate()?;
-        let bytes = serde_json::to_vec(request).map_err(|_| invalid())?;
-        if bytes.len() > MAX_REQUEST_BYTES {
-            return Err(invalid());
-        }
+        let bytes = transport::encode_request(request)?;
         let secret = self.binding.credential.resolve()?;
-        if secret.expose().len() != 68
-            || !secret.expose().starts_with("wf1_")
-            || !secret.expose()[4..]
-                .bytes()
-                .all(|b| b.is_ascii_hexdigit() && !b.is_ascii_uppercase())
-        {
-            return Err(invalid());
-        }
+        transport::validate_credential(&secret)?;
         let reply = self
             .client
             .post(&self.binding.endpoint)
@@ -88,13 +78,6 @@ impl RemoteClient {
             return Err(invalid());
         }
         let reply: Reply = serde_json::from_slice(&bytes).map_err(|_| unavailable())?;
-        if reply.protocol_version != PROTOCOL_VERSION || reply.request_id != request.request_id {
-            return Err(invalid());
-        }
-        match reply.result {
-            Ok(response) if status.is_success() && request.accepts(&response) => Ok(response),
-            Err(e) if !status.is_success() => Err(Error::new(e.code, "remote operation rejected")),
-            _ => Err(invalid()),
-        }
+        transport::accept_reply(request, reply, status.is_success())
     }
 }

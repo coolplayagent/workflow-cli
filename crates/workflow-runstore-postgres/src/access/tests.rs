@@ -83,6 +83,7 @@ fn rules() -> Vec<CapabilityRule> {
         .map(|d| {
             let c = workflow_worker::Capability::new(d).unwrap();
             CapabilityRule {
+                model_policy: None,
                 effect: None,
                 id: c.descriptor().capability.id.clone(),
                 version: c.descriptor().capability.version.clone(),

@@ -63,12 +63,15 @@ pub struct CapabilityRule {
     pub artifacts: Option<ArtifactPolicy>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub effect: Option<EffectRule>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub model_policy: Option<workflow_worker::ModelPolicyBinding>,
 }
 impl CapabilityRule {
     fn matches(&self, request: &workflow_worker::WorkRequest) -> bool {
         self.id == request.capability.id
             && self.version == request.capability.version
             && self.contract_digest == request.contract_digest
+            && self.model_policy == request.model_policy
     }
 }
 
@@ -227,6 +230,15 @@ fn issue(
     }
     let mut unique = std::collections::BTreeSet::new();
     for c in capabilities {
+        if let Some(policy) = &c.model_policy {
+            policy.validate()?;
+            if c.effect.is_some() {
+                return Err(Error::new(
+                    ErrorCode::InvalidRequest,
+                    "model policy and external effect permissions require separate contracts",
+                ));
+            }
+        }
         if let Some(effect) = &c.effect {
             effect.validate()?;
         }

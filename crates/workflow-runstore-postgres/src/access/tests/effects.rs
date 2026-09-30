@@ -16,6 +16,7 @@ fn effect_request() -> StartRun {
 fn rule(start: &StartRun) -> CapabilityRule {
     let cap = workflow_worker::Capability::new(start.bundle.capabilities[0].clone()).unwrap();
     CapabilityRule {
+        model_policy: None,
         id: cap.descriptor().capability.id.clone(),
         version: cap.descriptor().capability.version.clone(),
         contract_digest: cap.digest().into(),
@@ -571,6 +572,7 @@ fn effect_shared_compensation_order_and_manual_takeover() {
         .map(|d| {
             let cap = workflow_worker::Capability::new(d.clone()).unwrap();
             CapabilityRule {
+                model_policy: None,
                 id: d.capability.id.clone(),
                 version: d.capability.version.clone(),
                 contract_digest: cap.digest().into(),

@@ -15,6 +15,7 @@ and credential lookup belong to a separate host binding.
 | `workflow-worker` | Exact capability/policy selection, request/grant/output validation and invocation deadlines |
 | `workflow-kernel` | Resolve frozen policies and tool contracts; deterministic transitions without model/network calls |
 | `workflow-runstore-sqlite` | Immutable policy version locks, lease-fenced result settlement and record verification on recovery |
+| `workflow-service` / PostgreSQL access | Scoped model-policy grants, HTTPS task delivery and transactional verification of the same records |
 | `workflow-cli` | Compose registered tools and host bindings, run the driver, inspect policies and replay records |
 
 Each component is an explicit Bazel `rust_library`. Provider libraries do not
@@ -86,6 +87,57 @@ The binding authorizes sending the task's input values, frozen policy and explic
 prior tool observations to that endpoint. Host operators must choose endpoints
 and data access consistent with their task authorization. A read-only adapter
 contract is not an operating system sandbox or a general prompt-injection defense.
+
+## Remote model workers
+
+The same prepared request, execution grant and model record cross the existing
+authenticated HTTPS task protocol. A worker credential must allow the exact task
+capability ID/version/digest and include its frozen `model_policy` binding:
+
+```json
+{
+  "model_policy": {
+    "policy": {"id":"sop.inspect-policy","version":"1.0.0"},
+    "digest":"COPY_THE_DIGEST_FROM_CHECK_POLICY"
+  }
+}
+```
+
+This is a fragment of `CapabilityRule`; obtain the real digest from `check-policy`
+as above. Its `task_contract_digest` supplies the rule's `contract_digest`.
+A capability-only credential does not authorize model execution.
+Changing the goal, tools or budget changes the policy digest and requires a new
+grant. One credential grants one policy per task capability ID/version; provision
+distinct identities for different policies using that same task contract.
+
+Give the worker the published bundle and its host provider bindings. The bundle
+contains policies and contracts; credentials and endpoints stay in host bindings.
+For the example, extract `bundle` from the start document, then run:
+
+```sh
+workflow remote work-models worker-client.json bundle.json model-bindings.json 1000 100
+```
+
+The ordinary remote scheduler dispatches these tasks. `work-models` registers
+the builtin tools and frozen model adapters, verifies local bindings before
+polling, and uses the same `work_once` implementation as deterministic workers.
+Both local registration and server dispatch require the full policy digest.
+The server reconstructs the authoritative assignment before accepting a result;
+missing or inconsistent records, wrong workers and stale leases cannot commit.
+`settled_tasks` includes recorded model failures; inspect run status for success.
+
+The HTTPS envelope remains version 1 while its assigned model request/result use
+worker protocol 2. Older provisioning commands reject the new grant field;
+older builtin-only workers cannot execute a model policy. Roll out the server
+and scoped model worker before assigning model work. Provider substitution changes
+only the worker's HTTP binding, and replay never invokes that provider again.
+
+`https_model_bindings_records_failures_and_policy_authority_contract` uses real
+HTTPS/PostgreSQL and separate worker processes with a deterministic adapter and
+both provider HTTP formats. It checks equal business outputs against in-process
+execution, policy denial/rollback, forged-result rejection, provider outage and
+illegal transition proposals, and reopening without more provider calls. These
+are sandbox protocol fixtures, not live-model quality or cost measurements.
 
 ## Records, protocol and recovery
 
@@ -162,6 +214,9 @@ these tests establish wire and authority behavior, not live service compatibilit
 or model quality. Storage migration was also exercised against an actual prior
 v4 binary/database, preserving snapshots and execution records byte for byte.
 
-R02 remains open for authenticated remote execution and durable write effects.
-Run-wide cost accounting, model quality evaluation, isolated tools, workspace/gate
-binding and automatic artifact publication remain separate roadmap work.
+The [R02 acceptance guide](model-boundaries-acceptance.md) maps the public
+interfaces, local/remote contract matrix and executable provider replacement
+example. Dynamic model tools remain read-only; declared write nodes use the
+durable effect executor and separate effect permissions. Run-wide cost accounting,
+model quality evaluation, isolated tools, workspace/gate binding and automatic
+artifact publication remain separate roadmap work.

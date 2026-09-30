@@ -1,8 +1,8 @@
 schema_version: 4
 artifact_kind: map
 map_type: knowledge
-map_version: 24
-updated_at: unix:1790668141
+map_version: 25
+updated_at: unix:1790734098
 directories:
 - directory: domain
   purpose: Domain concepts, models, and business rules.
@@ -60,6 +60,7 @@ topics:
   - definition-acceptance
   - definition-authoring
   - definition-semantics
+  - durable-approval
   - durable-effects
   - event-inbox
   - kernel-semantics
@@ -77,8 +78,8 @@ topics:
   - shared-artifacts
   - worker-protocol
   - workflow-evidence-gates
-  ref: topics/topic-4ca303a3bf7ddf7b-0dca8f8a52d555b98c7b7579cad5e7eb4abd2b3ef48cdefff23882ac893279f8.yaml
-  digest: 0dca8f8a52d555b98c7b7579cad5e7eb4abd2b3ef48cdefff23882ac893279f8
+  ref: topics/topic-4ca303a3bf7ddf7b-775e9c1c38d7d6a80b7f02b5487b337b552bc4647706b445bea01fbd8ac39632.yaml
+  digest: 775e9c1c38d7d6a80b7f02b5487b337b552bc4647706b445bea01fbd8ac39632
 - id: business-knowledge
   title: Business knowledge
   description: Version-controlled business domains, terminology, aliases, semantics, and technical mappings.
@@ -94,12 +95,8 @@ topics:
   ref: topics/topic-247e2a0d6f43d185-fc2d5534a38a5ddc28536afa855ff77db8e2941ccaccbfa79f948ddcfaec2f7d.yaml
   digest: fc2d5534a38a5ddc28536afa855ff77db8e2941ccaccbfa79f948ddcfaec2f7d
 history:
-  omitted_through: 8
+  omitted_through: 9
   recent:
-  - version: 9
-    action: source.add
-    actor: cli
-    summary: Added source 'workflow-evidence-gates' to topic 'architecture'.
   - version: 10
     action: source.add
     actor: cli
@@ -160,3 +157,7 @@ history:
     action: source.add
     actor: cli
     summary: Added source 'remote-effects' to topic 'architecture'.
+  - version: 25
+    action: source.add
+    actor: cli
+    summary: Added source 'durable-approval' to topic 'architecture'.
