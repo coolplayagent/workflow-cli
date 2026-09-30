@@ -4,6 +4,8 @@
 //! Network TLS lives in workflow-service; external I/O stays on assigned workers.
 use crate::*;
 use serde::{Deserialize, Serialize};
+mod audit_export;
+pub use audit_export::AuditExport;
 mod artifact_catalog;
 mod artifact_download;
 mod artifact_policy;
@@ -377,6 +379,9 @@ impl AuthenticatedService {
         f: impl FnOnce(&mut Transaction<'_>, &Identity) -> Result<T>,
     ) -> Result<T> {
         validate_id(resource)?;
+        if resource.contains(token) {
+            return Err(denied());
+        }
         let mut tx = self.client.transaction().map_err(storage)?;
         PostgresRunStore::transaction_settings(&mut tx)?;
         let who = authenticate(&mut tx, token)?;

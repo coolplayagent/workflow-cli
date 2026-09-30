@@ -6,7 +6,7 @@ use workflow_runstore_postgres::access::{
     ArtifactUploadRequest, AuthenticatedService, CapabilityRule, Role,
 };
 use workflow_service::*;
-pub const HELP: &str = "REMOTE SERVICE\n  workflow service serve <server-binding.json>\n  workflow service fence-restored <isolated-server-binding.json> <restore-request.json> <private-administrator-output>\n  workflow service init-artifacts <server-binding.json>\n  workflow service init-effects <server-binding.json>\n  workflow service migrate-access <server-binding.json>\n  workflow service bootstrap <server-binding.json> <tenant> <project> <actor> <private-token-output>\n  workflow service issue <server-binding.json> <admin-secret-ref.json> <provision.json> <private-token-output>\n  workflow remote call <client-binding.json> <request.json>\n  workflow remote validate <client-binding.json> <file.json|file.yaml>\n  workflow remote artifact-upload <client-binding.json> <assignment-id> <request-id> <artifact-type.json> <content-file>\n  workflow remote artifact-download <client-binding.json> <download-request.json> <private-output>\n  workflow remote work <client-binding.json> <iterations> <poll-ms>\n  workflow remote work-models <client-binding.json> <bundle.json> <model-bindings.json> <iterations> <poll-ms>\n  workflow remote work-effects <client-binding.json> <effect-bindings.json> <iterations> <poll-ms>\n  workflow remote schedule <client-binding.json> <scheduler.json> <iterations> <poll-ms>\n\nTLS and a scoped bearer are required. Bindings contain secret references, never literal tokens.\nCredential creation is a trusted local administrative operation with exclusive 0600 output.\nwork executes registered builtin read-only capabilities; work-models adds frozen model policies using host provider bindings; work-effects also invokes explicitly bound gateways. Scheduler effects require effects:true. Iterations are bounded; service managers may supervise commands.\n";
+pub const HELP: &str = "REMOTE SERVICE\n  workflow service serve <server-binding.json>\n  workflow service fence-restored <isolated-server-binding.json> <restore-request.json> <private-administrator-output>\n  workflow service init-artifacts <server-binding.json>\n  workflow service init-effects <server-binding.json>\n  workflow service migrate-access <server-binding.json>\n  workflow service bootstrap <server-binding.json> <tenant> <project> <actor> <private-token-output>\n  workflow service issue <server-binding.json> <admin-secret-ref.json> <provision.json> <private-token-output>\n  workflow remote call <client-binding.json> <request.json>\n  workflow remote audit-export <client-binding.json> <new-private-output>\n  workflow remote validate <client-binding.json> <file.json|file.yaml>\n  workflow remote artifact-upload <client-binding.json> <assignment-id> <request-id> <artifact-type.json> <content-file>\n  workflow remote artifact-download <client-binding.json> <download-request.json> <private-output>\n  workflow remote work <client-binding.json> <iterations> <poll-ms>\n  workflow remote work-models <client-binding.json> <bundle.json> <model-bindings.json> <iterations> <poll-ms>\n  workflow remote work-effects <client-binding.json> <effect-bindings.json> <iterations> <poll-ms>\n  workflow remote schedule <client-binding.json> <scheduler.json> <iterations> <poll-ms>\n\nTLS and a scoped bearer are required. Bindings contain secret references, never literal tokens.\nCredential creation is a trusted local administrative operation with exclusive 0600 output.\nwork executes registered builtin read-only capabilities; work-models adds frozen model policies using host provider bindings; work-effects also invokes explicitly bound gateways. Scheduler effects require effects:true. Iterations are bounded; service managers may supervise commands.\n";
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 struct Provision {
@@ -123,12 +123,12 @@ pub fn run(args: &[&str], stdout: &mut impl Write, stderr: &mut impl Write) -> i
                 let client = RemoteClient::new(read(binding)?)?;
                 let bundle: workflow_kernel::BundleSpec = read(bundle)?;
                 workflow_kernel::CompiledBundle::compile(bundle.clone())?;
-                let worker = crate::models::worker(&bundle, models)?;
+                let (worker, principal) = crate::models::shared_worker(&bundle, models)?;
                 let mut completed = 0;
                 let mut failed = 0;
                 let mut fenced = 0;
                 for i in 0..iterations {
-                    let report = work_once(&client, &worker, 100)?;
+                    let report = work_once_bound(&client, &worker, 100, principal.as_ref())?;
                     completed += report.completed;
                     failed += report.failed;
                     fenced += report.fenced;
@@ -151,14 +151,28 @@ pub fn run(args: &[&str], stdout: &mut impl Write, stderr: &mut impl Write) -> i
             ["remote", "work-effects", binding, effects, iterations, poll] => {
                 let (iterations, poll) = bounds(iterations, poll)?;
                 let client = RemoteClient::new(read(binding)?)?;
-                let effects = workflow_effect_http::HttpEffects::new(read(effects)?)?;
+                let bindings: Vec<workflow_effect_http::HttpEffectBinding> = read(effects)?;
+                let mut principal = None;
+                for binding in &bindings {
+                    if let Some(p) = binding.shared_principal()? {
+                        if principal.as_ref().is_some_and(|old| old != p) {
+                            return Err(Error::new(
+                                ErrorCode::InvalidRequest,
+                                "shared gateway identities differ",
+                            ));
+                        }
+                        principal = Some(p.clone());
+                    }
+                }
+                let effects = workflow_effect_http::HttpEffects::new(bindings)?;
                 let worker = workflow_builtin_capabilities::worker()?;
                 let mut observed = 0;
                 let mut failed = 0;
                 let mut completed = 0;
                 let mut fenced = 0;
                 for i in 0..iterations {
-                    let effects = work_effects_once(&client, &effects, 100)?;
+                    let effects =
+                        work_effects_once_bound(&client, &effects, 100, principal.as_ref())?;
                     let tasks = work_once(&client, &worker, 100)?;
                     observed += effects.completed;
                     completed += tasks.completed;
@@ -268,6 +282,28 @@ pub fn run(args: &[&str], stdout: &mut impl Write, stderr: &mut impl Write) -> i
                 write_credential(Path::new(output), &credential)?;
                 Ok(
                     json!({"credential_id":credential.id,"expires_at_unix_ms":credential.expires_at_unix_ms}),
+                )
+            }
+            ["remote", "audit-export", binding, output] => {
+                let client = RemoteClient::new(read(binding)?)?;
+                let Response::AuditExport(report) = client.call(&Request {
+                    protocol_version: PROTOCOL_VERSION,
+                    request_id: "audit-export".into(),
+                    operation: Operation::ExportAudit,
+                })?
+                else {
+                    return Err(Error::new(
+                        ErrorCode::InvalidRequest,
+                        "audit export response differs",
+                    ));
+                };
+                report.verify()?;
+                let bytes = serde_json::to_vec_pretty(&report).map_err(|_| {
+                    Error::new(ErrorCode::InvalidRequest, "audit export encoding failed")
+                })?;
+                write_private_output(Path::new(output), &bytes)?;
+                Ok(
+                    json!({"tenant":report.tenant,"project":report.project,"entries":report.entries.len(),"digest":report.digest}),
                 )
             }
             ["remote", "call", binding, request] => {

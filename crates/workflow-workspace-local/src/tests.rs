@@ -611,6 +611,37 @@ fn child(f: &Fixture) -> Command {
     c
 }
 #[test]
+fn git_object_reader_subprocess_does_not_inherit_host_credentials() {
+    use std::os::unix::fs::PermissionsExt;
+    let f = Fixture::new();
+    fs::write(f.dir.join("spec.json"), to_message(&f.spec).unwrap()).unwrap();
+    let original = Command::new("sh")
+        .args(["-c", "command -v git"])
+        .output()
+        .unwrap();
+    assert!(original.status.success());
+    let original = String::from_utf8(original.stdout).unwrap();
+    let executable = original.trim().replace('\'', "'\\''");
+    let bin = f.dir.join("bin");
+    fs::create_dir(&bin).unwrap();
+    let shim = bin.join("git");
+    fs::write(&shim,format!("#!/bin/sh\nif test -n \"${{WORKFLOW_FIXTURE_SECRET+x}}\"; then exit 77; fi\nexec '{executable}' \"$@\"\n")).unwrap();
+    fs::set_permissions(shim, fs::Permissions::from_mode(0o700)).unwrap();
+    let paths = std::env::join_paths(
+        std::iter::once(bin).chain(std::env::split_paths(&std::env::var_os("PATH").unwrap())),
+    )
+    .unwrap();
+    assert!(
+        child(&f)
+            .env("PATH", paths)
+            .env("WORKFLOW_FIXTURE_SECRET", "fixture-private-key")
+            .status()
+            .unwrap()
+            .success()
+    );
+    assert!(f.store().observe(&f.checkout().link()).unwrap().clean);
+}
+#[test]
 fn process_termination_never_publishes_a_partial_tree_and_cleanup_retains_committed_edits() {
     for phase in [
         "file_written",

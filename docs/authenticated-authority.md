@@ -99,7 +99,7 @@ expiry/commit failure can roll back the audit with the entire transaction.
 Caller-supplied workflow content is still application data; this API does not
 claim to detect arbitrary secrets deliberately embedded in it.
 
-The schema is additive (`workflow_access`, version 1); it neither alters existing
+The schema is additive (`workflow_access`, version 2); it neither alters existing
 run images nor upgrades an unknown access schema. Administrative DB access can
 modify these tables, so deployment must restrict it and apply backup/retention
 policy. This is not a tamper-proof audit or an independent identity provider.
@@ -110,12 +110,12 @@ scheduler/worker processes. Its real PostgreSQL acceptance fixture kills an owne
 among two schedulers and three workers, resumes a stale worker, and compares the
 result with local execution.
 
-R14 and R09 remain open. Enterprise identity provisioning, provider secret grants,
-artifact archive/deletion policy, sandbox/resource/egress restrictions,
-scoped export/restore with ownership, shared definition lifecycle, scheduling quotas/fairness, version routing and
-production performance/fault evidence remain required. The service guide states
-the supported transport and fault model; these library tests make no throughput
-claim.
+[R14 acceptance](security-acceptance.md) now defines the authenticated execution
+boundary, broker credential leases, private audit export and retention/archive
+policy. Shared definition migration and full scoped database restoration are
+implemented separately. R09 still owns scheduling quotas/fairness, routing/drain
+and performance/fault evidence. Enterprise identity provisioning and arbitrary
+third-party executable isolation remain privileged deployment integrations.
 
 The mandatory PostgreSQL CI job runs the ignored integration tests in this crate.
 They exercise real PostgreSQL locks through independent connections, cross-scope

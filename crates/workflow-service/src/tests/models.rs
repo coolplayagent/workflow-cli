@@ -144,6 +144,7 @@ impl WireProvider {
             provider: provider.clone(),
             model: "sandbox-model".into(),
             endpoint: format!("http://{}/model", listener.local_addr().unwrap()),
+            credential: None,
             api_key_env: "WORKFLOW_MODEL_FIXTURE_KEY".into(),
             allow_loopback_http: true,
         };

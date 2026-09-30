@@ -125,12 +125,25 @@ impl AuthenticatedService {
     /// Authenticated worker delivery. The host returns only its assigned request
     /// and execution contract, not the rest of the run or scheduler credential.
     pub fn assignment(&mut self, token: &str, assignment: &str) -> Result<PreparedTask> {
+        self.assignment_bound(token, assignment, None)
+    }
+    pub fn assignment_bound(
+        &mut self,
+        token: &str,
+        assignment: &str,
+        principal: Option<&workflow_credentials::Principal>,
+    ) -> Result<PreparedTask> {
         self.transact(
             token,
             &[Role::Worker],
             "assignment",
             assignment,
             |tx, who| {
+                if principal.is_some_and(|p| {
+                    p.tenant != who.tenant || p.project != who.project || p.actor != who.actor
+                }) {
+                    return Err(denied());
+                }
                 let a = load(tx, who, assignment)?;
                 if a.settled {
                     return Err(Error::new(

@@ -167,6 +167,16 @@
           "capability": {
             "$ref": "#/$defs/CapabilityDescriptor"
           },
+          "credential": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/LeaseRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "endpoint": {
             "type": "string"
           },
@@ -184,8 +194,7 @@
           "target",
           "call_identity",
           "capability",
-          "endpoint",
-          "api_key_env"
+          "endpoint"
         ],
         "type": "object"
       },
@@ -228,6 +237,43 @@
             "type": "object"
           }
         ]
+      },
+      "LeaseRef": {
+        "additionalProperties": false,
+        "description": "A reference to a broker-owned file, never a credential literal. Each call\nrereads the file, so atomic replacement rotates credentials without changing\nthe workflow, policy, host binding or running worker.",
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "principal": {
+            "$ref": "#/$defs/Principal"
+          }
+        },
+        "required": [
+          "path",
+          "principal"
+        ],
+        "type": "object"
+      },
+      "Principal": {
+        "additionalProperties": false,
+        "properties": {
+          "actor": {
+            "type": "string"
+          },
+          "project": {
+            "type": "string"
+          },
+          "tenant": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "tenant",
+          "project",
+          "actor"
+        ],
+        "type": "object"
       },
       "ValueType": {
         "oneOf": [

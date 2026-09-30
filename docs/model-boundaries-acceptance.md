@@ -82,7 +82,8 @@ principal, input, lease and effect permissions checked for every call. A model
 result can supply typed data to a declared subsequent node; it is not an effect
 grant. Arbitrary nested write tools are intentionally refused: no crash-safe
 intermediate model session is claimed. Adapter declarations are a trusted host
-boundary; process sandboxing is tracked in R07/R14.
+boundary; [R14](security-acceptance.md) specifies the registered executor and
+workspace isolation boundary, and the requirements for privileged custom adapters.
 
 ## Acceptance evidence
 

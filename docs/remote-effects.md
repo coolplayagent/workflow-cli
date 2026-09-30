@@ -140,4 +140,5 @@ or a partitioned provider. Provider key retention and authoritative query semant
 remain required; state fencing cannot physically prevent an already-running
 old worker from contacting an external system. No global exactly-once guarantee
 is made. Action-specific gate/approval consumption and workspace measurements
-remain R03 work; provider secret grants, sandboxing and retention remain R14 work.
+remain R03 work. [R14 acceptance](security-acceptance.md) defines provider lease
+references, principal-bound delivery, the registered executor boundary and retention.

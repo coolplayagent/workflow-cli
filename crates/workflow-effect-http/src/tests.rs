@@ -55,6 +55,7 @@ fn binding(p: &EffectAttempt, endpoint: String) -> HttpEffectBinding {
         call_identity: p.intent.policy.call_identity.clone(),
         capability: p.intent.capability.clone(),
         endpoint,
+        credential: None,
         api_key_env: "SANDBOX_TEST_TOKEN".into(),
         allow_loopback_http: true,
     }
@@ -155,8 +156,68 @@ fn replies_require_exact_attempt_binding_and_typed_provider_receipts() {
     }
 }
 #[test]
+fn successful_secret_reflections_leave_effect_unknown_for_reconciliation() {
+    for field in ["provider_receipt", "resource_id", "output", "reason"] {
+        let p = fixture();
+        let key = "sandbox-private-provider-key";
+        let (url, server) = server("200 OK", move |p| {
+            let receipt = EffectReceipt {
+                operation_key: p.intent.operation_key.clone(),
+                intent_digest: digest(&p.intent).unwrap(),
+                target: p.intent.policy.target.clone(),
+                resource_id: if field == "resource_id" {
+                    key
+                } else {
+                    "release-1"
+                }
+                .into(),
+                provider_receipt: if field == "provider_receipt" {
+                    key
+                } else {
+                    "record-1"
+                }
+                .into(),
+                outputs: [(
+                    "release_id".into(),
+                    if field == "output" { key } else { "release-1" }.into(),
+                )]
+                .into(),
+            };
+            let observation = if field == "reason" {
+                Observation::Unknown { reason: key.into() }
+            } else {
+                Observation::Applied { receipt }
+            };
+            serde_json::to_string(&EffectReply {
+                request_digest: digest(p).unwrap(),
+                observation,
+            })
+            .unwrap()
+            .replace("sandbox", r"\u0073andbox")
+        });
+        let result = HttpEffect::new(binding(&p, url))
+            .unwrap()
+            .execute_with_secret(&p, &Time(1000), key)
+            .unwrap();
+        assert!(matches!(result, Observation::Unknown { .. }));
+        assert!(!serde_json::to_string(&result).unwrap().contains(key));
+        server.join().unwrap();
+    }
+}
+#[test]
 fn unsafe_endpoint_or_changed_target_or_expired_call_is_refused_before_io() {
     let p = fixture();
+    assert!(
+        binding(&p, "https://example.com".into())
+            .shared_principal()
+            .is_err()
+    );
+    assert!(
+        binding(&p, "http://127.0.0.1:1234".into())
+            .shared_principal()
+            .unwrap()
+            .is_none()
+    );
     for url in [
         "http://example.com",
         "http://localhost:1",

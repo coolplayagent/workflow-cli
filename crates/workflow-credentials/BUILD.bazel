@@ -2,12 +2,12 @@ load("@crates//:defs.bzl", "all_crate_deps")
 load("@rules_rust//rust:defs.bzl", "rust_library", "rust_test")
 exports_files(["Cargo.toml"])
 rust_library(
-    name = "workflow_model_http",
+    name = "workflow_credentials",
     srcs = glob(["src/**/*.rs"]),
     crate_root = "src/lib.rs",
     edition = "2024",
-    deps = ["//crates/workflow-credentials:workflow_credentials", "//crates/workflow-models:workflow_models", "//crates/workflow-ir:workflow_ir"] + all_crate_deps(normal = True),
+    deps = all_crate_deps(normal = True),
     proc_macro_deps = all_crate_deps(proc_macro = True),
     visibility = ["//visibility:public"],
 )
-rust_test(name = "tests", size = "small", crate = ":workflow_model_http")
+rust_test(name = "tests", size = "small", crate = ":workflow_credentials")

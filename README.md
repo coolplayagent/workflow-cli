@@ -168,3 +168,5 @@ Shared database recovery and the R04 evidence matrix are documented in
 [shared recovery](docs/shared-recovery.md).
 
 Artifact/workspace execution, reviewed merges, stale-evidence policy and S3 interoperability are covered by the [R07 acceptance guide](docs/artifact-acceptance.md).
+
+Shared execution security, broker credential leases, audit export and admission evidence: [R14 security](docs/security-acceptance.md).

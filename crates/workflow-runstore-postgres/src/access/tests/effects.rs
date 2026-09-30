@@ -4,7 +4,7 @@ use workflow_effects::{
     Observation,
 };
 
-fn effect_request() -> StartRun {
+pub(super) fn effect_request() -> StartRun {
     let root = if let Ok(r) = std::env::var("TEST_SRCDIR") {
         std::path::PathBuf::from(r).join(std::env::var("TEST_WORKSPACE").unwrap())
     } else {
@@ -26,7 +26,7 @@ fn rule(start: &StartRun) -> CapabilityRule {
         }),
     }
 }
-fn setup(start: &StartRun) -> (Fixture, IssuedCredential, IssuedCredential, Lease) {
+pub(super) fn setup(start: &StartRun) -> (Fixture, IssuedCredential, IssuedCredential, Lease) {
     let mut f = Fixture::new();
     let maintainer = f.credential("maintainer", Role::DefinitionMaintainer);
     let runner = f.credential("runner", Role::Runner);
@@ -51,7 +51,7 @@ fn setup(start: &StartRun) -> (Fixture, IssuedCredential, IssuedCredential, Leas
         .unwrap();
     (f, scheduler, worker, lease)
 }
-fn dispatch(
+pub(super) fn dispatch(
     f: &mut Fixture,
     scheduler: &IssuedCredential,
     worker: &IssuedCredential,
@@ -68,7 +68,7 @@ fn dispatch(
 }
 // A synthetic provider receipt for authority tests; the HTTPS fault fixture uses
 // actual independently committed provider state instead.
-fn receipt(a: &EffectAttempt) -> Observation {
+pub(super) fn receipt(a: &EffectAttempt) -> Observation {
     Observation::Applied {
         receipt: EffectReceipt {
             operation_key: a.intent.operation_key.clone(),
