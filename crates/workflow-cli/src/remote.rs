@@ -6,7 +6,8 @@ use workflow_runstore_postgres::access::{
     ArtifactUploadRequest, AuthenticatedService, CapabilityRule, Role,
 };
 use workflow_service::*;
-pub const HELP: &str = "REMOTE SERVICE\n  workflow service serve <server-binding.json>\n  workflow service fence-restored <isolated-server-binding.json> <restore-request.json> <private-administrator-output>\n  workflow service init-artifacts <server-binding.json>\n  workflow service init-effects <server-binding.json>\n  workflow service migrate-access <server-binding.json>\n  workflow service bootstrap <server-binding.json> <tenant> <project> <actor> <private-token-output>\n  workflow service issue <server-binding.json> <admin-secret-ref.json> <provision.json> <private-token-output>\n  workflow remote call <client-binding.json> <request.json>\n  workflow remote audit-export <client-binding.json> <new-private-output>\n  workflow remote acceptance <client-binding.json> <run-id> <new-private-output>\n  workflow remote validate <client-binding.json> <file.json|file.yaml>\n  workflow remote artifact-upload <client-binding.json> <assignment-id> <request-id> <artifact-type.json> <content-file>\n  workflow remote artifact-download <client-binding.json> <download-request.json> <private-output>\n  workflow remote work <client-binding.json> <iterations> <poll-ms>\n  workflow remote work-models <client-binding.json> <bundle.json> <model-bindings.json> <iterations> <poll-ms>\n  workflow remote work-effects <client-binding.json> <effect-bindings.json> <iterations> <poll-ms>\n  workflow remote schedule <client-binding.json> <scheduler.json> <iterations> <poll-ms>\n\nTLS and a scoped bearer are required. Bindings contain secret references, never literal tokens.\nCredential creation is a trusted local administrative operation with exclusive 0600 output.\nwork executes registered builtin read-only capabilities; work-models adds frozen model policies using host provider bindings; work-effects also invokes explicitly bound gateways. Scheduler effects require effects:true. Iterations are bounded; service managers may supervise commands.\n";
+mod managed;
+pub const HELP: &str = "REMOTE SERVICE\n  workflow service serve <server-binding.json>\n  workflow service configure-scheduling <server-binding.json> <cluster-configuration.json>\n  workflow service fence-restored <isolated-server-binding.json> <restore-request.json> <private-administrator-output>\n  workflow service init-artifacts <server-binding.json>\n  workflow service init-effects <server-binding.json>\n  workflow service migrate-access <server-binding.json>\n  workflow service bootstrap <server-binding.json> <tenant> <project> <actor> <private-token-output>\n  workflow service issue <server-binding.json> <admin-secret-ref.json> <provision.json> <private-token-output>\n  workflow remote call <client-binding.json> <request.json>\n  workflow remote audit-export <client-binding.json> <new-private-output>\n  workflow remote acceptance <client-binding.json> <run-id> <new-private-output>\n  workflow remote validate <client-binding.json> <file.json|file.yaml>\n  workflow remote artifact-upload <client-binding.json> <assignment-id> <request-id> <artifact-type.json> <content-file>\n  workflow remote artifact-download <client-binding.json> <download-request.json> <private-output>\n  workflow remote managed-work <client-binding.json> <worker.json> <iterations> <poll-ms>\n  workflow remote work <client-binding.json> <iterations> <poll-ms>\n  workflow remote work-models <client-binding.json> <bundle.json> <model-bindings.json> <iterations> <poll-ms>\n  workflow remote work-effects <client-binding.json> <effect-bindings.json> <iterations> <poll-ms>\n  workflow remote schedule <client-binding.json> <scheduler.json> <iterations> <poll-ms>\n\nTLS and a scoped bearer are required. Bindings contain secret references, never literal tokens.\nCredential creation is a trusted local administrative operation with exclusive 0600 output.\nwork executes registered builtin read-only capabilities; work-models adds frozen model policies using host provider bindings; work-effects also invokes explicitly bound gateways. Scheduler effects require effects:true. Iterations are bounded; service managers may supervise commands.\n";
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 struct Provision {
@@ -19,11 +20,20 @@ struct Provision {
 #[serde(deny_unknown_fields)]
 struct Schedule {
     #[serde(default)]
+    cluster: bool,
+    #[serde(default)]
     effects: bool,
     instance_id: String,
     worker_ids: Vec<String>,
     lease_ms: u64,
     scan_limit: u32,
+}
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct ClusterSetup {
+    tenant: String,
+    expected_revision: Option<u64>,
+    policy: workflow_runstore_postgres::access::SchedulingPolicy,
 }
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -81,6 +91,22 @@ pub fn run(args: &[&str], stdout: &mut impl Write, stderr: &mut impl Write) -> i
     }
     let result = (|| -> Result<serde_json::Value> {
         match args {
+            ["service", "configure-scheduling", binding, configuration] => {
+                let binding: ServerBinding = read(binding)?;
+                let config: ClusterSetup = read(configuration)?;
+                let revision = AuthenticatedService::configure_scheduling(
+                    &mut binding.database.connect()?,
+                    &config.tenant,
+                    config.expected_revision,
+                    &config.policy,
+                )?;
+                Ok(
+                    json!({"tenant":config.tenant,"revision":revision,"policy_digest":workflow_worker::digest(&config.policy)?}),
+                )
+            }
+            ["remote", "managed-work", binding, config, iterations, poll] => {
+                managed::run(binding, config, iterations, poll)
+            }
             ["service", "fence-restored", binding, request, output] => {
                 if Path::new(output).symlink_metadata().is_ok() {
                     return Err(Error::new(
@@ -141,7 +167,9 @@ pub fn run(args: &[&str], stdout: &mut impl Write, stderr: &mut impl Write) -> i
             ["service", "migrate-access", path] => {
                 let binding: ServerBinding = read(path)?;
                 AuthenticatedService::migrate_access(&mut binding.database.connect()?)?;
-                Ok(json!({"access_schema":2,"migrated":true}))
+                let version =
+                    AuthenticatedService::access_schema_version(&mut binding.database.connect()?)?;
+                Ok(json!({"access_schema":version,"migrated":true}))
             }
             ["service", "init-effects", path] => {
                 let binding: ServerBinding = read(path)?;
@@ -362,6 +390,9 @@ pub fn run(args: &[&str], stdout: &mut impl Write, stderr: &mut impl Write) -> i
                 let mut scheduler = Scheduler::new(&config.instance_id, config.worker_ids)?;
                 if config.effects {
                     scheduler = scheduler.with_effects();
+                }
+                if config.cluster {
+                    scheduler = scheduler.with_cluster_scheduling();
                 }
                 let mut dispatched = 0;
                 let mut effect_waiting = 0;

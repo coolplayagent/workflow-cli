@@ -144,35 +144,13 @@ impl AuthenticatedService {
         lease: &Lease,
         worker_id: &str,
     ) -> Result<EffectDispatch> {
-        self.transact(token, &[Role::Scheduler], "dispatch_effect", &lease.run_id, |tx, who| {
-            check(tx)?;
-            if lease.owner != who.id { return Err(denied()); }
-            validate_id(worker_id)?;
-            let row = tx.query_opt("SELECT id,tenant,project,actor,role,capabilities,issued_at,expires_at FROM workflow_access.credentials WHERE tenant=$1 AND project=$2 AND id=$3 AND role='worker' AND NOT revoked FOR SHARE", &[&who.tenant,&who.project,&worker_id]).map_err(storage)?.ok_or_else(denied)?;
-            let worker = identity(&row)?;
-            live(tx, &worker)?;
-            who.fence(worker.issued, worker.expires);
-            match who.change(tx, &lease.run_id, false, |s,c| s.claim_effect(lease,c))? {
-                EffectClaim::Call { attempt } => {
-                    permitted(&worker, &attempt)?;
-                    if worker.expires < attempt.deadline_unix_ms as i64 { return Err(denied()); }
-                    // Observation can retain a late truthful receipt, but no later
-                    // than the live lease and worker credential permit.
-                    let expires = (lease.expires_at_unix_ms as i64).min(worker.expires);
-                    who.fence_execution(attempt.issued_at_unix_ms as i64, (attempt.deadline_unix_ms as i64).min(expires));
-                    let id = random("effect-assignment-")?;
-                    let lease_json = serde_json::to_string(lease).map_err(|_| corrupt("effect lease serialization failed"))?;
-                    let attempt_json = serde_json::to_string(&attempt).map_err(|_| corrupt("effect attempt serialization failed"))?;
-                    tx.execute("INSERT INTO workflow_effect_dispatch.assignments(id,tenant,project,worker_id,run_id,lease,attempt,expires_at,deliver_before) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)", &[&id,&who.tenant,&who.project,&worker_id,&lease.run_id,&lease_json,&attempt_json,&expires,&(attempt.deadline_unix_ms as i64)]).map_err(storage)?;
-                    audit(tx,who,"effect_assignment_created",&id,"accepted")?;
-                    Ok(EffectDispatch::Call { assignment_id: id })
-                }
-                EffectClaim::Waiting { not_before_unix_ms } => Ok(EffectDispatch::Waiting { not_before_unix_ms }),
-                EffectClaim::Manual { operation_key, .. } => Ok(EffectDispatch::Manual { operation_key }),
-                EffectClaim::Handled => Ok(EffectDispatch::Handled),
-                EffectClaim::Idle => Ok(EffectDispatch::Idle),
-            }
-        })
+        self.transact(
+            token,
+            &[Role::Scheduler],
+            "dispatch_effect",
+            &lease.run_id,
+            |tx, who| dispatch_in(tx, who, lease, worker_id),
+        )
     }
     pub fn pending_effects(
         &mut self,
@@ -293,6 +271,7 @@ impl AuthenticatedService {
                     &[&assignment],
                 )
                 .map_err(storage)?;
+                scheduling::finish(tx, assignment)?;
                 Ok(TaskReceipt {
                     revision: committed.snapshot.revision,
                     duplicate: committed.transition.duplicate,
@@ -359,5 +338,67 @@ impl AuthenticatedService {
             let next_cursor=if items.len()>limit as usize {items.pop();items.last().map(|r|r.assignment_id.clone())}else{None};
             Ok(Page {items,next_cursor})
         })
+    }
+}
+
+pub(super) fn dispatch_in(
+    tx: &mut Transaction<'_>,
+    who: &Identity,
+    lease: &Lease,
+    worker_id: &str,
+) -> Result<EffectDispatch> {
+    scheduling::configuration_guard(tx, &who.tenant)?;
+    check(tx)?;
+    if lease.owner != who.id {
+        return Err(denied());
+    }
+    validate_id(worker_id)?;
+    let row = tx.query_opt("SELECT id,tenant,project,actor,role,capabilities,issued_at,expires_at FROM workflow_access.credentials WHERE tenant=$1 AND project=$2 AND id=$3 AND role='worker' AND NOT revoked FOR SHARE", &[&who.tenant,&who.project,&worker_id]).map_err(storage)?.ok_or_else(denied)?;
+    let worker = identity(&row)?;
+    live(tx, &worker)?;
+    who.fence(worker.issued, worker.expires);
+    let claimed = who.change(tx, &lease.run_id, false, |s, c| s.claim_effect(lease, c))?;
+    scheduling::ensure_dispatchable(tx, who, &lease.run_id)?;
+    match claimed {
+        EffectClaim::Call { attempt } => {
+            permitted(&worker, &attempt)?;
+            scheduling::worker_ready(tx, who, &worker)?;
+            if worker.expires < attempt.deadline_unix_ms as i64 {
+                return Err(denied());
+            }
+            // Observation can retain a late truthful receipt, but no later
+            // than the live lease and worker credential permit.
+            let expires = (lease.expires_at_unix_ms as i64).min(worker.expires);
+            who.fence_execution(
+                attempt.issued_at_unix_ms as i64,
+                (attempt.deadline_unix_ms as i64).min(expires),
+            );
+            let id = random("effect-assignment-")?;
+            scheduling::reserve(
+                tx,
+                who,
+                &worker,
+                &id,
+                scheduling::AdmissionSubject {
+                    run: &lease.run_id,
+                    capability: &attempt.intent.capability.capability,
+                    model: None,
+                },
+                (attempt.deadline_unix_ms as i64).min(expires),
+            )?;
+            let lease_json = serde_json::to_string(lease)
+                .map_err(|_| corrupt("effect lease serialization failed"))?;
+            let attempt_json = serde_json::to_string(&attempt)
+                .map_err(|_| corrupt("effect attempt serialization failed"))?;
+            tx.execute("INSERT INTO workflow_effect_dispatch.assignments(id,tenant,project,worker_id,run_id,lease,attempt,expires_at,deliver_before) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)", &[&id,&who.tenant,&who.project,&worker_id,&lease.run_id,&lease_json,&attempt_json,&expires,&(attempt.deadline_unix_ms as i64)]).map_err(storage)?;
+            audit(tx, who, "effect_assignment_created", &id, "accepted")?;
+            Ok(EffectDispatch::Call { assignment_id: id })
+        }
+        EffectClaim::Waiting { not_before_unix_ms } => {
+            Ok(EffectDispatch::Waiting { not_before_unix_ms })
+        }
+        EffectClaim::Manual { operation_key, .. } => Ok(EffectDispatch::Manual { operation_key }),
+        EffectClaim::Handled => Ok(EffectDispatch::Handled),
+        EffectClaim::Idle => Ok(EffectDispatch::Idle),
     }
 }

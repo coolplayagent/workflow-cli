@@ -224,6 +224,16 @@ fn effect_authority_policy_rollback_and_single_delivery_race() {
 fn effect_revocation_takeover_requires_query_and_retains_operation_identity() {
     let start = effect_request();
     let (mut f, scheduler, worker, lease) = setup(&start);
+    AuthenticatedService::configure_scheduling(
+        &mut client(),
+        &f.tenant,
+        None,
+        &scheduling::policy(),
+    )
+    .unwrap();
+    f.service
+        .worker_heartbeat(worker.expose_secret(), "1.0.0", false)
+        .unwrap();
     let id = dispatch(&mut f, &scheduler, &worker, &lease);
     let a = f
         .service
@@ -262,6 +272,9 @@ fn effect_revocation_takeover_requires_query_and_retains_operation_identity() {
             &[rule(&start)],
             MAX_TTL,
         )
+        .unwrap();
+    f.service
+        .worker_heartbeat(worker.expose_secret(), "2.0.0", false)
         .unwrap();
     let id = dispatch(&mut f, &scheduler, &worker, &next);
     let b = f

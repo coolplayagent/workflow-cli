@@ -14,6 +14,7 @@ mod effects;
 mod migration;
 mod operations;
 mod restoration;
+pub(crate) mod scheduling;
 mod tasks;
 pub use artifact_download::{ArtifactCleanup, ArtifactDownloadChunk, ArtifactDownloadGrant};
 pub use artifact_policy::{ArtifactOutputPolicy, ArtifactPolicy};
@@ -22,6 +23,10 @@ pub use effects::{EffectDispatch, EffectRule, OutstandingEffect};
 pub use operations::{RunControl, RunControlRequest};
 pub use restoration::{
     DatabaseRestoreReport, DatabaseRestoreRequest, RestoredAdministrator, RestoredDatabase,
+};
+pub use scheduling::{
+    AdmissionLimit, DeadLetter, DeadLetterRecord, DeadLetterResolution, ReplayReceipt,
+    RoutedDispatch, SchedulingPolicy, WorkerStatus,
 };
 pub use tasks::{Dispatch, OutstandingAssignment, TaskReceipt};
 #[cfg(test)]
@@ -362,7 +367,26 @@ impl AuthenticatedService {
                 UPDATE workflow_access.schema_version SET version=2 WHERE singleton=true;")
                 .map_err(storage)?;
         }
+        if scheduling::configured(&mut tx)? {
+            tx.batch_execute(
+                "UPDATE workflow_access.schema_version SET version=3 WHERE singleton=true",
+            )
+            .map_err(storage)?;
+        }
         tx.commit().map_err(storage)
+    }
+    pub fn access_schema_version(client: &mut Client) -> Result<i32> {
+        let mut tx = client.transaction().map_err(storage)?;
+        check_schema(&mut tx)?;
+        let version = tx
+            .query_one(
+                "SELECT version FROM workflow_access.schema_version WHERE singleton=true",
+                &[],
+            )
+            .map_err(storage)?
+            .get(0);
+        tx.commit().map_err(storage)?;
+        Ok(version)
     }
     pub fn open(mut client: Client) -> Result<Self> {
         let mut tx = client.transaction().map_err(storage)?;
@@ -385,6 +409,7 @@ impl AuthenticatedService {
         let mut tx = self.client.transaction().map_err(storage)?;
         PostgresRunStore::transaction_settings(&mut tx)?;
         let who = authenticate(&mut tx, token)?;
+        check_schema(&mut tx)?;
         if !roles.iter().any(|r| r.name() == who.role) {
             audit(&mut tx, &who, operation, resource, "denied")?;
             tx.commit().map_err(storage)?;
@@ -434,7 +459,7 @@ fn check_schema(tx: &mut Transaction<'_>) -> Result<()> {
         )
         .map_err(storage)?
         .get(0);
-    if !matches!(v, 1 | 2) {
+    if !matches!(v, 1..=3) {
         return Err(Error::new(
             ErrorCode::UnsupportedStorage,
             "unsupported access schema",

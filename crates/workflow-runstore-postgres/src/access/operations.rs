@@ -242,6 +242,7 @@ impl AuthenticatedService {
             &request.run_id,
             |tx, who| {
                 let compiled = workflow_kernel::CompiledBundle::compile(request.bundle.clone())?;
+                scheduling::configuration_guard(tx,&who.tenant)?;
                 if tx.query_opt("SELECT digest FROM workflow_access.published_bundles WHERE tenant=$1 AND project=$2 AND digest=$3 FOR SHARE", &[&who.tenant,&who.project,&compiled.digest()]).map_err(storage)?.is_none() { return Err(denied()); }
                 who.change(tx, &request.run_id, true, |s, c| {
                     let mut request = request.clone();

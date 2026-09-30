@@ -3,6 +3,7 @@ mod artifacts;
 mod effects;
 mod migration;
 mod restoration;
+mod scheduling;
 mod security;
 mod waits;
 use std::sync::atomic::{AtomicU64, Ordering};

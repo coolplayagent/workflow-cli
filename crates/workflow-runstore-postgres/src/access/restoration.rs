@@ -200,6 +200,7 @@ impl AuthenticatedService {
             0
         };
         let mut administrators = vec![];
+        scheduling::fence_restored(&mut tx)?;
         for (tenant, project) in scopes {
             let credential = issue(
                 &mut tx,

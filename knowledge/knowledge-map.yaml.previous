@@ -1,8 +1,8 @@
 schema_version: 4
 artifact_kind: map
 map_type: knowledge
-map_version: 30
-updated_at: unix:1790747071
+map_version: 31
+updated_at: unix:1790750824
 directories:
 - directory: domain
   purpose: Domain concepts, models, and business rules.
@@ -73,6 +73,7 @@ topics:
   - model-execution
   - ordered-compensation
   - postgres-authority
+  - release-acceptance
   - remote-effects
   - remote-service
   - run-store
@@ -83,8 +84,8 @@ topics:
   - version-migration
   - worker-protocol
   - workflow-evidence-gates
-  ref: topics/topic-4ca303a3bf7ddf7b-29afa03b908385701e2d7801c44ab8c0214ce2b4ffd6eb0f410a0cc65225753c.yaml
-  digest: 29afa03b908385701e2d7801c44ab8c0214ce2b4ffd6eb0f410a0cc65225753c
+  ref: topics/topic-4ca303a3bf7ddf7b-85f21bcc8469c2bfcc4f353587cf3556aa4d0a2a8664c747acf3cd17057f523f.yaml
+  digest: 85f21bcc8469c2bfcc4f353587cf3556aa4d0a2a8664c747acf3cd17057f523f
 - id: business-knowledge
   title: Business knowledge
   description: Version-controlled business domains, terminology, aliases, semantics, and technical mappings.
@@ -100,12 +101,8 @@ topics:
   ref: topics/topic-247e2a0d6f43d185-fc2d5534a38a5ddc28536afa855ff77db8e2941ccaccbfa79f948ddcfaec2f7d.yaml
   digest: fc2d5534a38a5ddc28536afa855ff77db8e2941ccaccbfa79f948ddcfaec2f7d
 history:
-  omitted_through: 14
+  omitted_through: 15
   recent:
-  - version: 15
-    action: source.add
-    actor: cli
-    summary: Added source 'ordered-compensation' to topic 'architecture'.
   - version: 16
     action: source.add
     actor: cli
@@ -166,3 +163,7 @@ history:
     action: source.add
     actor: cli
     summary: Added source 'security-acceptance' to topic 'architecture'.
+  - version: 31
+    action: source.add
+    actor: cli
+    summary: Added source 'release-acceptance' to topic 'architecture'.

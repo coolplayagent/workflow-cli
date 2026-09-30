@@ -1,5 +1,6 @@
 use super::*;
 mod artifacts;
+mod cluster;
 mod effects;
 mod models;
 mod validation;
@@ -192,6 +193,7 @@ fn service_child() {
     };
     let s: Value = serde_json::from_str(&spec).unwrap();
     match s["kind"].as_str().unwrap() {
+        "cluster_worker" => cluster::worker(&s),
         "model_worker" => models::model_worker(&s),
         "effect_worker_crash" => effects::crashing_worker(&s),
         "server" => {
@@ -215,6 +217,9 @@ fn service_child() {
             let mut scheduler = Scheduler::new(s["id"].as_str().unwrap(), workers).unwrap();
             if s["effects"].as_bool().unwrap_or(false) {
                 scheduler = scheduler.with_effects();
+            }
+            if s["cluster"].as_bool().unwrap_or(false) {
+                scheduler = scheduler.with_cluster_scheduling();
             }
             for _ in 0..500 {
                 if Path::new(s["stop"].as_str().unwrap()).exists() {

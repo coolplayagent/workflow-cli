@@ -2,7 +2,7 @@ use crate::*;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use workflow_runstore::{Lease, RunStatus, validate_id};
-use workflow_runstore_postgres::access::{Dispatch, EffectDispatch};
+use workflow_runstore_postgres::access::{Dispatch, EffectDispatch, RoutedDispatch};
 
 fn call(client: &(impl TaskTransport + ?Sized), operation: Operation) -> Result<Response> {
     client.call(&Request {
@@ -195,6 +195,8 @@ pub struct ScheduleReport {
     pub fenced: u32,
     pub effect_waiting: u32,
     pub effect_manual: u32,
+    pub renewed: u32,
+    pub parked: u32,
 }
 /// A scheduler's volatile lease cache is only a convenience. Authority is always
 /// rechecked in PostgreSQL. Losing this process permits another scheduler to
@@ -207,6 +209,7 @@ pub struct Scheduler {
     sequence: u64,
     id: String,
     effects: bool,
+    cluster: bool,
 }
 impl Scheduler {
     pub fn new(id: &str, workers: Vec<String>) -> Result<Self> {
@@ -228,11 +231,18 @@ impl Scheduler {
             sequence: 0,
             id: format!("{id}.{suffix}"),
             effects: false,
+            cluster: false,
         })
     }
     /// Explicit host opt-in; worker effect policies still authorize each target.
     pub fn with_effects(mut self) -> Self {
         self.effects = true;
+        self
+    }
+    /// Requires an explicitly installed shared scheduling policy. Selection,
+    /// quotas, routing and dead letters are then decided by the database.
+    pub fn with_cluster_scheduling(mut self) -> Self {
+        self.cluster = true;
         self
     }
     pub fn step(
@@ -245,22 +255,32 @@ impl Scheduler {
         if !(1..=workflow_runstore::MAX_LEASE_MS).contains(&ttl_ms) {
             return Err(invalid());
         }
-        let Response::Runs(page) = call(
-            client,
-            Operation::Runs {
-                after: self.cursor.clone(),
-                limit,
-            },
-        )?
-        else {
-            return Err(invalid());
+        let items = if self.cluster {
+            let Response::Candidates(items) =
+                call(client, Operation::ScheduleCandidates { limit })?
+            else {
+                return Err(invalid());
+            };
+            items
+        } else {
+            let Response::Runs(page) = call(
+                client,
+                Operation::Runs {
+                    after: self.cursor.clone(),
+                    limit,
+                },
+            )?
+            else {
+                return Err(invalid());
+            };
+            self.cursor = page.next_cursor;
+            page.items
         };
-        self.cursor = page.next_cursor;
         // Local time only discards hints; server time still decides every lease.
         let local_now = workflow_worker::Clock::now_unix_ms(&workflow_worker::SystemClock)?;
         self.leases.retain(|_, l| l.expires_at_unix_ms > local_now);
         let mut report = ScheduleReport::default();
-        for run in page.items {
+        for run in items {
             report.scanned += 1;
             if !matches!(run.status, RunStatus::Running | RunStatus::Cancelling) {
                 if let Some(lease) = self.leases.remove(&run.run_id) {
@@ -303,7 +323,30 @@ impl Scheduler {
                     _ => return Err(invalid()),
                 }
             }
-            let lease = self.leases[&run.run_id].clone();
+            let mut lease = self.leases[&run.run_id].clone();
+            let at = workflow_worker::Clock::now_unix_ms(&workflow_worker::SystemClock)?;
+            if self.cluster && lease.expires_at_unix_ms.saturating_sub(at) < ttl_ms / 2 {
+                match call(
+                    client,
+                    Operation::Renew {
+                        lease: lease.clone(),
+                        ttl_ms,
+                    },
+                ) {
+                    Ok(Response::Lease(renewed)) => {
+                        lease = renewed;
+                        self.leases.insert(run.run_id.clone(), lease.clone());
+                        report.renewed += 1;
+                    }
+                    Err(e) if e.code == ErrorCode::LeaseConflict => {
+                        self.leases.remove(&run.run_id);
+                        report.fenced += 1;
+                        continue;
+                    }
+                    Err(e) => return Err(e),
+                    _ => return Err(invalid()),
+                }
+            }
             match call(
                 client,
                 Operation::Tick {
@@ -318,6 +361,62 @@ impl Scheduler {
                 }
                 Err(e) => return Err(e),
                 _ => return Err(invalid()),
+            }
+            if self.cluster {
+                let mut worker_ids = self.workers.clone();
+                let offset = self.next_worker % worker_ids.len();
+                worker_ids.rotate_left(offset);
+                self.next_worker = self.next_worker.wrapping_add(1);
+                let release = match call(
+                    client,
+                    Operation::DispatchRouted {
+                        lease: lease.clone(),
+                        worker_ids,
+                        effects: self.effects,
+                    },
+                ) {
+                    Ok(Response::RoutedDispatch(result)) => match result {
+                        RoutedDispatch::Task { .. } | RoutedDispatch::Effect { .. } => {
+                            report.dispatched += 1;
+                            false
+                        }
+                        RoutedDispatch::Handled => false,
+                        RoutedDispatch::Deferred => {
+                            report.busy += 1;
+                            false
+                        }
+                        RoutedDispatch::Waiting { .. } => {
+                            report.effect_waiting += 1;
+                            false
+                        }
+                        RoutedDispatch::Manual { .. } => {
+                            report.effect_manual += 1;
+                            true
+                        }
+                        RoutedDispatch::Parked { .. } => {
+                            report.parked += 1;
+                            true
+                        }
+                        RoutedDispatch::Idle => true,
+                    },
+                    Err(e) if e.code == ErrorCode::LeaseConflict => {
+                        self.leases.remove(&run.run_id);
+                        report.fenced += 1;
+                        continue;
+                    }
+                    Err(e) => return Err(e),
+                    _ => return Err(invalid()),
+                };
+                if release {
+                    match call(client, Operation::Release { lease }) {
+                        Ok(Response::Unit) => {}
+                        Err(e) if e.code == ErrorCode::LeaseConflict => {}
+                        Err(e) => return Err(e),
+                        _ => return Err(invalid()),
+                    }
+                    self.leases.remove(&run.run_id);
+                }
+                continue;
             }
             let worker_id = self.workers[self.next_worker % self.workers.len()].clone();
             self.next_worker = self.next_worker.wrapping_add(1);

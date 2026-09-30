@@ -114,14 +114,17 @@ or disconnect. No request body, header or raw database error is logged.
 SIGINT/SIGTERM stops API admission and drains connections plus admitted database
 operations, with a bounded drain failure reported as an error. Scheduler/worker
 CLI loops have explicit iteration and polling bounds for service-manager use.
-They do not renew leases: choose a lease longer than the supported task deadline;
-expired ownership is reacquired with a new epoch. Pause keeps in-flight ownership
-until it expires rather than proactively fencing accepted tasks.
+Legacy loops use fixed leases. Explicit [cluster scheduling](cluster-scheduling.md)
+adds scheduler renewal and independently heartbeating managed workers with sticky
+drain. Renewal never extends frozen task deadlines; expired ownership is reacquired
+with a new epoch. Pause keeps in-flight ownership until it expires rather than
+proactively fencing accepted tasks.
 
 [R14 security acceptance](security-acceptance.md) defines short-lived provider
 leases, assignment-time principal checks, scoped audit export, retention and the
-registered execution boundary. R09 still owns shared quotas/fairness, priorities,
-worker routing/drain, lease renewal and performance/fault evidence. Host identity
+registered execution boundary. [R09 cluster acceptance](cluster-scheduling.md)
+defines shared quotas, priority aging, worker routing/drain, lease renewal and
+measured fault/load evidence. Host identity
 provisioning, upstream grant issuance and public edge admission remain deployment
 integrations. No arbitrary third-party executable is admitted by this CLI.
 

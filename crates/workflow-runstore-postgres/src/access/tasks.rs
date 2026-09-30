@@ -100,27 +100,13 @@ impl AuthenticatedService {
     /// with an exact capability contract allowlist. Identity and assignment are
     /// committed atomically with the prepared attempt.
     pub fn dispatch(&mut self, token: &str, lease: &Lease, worker_id: &str) -> Result<Dispatch> {
-        self.transact(token,&[Role::Scheduler],"dispatch",&lease.run_id,|tx,who| {
-            if lease.owner!=who.id {return Err(denied());}
-            validate_id(worker_id)?;
-            let row=tx.query_opt("SELECT id,tenant,project,actor,role,capabilities,issued_at,expires_at FROM workflow_access.credentials WHERE tenant=$1 AND project=$2 AND id=$3 AND role='worker' AND NOT revoked FOR SHARE", &[&who.tenant,&who.project,&worker_id]).map_err(storage)?.ok_or_else(denied)?;
-            let worker=identity(&row)?;live(tx,&worker)?;who.fence(worker.issued,worker.expires);
-            let claimed=who.change(tx,&lease.run_id,false,|s,c|s.claim_next(lease,c))?;
-            match claimed {
-                Claimed::Task{attempt}=>{
-                    if !worker.capabilities.iter().any(|c|c.matches(&attempt.request)) {return Err(denied());}
-                    let expires=(lease.expires_at_unix_ms.min(attempt.request.deadline_unix_ms) as i64).min(worker.expires);
-                    who.fence_execution(attempt.request.issued_at_unix_ms as i64,expires);
-                    let id=random("assignment-")?;
-                    let lease_json=serde_json::to_string(lease).map_err(|_|corrupt("assignment serialization failed"))?;
-                    let task_json=serde_json::to_string(&attempt).map_err(|_|corrupt("assignment serialization failed"))?;
-                    tx.execute("INSERT INTO workflow_access.assignments(id,tenant,project,worker_id,run_id,lease,task,expires_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8)", &[&id,&who.tenant,&who.project,&worker_id,&lease.run_id,&lease_json,&task_json,&expires]).map_err(storage)?;
-                    audit(tx,who,"assignment_created",&id,"accepted")?;
-                    Ok(Dispatch::Task{assignment_id:id})
-                },
-                Claimed::Handled{..}=>Ok(Dispatch::Handled),Claimed::Idle=>Ok(Dispatch::Idle),
-            }
-        })
+        self.transact(
+            token,
+            &[Role::Scheduler],
+            "dispatch",
+            &lease.run_id,
+            |tx, who| dispatch_in(tx, who, lease, worker_id),
+        )
     }
     /// Authenticated worker delivery. The host returns only its assigned request
     /// and execution contract, not the rest of the run or scheduler credential.
@@ -178,6 +164,7 @@ impl AuthenticatedService {
                 &[&assignment],
             )
             .map_err(storage)?;
+            scheduling::finish(tx, assignment)?;
             Ok(TaskReceipt {
                 revision: committed.snapshot.revision,
                 duplicate: committed.transition.duplicate,
@@ -212,6 +199,8 @@ impl AuthenticatedService {
                 &[&assignment],
             )
             .map_err(storage)?;
+            scheduling::finish(tx, assignment)?;
+            scheduling::park(tx, who, &a.lease.run_id, "worker_execution_failed")?;
             Ok(())
         })
     }
@@ -232,5 +221,63 @@ impl AuthenticatedService {
             let next_cursor=if items.len()>limit as usize {items.pop();items.last().map(|r|r.assignment_id.clone())}else{None};
             Ok(Page{items,next_cursor})
         })
+    }
+}
+
+pub(super) fn dispatch_in(
+    tx: &mut Transaction<'_>,
+    who: &Identity,
+    lease: &Lease,
+    worker_id: &str,
+) -> Result<Dispatch> {
+    scheduling::configuration_guard(tx, &who.tenant)?;
+    if lease.owner != who.id {
+        return Err(denied());
+    }
+    validate_id(worker_id)?;
+    let row=tx.query_opt("SELECT id,tenant,project,actor,role,capabilities,issued_at,expires_at FROM workflow_access.credentials WHERE tenant=$1 AND project=$2 AND id=$3 AND role='worker' AND NOT revoked FOR SHARE", &[&who.tenant,&who.project,&worker_id]).map_err(storage)?.ok_or_else(denied)?;
+    let worker = identity(&row)?;
+    live(tx, &worker)?;
+    who.fence(worker.issued, worker.expires);
+    let claimed = who.change(tx, &lease.run_id, false, |s, c| s.claim_next(lease, c))?;
+    scheduling::ensure_dispatchable(tx, who, &lease.run_id)?;
+    match claimed {
+        Claimed::Task { attempt } => {
+            if !worker
+                .capabilities
+                .iter()
+                .any(|c| c.matches(&attempt.request))
+            {
+                return Err(denied());
+            }
+            scheduling::worker_ready(tx, who, &worker)?;
+            let expires = (lease
+                .expires_at_unix_ms
+                .min(attempt.request.deadline_unix_ms) as i64)
+                .min(worker.expires);
+            who.fence_execution(attempt.request.issued_at_unix_ms as i64, expires);
+            let id = random("assignment-")?;
+            scheduling::reserve(
+                tx,
+                who,
+                &worker,
+                &id,
+                scheduling::AdmissionSubject {
+                    run: &lease.run_id,
+                    capability: &attempt.request.capability,
+                    model: attempt.request.model_policy.as_ref(),
+                },
+                expires,
+            )?;
+            let lease_json = serde_json::to_string(lease)
+                .map_err(|_| corrupt("assignment serialization failed"))?;
+            let task_json = serde_json::to_string(&attempt)
+                .map_err(|_| corrupt("assignment serialization failed"))?;
+            tx.execute("INSERT INTO workflow_access.assignments(id,tenant,project,worker_id,run_id,lease,task,expires_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8)", &[&id,&who.tenant,&who.project,&worker_id,&lease.run_id,&lease_json,&task_json,&expires]).map_err(storage)?;
+            audit(tx, who, "assignment_created", &id, "accepted")?;
+            Ok(Dispatch::Task { assignment_id: id })
+        }
+        Claimed::Handled { .. } => Ok(Dispatch::Handled),
+        Claimed::Idle => Ok(Dispatch::Idle),
     }
 }

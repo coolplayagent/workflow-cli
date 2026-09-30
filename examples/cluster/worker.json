@@ -1,0 +1,5 @@
+{
+  "runtime_version": "1.0.0",
+  "heartbeat_interval_ms": 1000,
+  "drain_timeout_ms": 30000
+}

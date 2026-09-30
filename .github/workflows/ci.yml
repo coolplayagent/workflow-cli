@@ -55,6 +55,7 @@ jobs:
       - run: python3 examples/validation/https-cli.py target/debug/workflow
       - run: python3 examples/models/https-cli.py target/debug/workflow
       - run: python3 examples/security/acceptance.py target/debug/workflow
+      - run: python3 examples/cluster/acceptance.py target/debug/workflow
       - run: python3 examples/gates/release-acceptance.py target/debug/workflow --https
       - run: python3 examples/migrations/acceptance.py target/debug/workflow --https
       - run: python3 examples/remote/database-recovery.py target/debug/workflow --container "${{ job.services.postgres.id }}"
