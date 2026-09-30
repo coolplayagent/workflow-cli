@@ -84,7 +84,7 @@ pub fn schema(kind: &str) -> Result<String> {
         _ => {
             return Err(Error::new(
                 ErrorCode::InvalidContract,
-                "workspace schema must be checkout, ref, observation or output",
+                "workspace schema must be checkout, ref, observation, output, merge-plan or merge-proposal",
             ));
         }
     };

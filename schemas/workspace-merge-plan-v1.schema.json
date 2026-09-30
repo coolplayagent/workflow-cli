@@ -1,0 +1,139 @@
+{
+  "ok": true,
+  "result": {
+    "$defs": {
+      "ArtifactLink": {
+        "additionalProperties": false,
+        "properties": {
+          "artifact_id": {
+            "type": "string"
+          },
+          "digest": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "artifact_id",
+          "digest"
+        ],
+        "type": "object"
+      },
+      "FileEntry": {
+        "additionalProperties": false,
+        "properties": {
+          "bytes": {
+            "format": "uint64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "digest": {
+            "type": "string"
+          },
+          "executable": {
+            "type": "boolean"
+          },
+          "path": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "path",
+          "digest",
+          "bytes",
+          "executable"
+        ],
+        "type": "object"
+      },
+      "MergeConflict": {
+        "additionalProperties": false,
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "proposals": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "path",
+          "proposals"
+        ],
+        "type": "object"
+      },
+      "SourceRevision": {
+        "additionalProperties": false,
+        "properties": {
+          "repository": {
+            "type": "string"
+          },
+          "revision": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "repository",
+          "revision"
+        ],
+        "type": "object"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "additionalProperties": false,
+    "properties": {
+      "baseline_tree_digest": {
+        "type": "string"
+      },
+      "conflicts": {
+        "items": {
+          "$ref": "#/$defs/MergeConflict"
+        },
+        "type": "array"
+      },
+      "files": {
+        "items": {
+          "$ref": "#/$defs/FileEntry"
+        },
+        "type": "array"
+      },
+      "proposals": {
+        "items": {
+          "$ref": "#/$defs/ArtifactLink"
+        },
+        "type": "array"
+      },
+      "requires_revalidation": {
+        "type": "boolean"
+      },
+      "resolutions": {
+        "additionalProperties": {
+          "type": "string"
+        },
+        "description": "Exact path -> selected proposal ID. Required only for conflicting changes.",
+        "type": "object"
+      },
+      "schema_version": {
+        "format": "uint32",
+        "minimum": 0,
+        "type": "integer"
+      },
+      "source_revision": {
+        "$ref": "#/$defs/SourceRevision"
+      }
+    },
+    "required": [
+      "schema_version",
+      "source_revision",
+      "baseline_tree_digest",
+      "proposals",
+      "resolutions",
+      "files",
+      "conflicts",
+      "requires_revalidation"
+    ],
+    "title": "MergePlan",
+    "type": "object"
+  }
+}
