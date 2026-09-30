@@ -154,6 +154,7 @@ pub(crate) fn evaluate(
         target: context.target.clone(),
         evidence,
     };
-    let decision = workflow_gates::evaluate(&request, &source, now)?;
+    use workflow_gates::PolicyEvaluator;
+    let decision = workflow_gates::DeterministicPolicyEvaluator.evaluate(&request, &source, now)?;
     Ok(GateEvaluation { request, decision })
 }

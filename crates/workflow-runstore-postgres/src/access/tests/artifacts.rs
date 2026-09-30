@@ -75,6 +75,7 @@ impl Artifacts {
                 "artifact-worker",
                 Role::Worker,
                 &[CapabilityRule {
+                    model_policy: None,
                     effect: None,
                     id: "artifact.report".into(),
                     version: "1.0.0".into(),
@@ -722,6 +723,7 @@ fn worker_reads_only_declared_typed_inputs_and_transitive_lineage() {
                     "wrong-input-type",
                     Role::Worker,
                     &[CapabilityRule {
+                        model_policy: None,
                         effect: None,
                         id: descriptor.capability.id.clone(),
                         version: descriptor.capability.version.clone(),
@@ -768,6 +770,7 @@ fn worker_reads_only_declared_typed_inputs_and_transitive_lineage() {
                 &format!("consumer-{index}"),
                 Role::Worker,
                 &[CapabilityRule {
+                    model_policy: None,
                     effect: None,
                     id: descriptor.capability.id.clone(),
                     version: descriptor.capability.version.clone(),

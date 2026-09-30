@@ -2671,6 +2671,8 @@ dependencies = [
  "workflow-effects",
  "workflow-ir",
  "workflow-kernel",
+ "workflow-model-http",
+ "workflow-models",
  "workflow-runstore",
  "workflow-runstore-postgres",
  "workflow-runstore-sqlite",

@@ -103,7 +103,8 @@ fn execute(args: &[&str]) -> Result<(serde_json::Value, i32)> {
         ] => parse_message(schema(&kind[6..])?.as_bytes())?,
         ["model", "check-policy", file] => {
             let p = Policy::new(read(file)?)?;
-            json!({"ok":true,"result":{"protocol_versions":[2],"binding":p.binding(),"policy":p.spec()}})
+            let task = workflow_worker::Capability::new(p.spec().task.clone())?;
+            json!({"ok":true,"result":{"protocol_versions":[2],"binding":p.binding(),"task_contract_digest":task.digest(),"policy":p.spec()}})
         }
         ["model", "describe-binding", file] => {
             json!({"ok":true,"result":HttpModel::new(read(file)?)?.identity()})

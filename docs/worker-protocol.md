@@ -141,9 +141,10 @@ ID/version spelling matches.
 Descriptors include input/output IR contracts, timeout, named error classes,
 effect declarations, usage semantics and an optional exact Skill reference.
 Skill references are usage metadata, not loaded code or a security policy. The
-descriptor digest covers every field. Write descriptors can state idempotency key
-scope/retention, query and compensation capabilities, but this dispatcher and
-result acceptor reject writes until a durable effect-aware executor exists.
+descriptor digest covers every field. Write descriptors state idempotency key
+scope/retention, query and compensation capabilities. This read-only dispatcher
+and result acceptor reject writes; the separate [durable effect executor](remote-effects.md)
+authorizes and records them through its intent/observation protocol.
 
 Every work request includes protocol version, request/trace IDs, input values and
 digest, capability ID/version/contract digest, issue time and deadline. Workflow
@@ -191,5 +192,5 @@ Failures must use a descriptor's declared code and matching class. Transient doe
 not authorize automatic retry. Missing outputs, wrong types, undeclared outputs,
 invalid evidence, forged request identity and attempted transition fields fail
 result validation. Durable leases and artifact verification are implemented by
-the separate host adapters linked above. Model adapters, provider credentials and
-the effect executor remain open work in R01/R02/R04/R05.
+the separate host adapters linked above. See [R02 acceptance](model-boundaries-acceptance.md)
+for model adapters, provider binding and the shared local/remote transport contract.

@@ -4,7 +4,7 @@ use std::collections::BTreeMap;
 use workflow_runstore::{Lease, RunStatus, validate_id};
 use workflow_runstore_postgres::access::{Dispatch, EffectDispatch};
 
-fn call(client: &RemoteClient, operation: Operation) -> Result<Response> {
+fn call(client: &(impl TaskTransport + ?Sized), operation: Operation) -> Result<Response> {
     client.call(&Request {
         protocol_version: PROTOCOL_VERSION,
         request_id: "reconcile".into(),
@@ -20,7 +20,7 @@ pub struct WorkerReport {
 /// Effect delivery is single-use. Never retry retrieval or I/O after an unknown
 /// transport outcome; the durable ledger will query under a successor lease.
 pub fn work_effects_once(
-    client: &RemoteClient,
+    client: &(impl TaskTransport + ?Sized),
     effects: &impl workflow_effects::EffectAdapter,
     limit: u32,
 ) -> Result<WorkerReport> {
@@ -91,7 +91,7 @@ pub fn work_effects_once(
 /// One bounded scan of this credential's durable assignments. Execution uses the
 /// same Worker contract as local runtime, while result authority remains remote.
 pub fn work_once(
-    client: &RemoteClient,
+    client: &(impl TaskTransport + ?Sized),
     worker: &workflow_worker::Worker,
     limit: u32,
 ) -> Result<WorkerReport> {
@@ -209,7 +209,7 @@ impl Scheduler {
     }
     pub fn step(
         &mut self,
-        client: &RemoteClient,
+        client: &(impl TaskTransport + ?Sized),
         ttl_ms: u64,
         limit: u32,
     ) -> Result<ScheduleReport> {

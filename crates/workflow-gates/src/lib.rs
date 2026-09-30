@@ -15,6 +15,47 @@ pub use workflow_artifacts::{Error, ErrorCode, Result, digest, parse_message, to
 pub trait EvidenceSource: ArtifactReader {
     fn executed_check(&self, producer: &Producer) -> Result<Option<ExecutedCheck>>;
 }
+
+/// Stateless policy evaluation port. Decisions are observations of exact
+/// evidence, never permissions to mutate a run or execute an external effect.
+/// Authoritative consumers must still check their frozen policy and target.
+pub trait PolicyEvaluator {
+    fn evaluate(
+        &self,
+        request: &Request,
+        source: &dyn EvidenceSource,
+        now: u64,
+    ) -> Result<Decision>;
+    fn revalidate(
+        &self,
+        request: &Request,
+        prior: &Decision,
+        source: &dyn EvidenceSource,
+        now: u64,
+    ) -> Result<Decision>;
+}
+
+#[derive(Clone, Copy, Debug, Default)]
+pub struct DeterministicPolicyEvaluator;
+impl PolicyEvaluator for DeterministicPolicyEvaluator {
+    fn evaluate(
+        &self,
+        request: &Request,
+        source: &dyn EvidenceSource,
+        now: u64,
+    ) -> Result<Decision> {
+        evaluate(request, source, now)
+    }
+    fn revalidate(
+        &self,
+        request: &Request,
+        prior: &Decision,
+        source: &dyn EvidenceSource,
+        now: u64,
+    ) -> Result<Decision> {
+        revalidate(request, prior, source, now)
+    }
+}
 pub fn schema(kind: &str) -> Result<String> {
     let value = match kind {
         "request" => schemars::schema_for!(Request),

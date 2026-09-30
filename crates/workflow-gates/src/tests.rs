@@ -124,7 +124,8 @@ fn fixture() -> (Request, Source) {
     )
 }
 fn reason(r: &Request, s: &Source, now: u64, verdict: Verdict, expected: Reason) {
-    let d = evaluate(r, s, now).unwrap();
+    let evaluator: &dyn PolicyEvaluator = &DeterministicPolicyEvaluator;
+    let d = evaluator.evaluate(r, s, now).unwrap();
     assert_eq!(d.verdict, verdict);
     assert_eq!(d.checks[0].reason, expected);
     if verdict != Verdict::Pass {
