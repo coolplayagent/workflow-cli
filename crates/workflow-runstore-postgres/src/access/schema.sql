@@ -2,11 +2,11 @@ CREATE SCHEMA workflow_access;
 CREATE TABLE workflow_access.schema_version (
  singleton boolean PRIMARY KEY CHECK(singleton), version integer NOT NULL
 );
-INSERT INTO workflow_access.schema_version VALUES (true,1);
+INSERT INTO workflow_access.schema_version VALUES (true,2);
 CREATE TABLE workflow_access.credentials (
  id text PRIMARY KEY, token_digest text UNIQUE NOT NULL,
  tenant text NOT NULL, project text NOT NULL, actor text NOT NULL,
- role text NOT NULL CHECK(role IN ('administrator','definition_maintainer','viewer','runner','approver','scheduler','worker','recovery')),
+ role text NOT NULL CHECK(role IN ('administrator','definition_maintainer','viewer','runner','approver','signal_source','scheduler','worker','recovery')),
  capabilities text NOT NULL,
  issued_at bigint NOT NULL, expires_at bigint NOT NULL CHECK(expires_at>issued_at),
  revoked boolean NOT NULL DEFAULT false,

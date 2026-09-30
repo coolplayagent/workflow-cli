@@ -2,6 +2,7 @@ use super::*;
 mod artifacts;
 mod effects;
 mod validation;
+mod waits;
 use serde_json::{Value, json};
 use std::{
     path::{Path, PathBuf},
@@ -32,7 +33,7 @@ fn fixture(id: &str) -> StartRun {
         PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..")
     };
     let mut r: StartRun = serde_json::from_slice(
-        &std::fs::read(root.join("examples/execution/offline-start.json")).unwrap(),
+        &std::fs::read(root.join("examples/approval/protected-start.json")).unwrap(),
     )
     .unwrap();
     r.run_id = id.into();
@@ -684,6 +685,7 @@ fn tls_two_schedulers_three_workers_owner_kill_and_stale_result_contract() {
         run_id: request.run_id.clone(),
         run_digest: after.run_digest.clone(),
         message: workflow_kernel::SignalMessage {
+            exception: None,
             schema_version: 1,
             message_id: "approval".into(),
             correlation_id: target.correlation_id,
@@ -757,6 +759,7 @@ fn tls_two_schedulers_three_workers_owner_kill_and_stale_result_contract() {
                 run_id: request.run_id.clone(),
                 run_digest: final_state.run_digest.clone(),
                 message: workflow_kernel::SignalMessage {
+                    exception: None,
                     schema_version: 1,
                     message_id: "approval".into(),
                     correlation_id: target.correlation_id,

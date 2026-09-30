@@ -1,6 +1,7 @@
 use super::*;
 mod artifacts;
 mod effects;
+mod waits;
 use std::sync::atomic::{AtomicU64, Ordering};
 static NEXT: AtomicU64 = AtomicU64::new(0);
 fn client() -> Client {
@@ -17,7 +18,7 @@ fn request(id: &str) -> StartRun {
         std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..")
     };
     let mut r: StartRun = serde_json::from_slice(
-        &std::fs::read(root.join("examples/execution/offline-start.json")).unwrap(),
+        &std::fs::read(root.join("examples/approval/protected-start.json")).unwrap(),
     )
     .unwrap();
     r.run_id = id.into();
@@ -449,6 +450,7 @@ fn authenticated_scope_roles_dispatch_result_and_approval_contract() {
         run_id: r.run_id.clone(),
         run_digest: started.snapshot.run_digest,
         message: workflow_kernel::SignalMessage {
+            exception: None,
             schema_version: 1,
             message_id: "review".into(),
             correlation_id: target.correlation_id,

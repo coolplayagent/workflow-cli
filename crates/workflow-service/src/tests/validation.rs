@@ -443,6 +443,11 @@ fn tls_definition_diagnostic_matrix_authorization_and_immutable_binding_contract
             .find(|w| w.id == bundle.root.id)
             .unwrap();
         root.version = bundle.root.version.clone();
+        for policy in &mut bundle.wait_policies {
+            if policy.workflow.id == bundle.root.id {
+                policy.workflow = bundle.root.clone();
+            }
+        }
         for node in &mut root.nodes {
             if let workflow_ir::NodeKind::Wait { timeout_ms, .. } = &mut node.kind {
                 *timeout_ms += timeout_delta;

@@ -561,7 +561,9 @@ fn recovery_recomputes_gate_evidence_and_rejects_a_forged_but_well_hashed_decisi
             .find(|e| e.receipt.is_none())
             .unwrap()
             .clone();
-        let committed = crate::writes::persist_event(&tx, &mut r, &forged, |_| {}).unwrap();
+        let committed =
+            crate::writes::persist_event(&tx, &mut r, &forged, store.artifacts.as_deref(), |_| {})
+                .unwrap();
         crate::writes::persist_receipt(
             &tx,
             &r,

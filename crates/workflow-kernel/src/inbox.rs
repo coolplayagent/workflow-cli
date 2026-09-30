@@ -22,6 +22,8 @@ pub struct SignalMessage {
     pub correlation_id: String,
     pub target: WaitTarget,
     pub source: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub exception: Option<ExceptionClaim>,
     pub decision: SignalDecision,
     pub reason: String,
     pub outputs: Values,
@@ -39,6 +41,10 @@ pub enum SignalDecision {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum SignalRejection {
+    ResponderNotAllowed,
+    ResponseValidityExceeded,
+    ExceptionNotAllowed,
+    InvalidSubject,
     UnknownInstance,
     NotAWait,
     DefinitionMismatch,
@@ -116,6 +122,11 @@ pub fn validate_signal(run_digest: &str, message: &SignalMessage) -> Result<()> 
         || message.correlation_id != signal_correlation(run_digest, &message.target)?
         || message.reason.trim().is_empty()
         || message.reason.len() > 1024
+        || message.exception.as_ref().is_some_and(|e| {
+            !workflow_validator::identifier(&e.policy.id)
+                || !workflow_validator::pinned_version(&e.policy.version)
+                || !workflow_validator::identifier(&e.code)
+        })
         || message.expires_at_unix_ms == 0
         || (message.decision != SignalDecision::Approve && !message.outputs.is_empty())
     {

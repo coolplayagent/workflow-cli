@@ -1,4 +1,5 @@
 use super::*;
+mod policies;
 
 fn message(e: &Engine, name: &str, decision: SignalDecision) -> SignalMessage {
     let target = WaitTarget {
@@ -8,6 +9,7 @@ fn message(e: &Engine, name: &str, decision: SignalDecision) -> SignalMessage {
         event: "design-review".into(),
     };
     SignalMessage {
+        exception: None,
         schema_version: 1,
         message_id: name.into(),
         correlation_id: signal_correlation(&e.snapshot().run_digest, &target).unwrap(),

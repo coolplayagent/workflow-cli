@@ -484,49 +484,17 @@ impl Engine {
                 outputs,
             } => {
                 let (frame, id) = self.locate(*instance_id)?;
-                let node = self.node(frame, &id).clone();
-                let NodeKind::Wait {
-                    event: expected, ..
-                } = &node.kind
-                else {
-                    return Err(Error::new(
-                        ErrorCode::InvalidSignal,
-                        "instance is not a wait",
-                    ));
-                };
-                if expected != event
-                    || !matches!(self.record(frame, &id).state, NodeState::Waiting { .. })
+                if self
+                    .bundle
+                    .wait_policy(&self.state.frames[&frame].workflow, &id)
+                    .is_some()
                 {
                     return Err(Error::new(
                         ErrorCode::InvalidSignal,
-                        "wait is not active for this event; deliver time advancement separately if it expired",
+                        "protected wait requires an attributed durable Inbox decision",
                     ));
                 }
-                if *accepted {
-                    workflow_validator::validate_values(&node.outputs, outputs)
-                        .map_err(|e| Error::new(ErrorCode::InvalidSignal, e.message))?;
-                } else if !outputs.is_empty() {
-                    return Err(Error::new(
-                        ErrorCode::InvalidSignal,
-                        "rejection must not publish accepted outputs",
-                    ));
-                }
-                self.record_mut(frame, &id).outputs = outputs.clone();
-                commands.push(Command::CancelTimer {
-                    instance_id: *instance_id,
-                });
-                let route = if *accepted {
-                    Route::Accepted
-                } else {
-                    Route::Rejected
-                };
-                self.finish(
-                    frame,
-                    &id,
-                    NodeState::Succeeded,
-                    Some(self.route(frame, &id, &route)),
-                    Some(if *accepted { "accepted" } else { "rejected" }.into()),
-                )
+                self.signal(*instance_id, event, *accepted, outputs, commands)
             }
             EventKind::GateEvaluated {
                 instance_id,
@@ -542,6 +510,56 @@ impl Engine {
                 unreachable!("handled before timers")
             }
         }
+    }
+    fn signal(
+        &mut self,
+        instance_id: u64,
+        event: &str,
+        accepted: bool,
+        outputs: &Values,
+        commands: &mut Vec<Command>,
+    ) -> Result<()> {
+        let (frame, id) = self.locate(instance_id)?;
+        let node = self.node(frame, &id).clone();
+        let NodeKind::Wait {
+            event: expected, ..
+        } = &node.kind
+        else {
+            return Err(Error::new(
+                ErrorCode::InvalidSignal,
+                "instance is not a wait",
+            ));
+        };
+        if expected != event || !matches!(self.record(frame, &id).state, NodeState::Waiting { .. })
+        {
+            return Err(Error::new(
+                ErrorCode::InvalidSignal,
+                "wait is not active for this event; deliver time advancement separately if it expired",
+            ));
+        }
+        if accepted {
+            workflow_validator::validate_values(&node.outputs, outputs)
+                .map_err(|e| Error::new(ErrorCode::InvalidSignal, e.message))?;
+        } else if !outputs.is_empty() {
+            return Err(Error::new(
+                ErrorCode::InvalidSignal,
+                "rejection must not publish accepted outputs",
+            ));
+        }
+        self.record_mut(frame, &id).outputs = outputs.clone();
+        commands.push(Command::CancelTimer { instance_id });
+        let route = if accepted {
+            Route::Accepted
+        } else {
+            Route::Rejected
+        };
+        self.finish(
+            frame,
+            &id,
+            NodeState::Succeeded,
+            Some(self.route(frame, &id, &route)),
+            Some(if accepted { "accepted" } else { "rejected" }.into()),
+        )
     }
     fn task(
         &mut self,

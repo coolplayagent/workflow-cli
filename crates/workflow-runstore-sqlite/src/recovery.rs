@@ -249,6 +249,7 @@ pub(crate) fn recover(
         checkpoint_revision,
     };
     crate::execution::read(c, &recovered, artifacts)?;
+    crate::inbox::verify_subjects(&recovered.engine, artifacts)?;
     Ok(recovered)
 }
 pub(crate) fn write_checkpoint(c: &Connection, engine: &Engine) -> Result<()> {

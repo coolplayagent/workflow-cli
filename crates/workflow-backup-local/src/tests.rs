@@ -141,6 +141,7 @@ impl Fixture {
                 run_id: review.run_id.clone(),
                 run_digest: snapshot.run_digest,
                 message: workflow_kernel::SignalMessage {
+                    exception: None,
                     schema_version: 1,
                     message_id: "fixture-callback".into(),
                     correlation_id: wait.correlation_id,

@@ -19,6 +19,7 @@ pub(super) const READ: &[Role] = &[
     Role::Viewer,
     Role::Runner,
     Role::Approver,
+    Role::SignalSource,
     Role::Scheduler,
     Role::Recovery,
 ];
@@ -290,15 +291,58 @@ impl AuthenticatedService {
     /// Identity is stamped here; an approval's self-declared source is never
     /// authority. Only approval decisions are exposed by this endpoint.
     pub fn approve(&mut self, token: &str, request: &SignalSubmission) -> Result<SignalReceipt> {
+        self.receive_callback(
+            token,
+            request,
+            Role::Approver,
+            workflow_kernel::WaitKind::HumanApproval,
+        )
+    }
+    /// Authenticated external events have a separate role and a frozen event policy.
+    pub fn signal(&mut self, token: &str, request: &SignalSubmission) -> Result<SignalReceipt> {
+        self.receive_callback(
+            token,
+            request,
+            Role::SignalSource,
+            workflow_kernel::WaitKind::ExternalEvent,
+        )
+    }
+    fn receive_callback(
+        &mut self,
+        token: &str,
+        request: &SignalSubmission,
+        role: Role,
+        channel: workflow_kernel::WaitKind,
+    ) -> Result<SignalReceipt> {
         self.transact(
             token,
-            &[Role::Approver],
-            "approve",
+            &[role],
+            if channel == workflow_kernel::WaitKind::HumanApproval {
+                "approve"
+            } else {
+                "signal"
+            },
             &request.run_id,
             |tx, who| {
                 let mut request = request.clone();
                 request.message.source = who.actor.clone();
                 who.change(tx, &request.run_id, false, |s, c| {
+                    let bundle = s.bundle(&request.run_id)?;
+                    let state = s.get(&request.run_id)?;
+                    let binding = state.frames.values().find_map(|f| {
+                        f.nodes
+                            .iter()
+                            .find(|(_, n)| n.instance_id == request.message.target.instance_id)
+                            .and_then(|(id, _)| {
+                                bundle
+                                    .wait_policies
+                                    .iter()
+                                    .find(|b| b.workflow == f.workflow && b.node_id == *id)
+                            })
+                    });
+                    if !binding.is_some_and(|b| b.policy.kind == channel) {
+                        return Err(denied());
+                    }
                     s.receive_signal(&request, c)
                 })
             },

@@ -156,7 +156,7 @@ impl SqliteRunStore {
                 && crate::execution::effects::managed(&current, entry)? {
                 return Err(Error::new(ErrorCode::InvalidRequest, "managed write results require the fenced effect ledger"));
         }
-        let result = persist_event(&tx, &mut current, event, &hook)?;
+        let result = persist_event(&tx, &mut current, event, self.artifacts.as_deref(), &hook)?;
         hook("before_commit");
         tx.commit().map_err(storage)?;
         hook("after_commit");
@@ -209,10 +209,12 @@ pub(crate) fn persist_event(
     c: &Connection,
     current: &mut crate::recovery::Recovered,
     event: &Event,
+    artifacts: Option<&dyn workflow_artifacts::ArtifactReader>,
     hook: impl Fn(&str),
 ) -> Result<Committed> {
     let old_revision = current.engine.snapshot().revision;
     let transition = current.engine.apply(event.clone())?;
+    crate::inbox::verify_subjects(&current.engine, artifacts)?;
     if transition.duplicate {
         let snapshot = current.engine.snapshot().clone();
         return Ok(Committed {

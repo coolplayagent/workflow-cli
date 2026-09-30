@@ -97,6 +97,7 @@ fn base() -> PathBuf {
 }
 fn request(valid: bool) -> StartRun {
     let w = workflow_kernel::BundleSpec {
+        wait_policies: vec![],
         postconditions: vec![],
         model_policies: vec![],
         effect_bindings: vec![],

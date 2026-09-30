@@ -23,10 +23,14 @@ paused. Copy the target and correlation ID from the actual wait registration.
 The target binds a node instance, immutable definition digest, event name and
 actual typed input digest. Correlation is a digest of the immutable run digest
 and that target; cloning a run or changing inputs cannot reuse a correlation.
-The host must put the artifact/revision being reviewed in the wait's typed inputs
-if that content is part of the decision. An empty input contract does not attest
-to any external artifact. Automatic artifact-subject approval policy is not yet
-provided by this increment.
+The bundle freezes a `wait_policies` binding for each authenticated wait. Its
+required typed inputs identify the reviewed subjects: SHA-256 content digests or
+exact artifact ID/digest objects. `waits` returns those subjects, the responder
+allowlist, validity limit, immutable policy version and all three routing targets.
+Human approvals require at least one subject. Artifact subjects are verified
+against retained bytes and run ownership in the admitting transaction and again
+during recovery. Changing any input requires a fresh target/correlation; a new
+loop or rework wait has a new instance identity.
 
 The submission includes the run ID/digest and a schema-1 message containing a
 stable provider message ID, copied target/correlation, host source label,
@@ -69,8 +73,9 @@ If approval commits first, a competing cancellation with an old expected revisio
 is refused and must be reconsidered against current state. Cancellation after an
 applied decision does not rewrite that historical approval.
 
-Pending expiry is observed on the next committed event or explicit timer drive;
-there is no background daemon. Queries never silently advance logical time.
+Pending expiry is observed on the next committed event or timer drive. The local
+daemon and remote scheduler supervise those drives; when neither runs, no timer
+advances until a host resumes execution. Queries never silently advance logical time.
 No sampled model result is involved in matching or recovery. Checkpoint plus tail
 and complete event replay independently rebuild Inbox state; edits or missing
 journal entries disagree with the stored head. Atomic commit ensures crash recovery
@@ -81,15 +86,31 @@ receipts or deduplication identities.
 
 ## Host boundary and compatibility
 
-`source` is a host-attested label, not authentication or an actor role. The current
-local CLI trusts the administrator with database access. A future HTTP/webhook or
-approval service must authenticate the caller, authorize the responder and derive
-this label before using the port. Do not expose `run event` or accept model text as
-a human decision. This increment does not claim tenant isolation, signed approval
-evidence, access-policy enforcement or R06 completion.
+`source` is a host-attested identity, never proof of authentication. The local
+CLI trusts the administrator with database access. The authenticated HTTPS API
+stamps the credential actor, checks the tenant/project and role, and requires a
+matching frozen wait policy. `approve` accepts only `approver` credentials and
+human-approval policies; `signal` accepts only `signal_source` credentials and
+external-event policies. Workers and model output cannot use either privilege.
+Raw kernel `Signal` events cannot bypass a protected wait's Inbox.
 
-Storage schema 7 protects Inbox semantics from old executors. Use explicit
-`run [--artifacts store] migrate db` for schema 1–6; existing seeds, events and
+An optional exception policy has its own immutable version, responder allowlist
+and explicit allowed codes. An exception is an `approve` decision with an
+`exception: {policy: {id, version}, code}` claim; the reason, actor and claim stay
+in the Inbox and journal. It cannot override input identity, expiry or artifact
+integrity. Ordinary approval never acquires exception authority.
+
+An external webhook gateway must authenticate its upstream provider, durably
+retain the stable provider event ID and retry the same `signal` operation until
+it receives a durable receipt. The HTTPS service itself accepts requests while
+running; it does not receive messages while stopped. Retrying through the API
+after restart provides the same Inbox contract as local `run receive`. Provider
+signature verification and an upstream durable queue belong to that gateway.
+See [R06 acceptance](approval-acceptance.md) for the complete policy, migration,
+local/HTTPS examples and fault evidence.
+
+The current run storage schema is 10. Use explicit
+`run [--artifacts store] migrate db` for earlier schemas; existing seeds, events and
 empty-Inbox snapshots retain their exact digests. A lost acknowledgement is retried
 with the original submission; normal recovery never calls a webhook or model.
 

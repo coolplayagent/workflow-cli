@@ -18,6 +18,8 @@ pub struct BundleSpec {
     pub model_policies: Vec<workflow_models::PolicySpec>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub effect_bindings: Vec<workflow_effects::EffectBinding>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub wait_policies: Vec<crate::WaitPolicyBinding>,
 }
 #[derive(Clone, Debug)]
 pub struct CompiledBundle {
@@ -39,6 +41,7 @@ impl CompiledBundle {
         if spec.postconditions.len() > 256
             || spec.model_policies.len() > 128
             || spec.effect_bindings.len() > 256
+            || spec.wait_policies.len() > 256
         {
             return Err(Error::new(
                 ErrorCode::InvalidBundle,
@@ -278,6 +281,7 @@ impl CompiledBundle {
             b.depends_on.sort();
         }
         crate::postconditions::validate(&spec, &workflows, &capabilities)?;
+        crate::wait_policy::validate(&spec, &workflows)?;
         // Remove leaves. Any remaining dependency is a recursion cycle, including loop bodies.
         while !dependencies.is_empty() {
             let leaves: BTreeSet<_> = dependencies
@@ -302,6 +306,8 @@ impl CompiledBundle {
         spec.capabilities.sort_by_key(|d| key(&d.capability));
         spec.model_policies.sort_by_key(|p| key(&p.policy));
         spec.effect_bindings
+            .sort_by_key(|b| (key(&b.workflow), b.node_id.clone()));
+        spec.wait_policies
             .sort_by_key(|b| (key(&b.workflow), b.node_id.clone()));
         let digest = workflow_worker::digest(&spec)?;
         Ok(Self {

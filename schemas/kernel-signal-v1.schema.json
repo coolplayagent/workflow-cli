@@ -1,5 +1,21 @@
 {
   "$defs": {
+    "ExceptionClaim": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "type": "string"
+        },
+        "policy": {
+          "$ref": "#/$defs/VersionRef"
+        }
+      },
+      "required": [
+        "policy",
+        "code"
+      ],
+      "type": "object"
+    },
     "SignalDecision": {
       "enum": [
         "approve",
@@ -7,6 +23,23 @@
         "request_changes"
       ],
       "type": "string"
+    },
+    "VersionRef": {
+      "additionalProperties": false,
+      "description": "Versions are immutable opaque release identifiers, never ranges or `latest`.",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "version"
+      ],
+      "type": "object"
     },
     "WaitTarget": {
       "additionalProperties": false,
@@ -44,6 +77,16 @@
     },
     "decision": {
       "$ref": "#/$defs/SignalDecision"
+    },
+    "exception": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ExceptionClaim"
+        },
+        {
+          "type": "null"
+        }
+      ]
     },
     "expires_at_unix_ms": {
       "format": "uint64",

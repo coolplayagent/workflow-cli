@@ -46,6 +46,7 @@ fn spec(workflows: Vec<Workflow>) -> BundleSpec {
         }
     }
     BundleSpec {
+        wait_policies: vec![],
         postconditions: vec![],
         model_policies: vec![],
         effect_bindings: vec![],

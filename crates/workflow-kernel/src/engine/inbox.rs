@@ -1,6 +1,37 @@
 use super::*;
 
 impl Engine {
+    /// Artifact subjects are frozen wait inputs, never supplied by a responder.
+    pub fn wait_subjects(&self, instance_id: u64) -> Result<Vec<workflow_artifacts::ArtifactLink>> {
+        let (frame, id) = self.locate(instance_id)?;
+        let Some(policy) = self
+            .bundle
+            .wait_policy(&self.state.frames[&frame].workflow, &id)
+        else {
+            return Ok(vec![]);
+        };
+        policy
+            .subjects
+            .iter()
+            .filter(|(_, kind)| **kind == SubjectKind::Artifact)
+            .map(|(name, _)| {
+                serde_json::from_value(
+                    self.record(frame, &id)
+                        .inputs
+                        .get(name)
+                        .cloned()
+                        .unwrap_or_default(),
+                )
+                .map_err(|_| {
+                    Error::new(
+                        ErrorCode::InvalidSignal,
+                        "approval artifact subject is invalid",
+                    )
+                })
+            })
+            .collect()
+    }
+
     pub(super) fn receive_signal(&mut self, message: &SignalMessage) -> Result<()> {
         validate_signal(&self.state.run_digest, message)?;
         if self.state.inbox.contains_key(&message.message_id) {
@@ -56,13 +87,11 @@ impl Engine {
                 let NodeState::Waiting { deadline_unix_ms } = self.record(frame, &id).state else {
                     return Err(Error::new(ErrorCode::InvalidSignal, "wait is not active"));
                 };
-                self.handle(
-                    &EventKind::Signal {
-                        instance_id: message.target.instance_id,
-                        event: message.target.event.clone(),
-                        accepted: message.decision == SignalDecision::Approve,
-                        outputs: message.outputs.clone(),
-                    },
+                self.signal(
+                    message.target.instance_id,
+                    &message.target.event,
+                    message.decision == SignalDecision::Approve,
+                    &message.outputs,
                     commands,
                 )?;
                 SignalStatus::Applied {
@@ -118,6 +147,15 @@ impl Engine {
             && message.decision == SignalDecision::Approve
         {
             return Ok(Some(InvalidOutputs));
+        }
+        if let Some(reason) = crate::wait_policy::rejection(
+            self.bundle
+                .wait_policy(&self.state.frames[&frame].workflow, &id),
+            message,
+            self.state.inbox[&message.message_id].received_at_unix_ms,
+            (record.state != NodeState::Pending).then_some(&record.inputs),
+        ) {
+            return Ok(Some(reason));
         }
         if record.state != NodeState::Pending
             && workflow_worker::digest(&record.inputs)? != message.target.input_digest
