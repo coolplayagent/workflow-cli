@@ -17,9 +17,35 @@ pub struct HttpEffectBinding {
     pub capability: CapabilityDescriptor,
     pub endpoint: String,
     /// Environment variable name only; the value is never serialized or logged.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
     pub api_key_env: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub credential: Option<workflow_credentials::LeaseRef>,
     #[serde(default)]
     pub allow_loopback_http: bool,
+}
+impl HttpEffectBinding {
+    /// Shared production execution requires a broker-issued lease. The only
+    /// environment-key exception is an explicitly enabled literal loopback fixture.
+    pub fn shared_principal(&self) -> Result<Option<&workflow_credentials::Principal>> {
+        workflow_credentials::validate_sources(&self.api_key_env, self.credential.as_ref())
+            .map_err(|_| invalid())?;
+        if let Some(lease) = &self.credential {
+            return Ok(Some(&lease.principal));
+        }
+        let url = Url::parse(&self.endpoint).map_err(|_| invalid())?;
+        if self.allow_loopback_http
+            && url.scheme() == "http"
+            && url
+                .host_str()
+                .and_then(|h| h.trim_matches(['[', ']']).parse::<std::net::IpAddr>().ok())
+                .is_some_and(|a| a.is_loopback())
+        {
+            Ok(None)
+        } else {
+            Err(invalid())
+        }
+    }
 }
 pub struct HttpEffect {
     binding: HttpEffectBinding,
@@ -50,12 +76,11 @@ impl HttpEffect {
             || url.fragment().is_some()
             || !(url.scheme() == "https"
                 || (binding.allow_loopback_http && loopback && url.scheme() == "http"))
-            || binding.api_key_env.is_empty()
-            || binding.api_key_env.len() > 128
-            || !binding
-                .api_key_env
-                .bytes()
-                .all(|b| b.is_ascii_uppercase() || b.is_ascii_digit() || b == b'_')
+            || workflow_credentials::validate_sources(
+                &binding.api_key_env,
+                binding.credential.as_ref(),
+            )
+            .is_err()
         {
             return Err(invalid());
         }
@@ -78,6 +103,15 @@ impl HttpEffect {
         clock: &dyn Clock,
         key: &str,
     ) -> Result<Observation> {
+        self.execute_with_credential(attempt, clock, key, u64::MAX)
+    }
+    fn execute_with_credential(
+        &self,
+        attempt: &EffectAttempt,
+        clock: &dyn Clock,
+        key: &str,
+        credential_expires: u64,
+    ) -> Result<Observation> {
         attempt.validate()?;
         let now = clock.now_unix_ms()?;
         if attempt.intent.policy.target != self.binding.target
@@ -85,6 +119,7 @@ impl HttpEffect {
             || attempt.intent.capability != self.binding.capability
             || now < attempt.issued_at_unix_ms
             || now >= attempt.deadline_unix_ms
+            || now >= credential_expires
             || (attempt.kind == CallKind::Write && now >= attempt.intent.write_deadline())
             || (attempt.kind == CallKind::Query && !attempt.intent.has_query())
         {
@@ -112,7 +147,7 @@ impl HttpEffect {
             .header("X-Effect-Intent", digest(&attempt.intent)?)
             .header("X-Effect-Request", digest(attempt)?)
             .timeout(Duration::from_millis(
-                (attempt.deadline_unix_ms - now).min(60_000),
+                (attempt.deadline_unix_ms.min(credential_expires) - now).min(60_000),
             ))
             .json(attempt)
             .send();
@@ -135,7 +170,7 @@ impl HttpEffect {
             Ok(value) => value,
             Err(_) => return Ok(unknown()),
         };
-        if reply.request_digest != digest(attempt)? {
+        if workflow_credentials::reflects(&reply, key) || reply.request_digest != digest(attempt)? {
             return Ok(unknown());
         }
         let observed = reply.observation;
@@ -149,8 +184,15 @@ impl HttpEffect {
 }
 impl EffectAdapter for HttpEffect {
     fn execute(&self, attempt: &EffectAttempt, clock: &dyn Clock) -> Result<Observation> {
-        let key = std::env::var(&self.binding.api_key_env).map_err(|_| invalid())?;
-        self.execute_with_secret(attempt, clock, &key)
+        let now = clock.now_unix_ms()?;
+        let key = workflow_credentials::resolve(
+            &self.binding.api_key_env,
+            self.binding.credential.as_ref(),
+            &self.binding.endpoint,
+            now,
+        )
+        .map_err(|_| invalid())?;
+        self.execute_with_credential(attempt, clock, key.expose(), key.expires_at_unix_ms())
     }
 }
 

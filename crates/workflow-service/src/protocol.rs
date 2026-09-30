@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use workflow_runstore::*;
 use workflow_runstore_postgres::access::{
     ArtifactCleanup, ArtifactDownloadChunk, ArtifactDownloadGrant, ArtifactUploadRequest,
-    ArtifactUploadStatus, AuditEntry, AuthenticatedService, Dispatch, EffectDispatch,
+    ArtifactUploadStatus, AuditEntry, AuditExport, AuthenticatedService, Dispatch, EffectDispatch,
     OutstandingAssignment, OutstandingEffect, TaskReceipt,
 };
 
@@ -21,6 +21,15 @@ pub struct Request {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)]
 pub enum Operation {
+    ExportAudit,
+    AssignmentForPrincipal {
+        assignment_id: String,
+        principal: workflow_credentials::Principal,
+    },
+    EffectAssignmentForPrincipal {
+        assignment_id: String,
+        principal: workflow_credentials::Principal,
+    },
     PlanStorageUpgrade {
         run_id: String,
     },
@@ -202,6 +211,7 @@ pub struct Reply {
     deny_unknown_fields
 )]
 pub enum Response {
+    AuditExport(AuditExport),
     StorageUpgrade(StorageUpgrade),
     MigrationPlan(Box<MigrationPlan>),
     RecoveryBarrier(Option<Box<RecoveryBarrier>>),
@@ -250,7 +260,23 @@ impl Request {
     }
     pub fn execute(&self, service: &mut AuthenticatedService, token: &str) -> Result<Response> {
         self.validate()?;
+        if workflow_credentials::reflects(self, token) {
+            return Err(invalid());
+        }
         match &self.operation {
+            Operation::ExportAudit => service.export_audit(token).map(Response::AuditExport),
+            Operation::AssignmentForPrincipal {
+                assignment_id,
+                principal,
+            } => service
+                .assignment_bound(token, assignment_id, Some(principal))
+                .map(|t| Response::Assignment(Box::new(t))),
+            Operation::EffectAssignmentForPrincipal {
+                assignment_id,
+                principal,
+            } => service
+                .effect_assignment_bound(token, assignment_id, Some(principal))
+                .map(|a| Response::EffectAssignment(Box::new(a))),
             Operation::PlanStorageUpgrade { run_id } => service
                 .plan_storage_upgrade(token, run_id)
                 .map(Response::StorageUpgrade),
@@ -492,6 +518,15 @@ impl Request {
                 | (Operation::Signal { .. }, Response::SignalReceived(_))
                 | (Operation::Revoke { .. }, Response::Unit)
                 | (Operation::Audit { .. }, Response::Audit(_))
+                | (Operation::ExportAudit, Response::AuditExport(_))
+                | (
+                    Operation::AssignmentForPrincipal { .. },
+                    Response::Assignment(_)
+                )
+                | (
+                    Operation::EffectAssignmentForPrincipal { .. },
+                    Response::EffectAssignment(_)
+                )
                 | (Operation::Outstanding { .. }, Response::Outstanding(_))
                 | (Operation::Pending { .. }, Response::Pending(_))
                 | (Operation::Runs { .. }, Response::Runs(_))

@@ -5,10 +5,11 @@ worker can return artifact evidence that the run reducer verifies during result
 settlement and recovery. Manifest identity, content types, lineage and producer
 contracts match [local artifacts](artifacts.md).
 
-This adapter stores bytes in PostgreSQL `bytea`; it is not an S3/object storage
-adapter. R07 still requires actual object storage and automatic workspace/gate
-integration. R14 still requires provider secret grants, sandbox/egress enforcement,
-retention policy, audit export and authenticated effect authorization.
+This adapter stores bytes in PostgreSQL `bytea`. [R07](artifact-acceptance.md)
+adds a separate trusted S3/object adapter and actual workspace/evidence execution.
+[R14](security-acceptance.md) defines authenticated access, provider leases,
+retention/archive/deletion policy and private audit export. S3 presigned URLs do
+not replace the credential-bound shared download protocol.
 
 ## Initialize and authorize
 
@@ -24,8 +25,7 @@ Initialization is idempotent for version 1 and rejects unknown versions. Public
 requests cannot initialize or upgrade storage. Existing read-only deployments
 can operate without this schema, but cannot accept artifact-backed results until
 it is initialized. Include this schema's content, metadata, credentials, assignments
-and `workflow_authority` in a consistent database backup. Shared backup/restore
-orchestration and disaster recovery acceptance remain separate work.
+and `workflow_authority` in a consistent database backup. [Shared backup/restore](shared-recovery.md) verifies that complete dependency closure.
 
 A worker credential's exact capability ID/version/contract digest rule optionally
 contains an `artifacts` policy. Absent policy denies all artifact access. Example
@@ -145,4 +145,4 @@ stale leases, typed input roots and transitive dependencies, cleanup and recover
 The HTTPS fixture kills a separate uploader after its first committed chunk,
 resumes through the client, submits artifact-backed work, and checks another
 server's recovered state and content. Cargo/Bazel also check TLS/protocol/file
-boundaries. These fixtures establish this increment; they do not close R07/R14.
+boundaries. R07 and R14 combine these fixtures with their additional acceptance evidence.

@@ -66,13 +66,14 @@ artifact ACLs, secret rotation or protection from direct database access. Artifa
 verification is supplied by the host and must retain immutable referenced content.
 Local image export does not revoke an old owner or authorize migration. Full
 database recovery must retire the old authority and apply recovery fences before
-admitting writes; this increment does not provide that operator protocol.
+admitting writes; [R04 recovery](shared-recovery.md) provides that operator protocol.
 
 The [authenticated HTTPS service](remote-service.md) adds task transport and a
 two-scheduler/three-worker owner-loss fixture above this storage boundary. R09
 remains open for fairness/quotas/backpressure, worker drain, rolling upgrades,
 broader queue/network failure, database outage and disaster recovery measurements.
-R14 remains a prerequisite for shared service admission. Local SQLite and
+[R14 security acceptance](security-acceptance.md) defines the authenticated admission
+boundary above this raw trusted port. Local SQLite and
 PostgreSQL storage contracts alone do not prove those deployment properties.
 
 Implementation references: [PostgreSQL row locking](https://www.postgresql.org/docs/17/explicit-locking.html)

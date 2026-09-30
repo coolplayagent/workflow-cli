@@ -727,6 +727,7 @@ fn real_http_write_then_killed_worker_is_queried_and_duplicate_delivery_creates_
         call_identity: policy.call_identity.clone(),
         capability: req.bundle.capabilities[0].clone(),
         endpoint: gateway.url.clone(),
+        credential: None,
         api_key_env: "SANDBOX_TEST_TOKEN".into(),
         allow_loopback_http: true,
     };

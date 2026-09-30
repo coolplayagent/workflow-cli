@@ -129,6 +129,7 @@ impl Sandbox {
             call_identity: policy.call_identity.clone(),
             capability: start.bundle.capabilities[0].clone(),
             endpoint: self.endpoint.clone(),
+            credential: None,
             api_key_env: "WORKFLOW_EFFECT_TEST_SECRET".into(),
             allow_loopback_http: true,
         }

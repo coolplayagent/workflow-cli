@@ -145,12 +145,14 @@ impl GitSource {
     }
     fn command(&self, args: &[&str], input: Vec<u8>, limit: usize) -> Result<Vec<u8>> {
         let mut cmd = Command::new("git");
-        for (k, _) in std::env::vars_os() {
-            if k.to_string_lossy().starts_with("GIT_") {
-                cmd.env_remove(k);
-            }
-        }
-        cmd.env("GIT_CONFIG_GLOBAL", "/dev/null")
+        // Git reads object bytes only. Provider/database credentials and loader,
+        // proxy or shell variables have no purpose in this subprocess.
+        cmd.env_clear()
+            .env(
+                "PATH",
+                std::env::var_os("PATH").unwrap_or_else(|| "/usr/bin:/bin".into()),
+            )
+            .env("GIT_CONFIG_GLOBAL", "/dev/null")
             .env("GIT_CONFIG_SYSTEM", "/dev/null")
             .env("GIT_NO_LAZY_FETCH", "1")
             .env("GIT_ALLOW_PROTOCOL", "")

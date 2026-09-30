@@ -2465,6 +2465,7 @@ dependencies = [
  "workflow-artifacts",
  "workflow-backup-local",
  "workflow-builtin-capabilities",
+ "workflow-credentials",
  "workflow-daemon-local",
  "workflow-definitions",
  "workflow-effect-http",
@@ -2484,6 +2485,16 @@ dependencies = [
  "workflow-worker",
  "workflow-workspace-local",
  "workflow-workspaces",
+]
+
+[[package]]
+name = "workflow-credentials"
+version = "0.1.0"
+dependencies = [
+ "libc",
+ "schemars",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
@@ -2515,6 +2526,7 @@ dependencies = [
  "schemars",
  "serde",
  "serde_json",
+ "workflow-credentials",
  "workflow-effects",
  "workflow-ir",
  "workflow-worker",
@@ -2581,6 +2593,7 @@ dependencies = [
  "schemars",
  "serde",
  "serde_json",
+ "workflow-credentials",
  "workflow-ir",
  "workflow-models",
 ]
@@ -2632,6 +2645,7 @@ dependencies = [
  "sha2 0.10.9",
  "workflow-artifacts",
  "workflow-builtin-capabilities",
+ "workflow-credentials",
  "workflow-effects",
  "workflow-ir",
  "workflow-kernel",
@@ -2697,6 +2711,7 @@ dependencies = [
  "tokio-rustls",
  "workflow-artifacts",
  "workflow-builtin-capabilities",
+ "workflow-credentials",
  "workflow-effect-http",
  "workflow-effects",
  "workflow-ir",

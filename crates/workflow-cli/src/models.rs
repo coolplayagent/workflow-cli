@@ -8,7 +8,7 @@ use std::{
 use workflow_model_http::{HttpBinding, HttpModel};
 use workflow_models::*;
 use workflow_worker::{ExecutionGrant, WorkRequest, WorkResult, Worker};
-pub const HELP: &str = "MODEL POLICY EXECUTION\n  workflow model check-policy <policy.json>\n  workflow model describe-binding <http-binding.json>\n  workflow model dispatch <policy.json> <http-binding.json> <request.json> <grant.json>\n  workflow model check-record <policy.json> <request.json> <result.json>\n  workflow run drive-models <db> <run-id> <owner> <max-commands> <bindings.json>\n  workflow schema <model-policy|model-proposal|model-record|model-http-binding>\n\nModel policies are frozen in the run bundle; provider/model/endpoints remain host bindings.\nKeys are read from the binding's named environment variable only during invocation.\nOnly listed read-only tools can be invoked. Models cannot write run state or skip gates.\ncheck-record replays explicit records without model/network calls; it does not authenticate a provider or grant.\n";
+pub const HELP: &str = "MODEL POLICY EXECUTION\n  workflow model check-policy <policy.json>\n  workflow model describe-binding <http-binding.json>\n  workflow model dispatch <policy.json> <http-binding.json> <request.json> <grant.json>\n  workflow model check-record <policy.json> <request.json> <result.json>\n  workflow run drive-models <db> <run-id> <owner> <max-commands> <bindings.json>\n  workflow schema <model-policy|model-proposal|model-record|model-http-binding>\n\nModel policies are frozen in the run bundle; provider/model/endpoints remain host bindings.\nCredentials are resolved on each call from a short-lived private lease; local execution also supports named environment references.\nOnly listed read-only tools can be invoked. Models cannot write run state or skip gates.\ncheck-record replays explicit records without model/network calls; it does not authenticate a provider or grant.\n";
 fn read<T: DeserializeOwned>(path: &str) -> Result<T> {
     let mut bytes = vec![];
     std::fs::File::open(path)
@@ -24,6 +24,25 @@ pub(crate) struct Binding {
 }
 pub fn worker(bundle: &workflow_kernel::BundleSpec, path: &str) -> Result<Worker> {
     bound_worker(bundle, &bindings(path)?, false)
+}
+pub(crate) fn shared_worker(
+    bundle: &workflow_kernel::BundleSpec,
+    path: &str,
+) -> Result<(Worker, Option<workflow_credentials::Principal>)> {
+    let bindings = bindings(path)?;
+    let mut principal = None;
+    for b in &bindings {
+        if let Some(p) = b.http.shared_principal()? {
+            if principal.as_ref().is_some_and(|old| old != p) {
+                return Err(Error::new(
+                    ErrorCode::InvalidBinding,
+                    "shared provider identities differ",
+                ));
+            }
+            principal = Some(p.clone());
+        }
+    }
+    Ok((bound_worker(bundle, &bindings, false)?, principal))
 }
 pub(crate) fn bindings(path: &str) -> Result<Vec<Binding>> {
     let bindings: Vec<Binding> = read(path)?;

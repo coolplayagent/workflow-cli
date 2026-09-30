@@ -7,6 +7,7 @@ fn binding(provider: Provider, endpoint: String) -> HttpBinding {
         provider,
         model: "fixture-model".into(),
         endpoint,
+        credential: None,
         api_key_env: "WORKFLOW_HTTP_TEST_KEY".into(),
         allow_loopback_http: true,
     }
@@ -188,7 +189,52 @@ fn redirects_do_not_forward_credentials_and_error_bodies_are_not_recorded() {
     }
 }
 #[test]
+fn successful_provider_responses_cannot_persist_credentials_in_proposals_or_metadata() {
+    for provider in [Provider::OpenaiResponses, Provider::AnthropicMessages] {
+        for field in ["summary", "output_value", "output_key", "id", "model"] {
+            let key = "fixture-private-provider-key";
+            let mut v = response(&provider);
+            if matches!(field, "id" | "model") {
+                v[field] = json!(key);
+            } else {
+                let mut p: Value = serde_json::from_str(&proposal()).unwrap();
+                match field {
+                    "summary" => p["action"]["summary"] = json!(format!("echo {key}")),
+                    "output_value" => p["action"]["outputs"] = json!({"result":key}),
+                    _ => p["action"]["outputs"] = json!({key:"leak"}),
+                }
+                // Escaping on both wire levels must not bypass the decoded check.
+                let encoded = p.to_string().replace("fixture", r"\u0066ixture");
+                match provider {
+                    Provider::OpenaiResponses => {
+                        v["output"][1]["content"][0]["text"] = json!(encoded)
+                    }
+                    Provider::AnthropicMessages => v["content"][1]["text"] = json!(encoded),
+                }
+            }
+            let (url, handle) = server("200 OK", "", v.to_string());
+            let reply = HttpModel::new(binding(provider.clone(), url))
+                .unwrap()
+                .request_with_key(&call(), key);
+            assert_eq!(reply, Err(ModelFailure::InvalidResponse));
+            assert!(!format!("{reply:?}").contains(key));
+            handle.join().unwrap();
+        }
+    }
+}
+#[test]
 fn plaintext_nonloopback_and_credential_urls_are_rejected() {
+    assert!(
+        binding(Provider::OpenaiResponses, "https://example.com/v1".into())
+            .shared_principal()
+            .is_err()
+    );
+    assert!(
+        binding(Provider::OpenaiResponses, "http://127.0.0.1:1234/v1".into())
+            .shared_principal()
+            .unwrap()
+            .is_none()
+    );
     for url in [
         "http://example.com/v1",
         "http://localhost/v1",

@@ -6,6 +6,7 @@ license.workspace = true
 rust-version.workspace = true
 
 [dependencies]
+workflow-credentials = { path = "../workflow-credentials" }
 workflow-effects = { path = "../workflow-effects" }
 workflow-ir = { path = "../workflow-ir" }
 workflow-worker = { path = "../workflow-worker" }

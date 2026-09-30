@@ -194,12 +194,25 @@ impl AuthenticatedService {
     /// Single delivery even when two processes share one worker credential. If
     /// the response is lost, a successor lease must reconcile the original key.
     pub fn effect_assignment(&mut self, token: &str, assignment: &str) -> Result<EffectAttempt> {
+        self.effect_assignment_bound(token, assignment, None)
+    }
+    pub fn effect_assignment_bound(
+        &mut self,
+        token: &str,
+        assignment: &str,
+        principal: Option<&workflow_credentials::Principal>,
+    ) -> Result<EffectAttempt> {
         self.transact(
             token,
             &[Role::Worker],
             "effect_assignment",
             assignment,
             |tx, who| {
+                if principal.is_some_and(|p| {
+                    p.tenant != who.tenant || p.project != who.project || p.actor != who.actor
+                }) {
+                    return Err(denied());
+                }
                 let a = load(tx, who, assignment)?;
                 if a.delivered || a.settled {
                     return Err(Error::new(

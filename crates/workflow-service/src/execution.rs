@@ -24,6 +24,14 @@ pub fn work_effects_once(
     effects: &impl workflow_effects::EffectAdapter,
     limit: u32,
 ) -> Result<WorkerReport> {
+    work_effects_once_bound(client, effects, limit, None)
+}
+pub fn work_effects_once_bound(
+    client: &(impl TaskTransport + ?Sized),
+    effects: &impl workflow_effects::EffectAdapter,
+    limit: u32,
+    principal: Option<&workflow_credentials::Principal>,
+) -> Result<WorkerReport> {
     workflow_runstore::validate_limit(limit)?;
     let Response::Pending(page) = call(
         client,
@@ -39,8 +47,14 @@ pub fn work_effects_once(
     for assignment_id in page.items {
         let attempt = match call(
             client,
-            Operation::EffectAssignment {
-                assignment_id: assignment_id.clone(),
+            match principal {
+                Some(principal) => Operation::EffectAssignmentForPrincipal {
+                    assignment_id: assignment_id.clone(),
+                    principal: principal.clone(),
+                },
+                None => Operation::EffectAssignment {
+                    assignment_id: assignment_id.clone(),
+                },
             },
         ) {
             Ok(Response::EffectAssignment(attempt)) => attempt,
@@ -95,6 +109,14 @@ pub fn work_once(
     worker: &workflow_worker::Worker,
     limit: u32,
 ) -> Result<WorkerReport> {
+    work_once_bound(client, worker, limit, None)
+}
+pub fn work_once_bound(
+    client: &(impl TaskTransport + ?Sized),
+    worker: &workflow_worker::Worker,
+    limit: u32,
+    principal: Option<&workflow_credentials::Principal>,
+) -> Result<WorkerReport> {
     workflow_runstore::validate_limit(limit)?;
     let Response::Pending(page) = call(
         client,
@@ -110,8 +132,14 @@ pub fn work_once(
     for assignment_id in page.items {
         let task = match call(
             client,
-            Operation::Assignment {
-                assignment_id: assignment_id.clone(),
+            match principal {
+                Some(principal) => Operation::AssignmentForPrincipal {
+                    assignment_id: assignment_id.clone(),
+                    principal: principal.clone(),
+                },
+                None => Operation::Assignment {
+                    assignment_id: assignment_id.clone(),
+                },
             },
         ) {
             Ok(Response::Assignment(task)) => task,

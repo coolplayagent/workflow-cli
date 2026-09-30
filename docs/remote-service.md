@@ -118,12 +118,12 @@ They do not renew leases: choose a lease longer than the supported task deadline
 expired ownership is reacquired with a new epoch. Pause keeps in-flight ownership
 until it expires rather than proactively fencing accepted tasks.
 
-These mechanisms do not complete R09/R14: shared quotas and tenant/model/capability
-fairness, priorities, measured throughput/p95 delay, dead-letter administration,
-worker version routing and rolling drain, lease renewal with assignment rebinding,
-public edge admission policy, sandbox/egress, provider secret grants, artifact archive/deletion policy,
-and broader external-effect failure evidence remain required. This transport
-is not permission to launch a general multi-tenant public deployment.
+[R14 security acceptance](security-acceptance.md) defines short-lived provider
+leases, assignment-time principal checks, scoped audit export, retention and the
+registered execution boundary. R09 still owns shared quotas/fairness, priorities,
+worker routing/drain, lease renewal and performance/fault evidence. Host identity
+provisioning, upstream grant issuance and public edge admission remain deployment
+integrations. No arbitrary third-party executable is admitted by this CLI.
 
 ## Executable acceptance evidence
 
@@ -159,7 +159,8 @@ and [PostgreSQL rustls integration](https://docs.rs/tokio-postgres-rustls/0.14.0
 credential-bound expiring downloads, typed input/lineage authorization and
 artifact-backed result recovery. Content is stored transactionally in PostgreSQL.
 The artifact CLI verifies complete content before returning a reference or writing
-a private download. Object storage and full retention/backup policy remain open.
+a private download. [R07](artifact-acceptance.md) covers object storage;
+[R04](shared-recovery.md) and [R14](security-acceptance.md) cover backup and retention.
 
 ## Definition validation and publication
 
@@ -184,3 +185,10 @@ Administrators can preview and apply reviewed definition migrations, inspect
 historical snapshots and explicitly upgrade prior transaction images through
 the same HTTPS endpoint. See [R11 version migration](version-migration.md) for
 role, publication, source CAS and lease constraints.
+
+## Security operations
+
+`remote audit-export <binding> <new-private-output>` exports the complete bounded
+scope audit for administrators/recovery. Production `work-models` / `work-effects`
+require broker lease references and use principal-bound assignment delivery. See
+[security acceptance](security-acceptance.md) for formats, limits and executable evidence.

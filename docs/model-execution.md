@@ -54,7 +54,9 @@ workflow model describe-binding examples/models/openai.json
 
 Copy either `openai.json` or `anthropic.json` to a host-owned file, replace
 `HOST_SELECTED_MODEL` with a model available to that host, and provision the
-named environment variable through the host's secret mechanism. Do not put the
+named environment variable through the host's secret mechanism for local use.
+Shared production CLI execution requires a [short-lived broker lease](security-acceptance.md)
+in `credential`, with `api_key_env` omitted. Do not put the
 key value in JSON, a workflow, an artifact or a command-line argument.
 `describe-binding` validates configuration without reading the key or contacting
 the provider. Model names and availability are host choices; examples do not
