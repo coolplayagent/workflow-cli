@@ -215,6 +215,18 @@ pub fn reference(manifest: WorkspaceManifest) -> Result<WorkspaceRef> {
             return Err(invalid("bounded observed environment required"));
         }
     }
+    if manifest.environment.tools.len() > 32
+        || manifest.environment.tools.iter().any(|(key, value)| {
+            key.is_empty()
+                || key.len() > 128
+                || value.is_empty()
+                || value.len() > 256
+                || key.chars().any(char::is_control)
+                || value.chars().any(char::is_control)
+        })
+    {
+        return Err(invalid("observed tool versions exceed supported bounds"));
+    }
     let id = workspace_id(&manifest.spec)?;
     let r = WorkspaceRef {
         workspace_id: id.clone(),

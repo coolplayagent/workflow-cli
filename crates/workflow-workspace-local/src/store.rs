@@ -216,6 +216,43 @@ impl LocalWorkspaceStore {
             .remove(id)
             .ok_or_else(|| Error::new(ErrorCode::NotFound, "workspace allocation missing"))
     }
+    pub fn read_file(&self, link: &WorkspaceLink, path: &str) -> Result<Vec<u8>> {
+        validate_path(path)?;
+        self.resolve(link)?;
+        Ok(self.tree(&link.workspace_id)?.read(path)?.0)
+    }
+    /// Exact retries preserve already written output. A different or partial
+    /// previous output is a conflict and requires a fresh attempt.
+    pub fn write_output(&mut self, link: &WorkspaceLink, path: &str, bytes: &[u8]) -> Result<()> {
+        let reference = self.resolve(link)?;
+        let output = reference
+            .manifest
+            .spec
+            .outputs
+            .iter()
+            .find(|o| o.path == path)
+            .ok_or_else(|| Error::new(ErrorCode::InvalidContract, "output path not declared"))?;
+        workflow_artifacts::validate_content(&output.artifact_type, bytes)?;
+        let tree = self.tree(&link.workspace_id)?;
+        let tx = self
+            .connection
+            .transaction_with_behavior(TransactionBehavior::Immediate)
+            .map_err(sql)?;
+        catalog(&tx)?;
+        if tree.scan()?.iter().any(|f| f.path == path) {
+            let (old, executable) = tree.read(path)?;
+            if old != bytes || executable {
+                return Err(Error::new(
+                    ErrorCode::Conflict,
+                    "attempt output already contains different bytes",
+                ));
+            }
+        } else {
+            tree.write(path, bytes, false)?;
+        }
+        tx.commit().map_err(sql)?;
+        Ok(())
+    }
     fn tree(&self, id: &str) -> Result<Dir> {
         self.dir.child("workspaces")?.child(id)?.child("tree")
     }
@@ -495,6 +532,101 @@ impl LocalWorkspaceStore {
         }
         tx.commit().map_err(sql)?;
         Ok(report)
+    }
+
+    /// Freeze only declared modifications/deletions as an immutable proposal.
+    /// The complete observed tree is bound, including every unchanged file.
+    pub fn seal_proposal(
+        &mut self,
+        link: &WorkspaceLink,
+        decision_summary: &str,
+        artifacts: &mut dyn ArtifactStore,
+    ) -> Result<workflow_artifacts::ArtifactRef> {
+        validate_summary(decision_summary)?;
+        let workspace = self.resolve(link)?;
+        let tree = self.tree(&workspace.workspace_id)?;
+        let tx = self
+            .connection
+            .transaction_with_behavior(TransactionBehavior::Immediate)
+            .map_err(sql)?;
+        catalog(&tx)?;
+        let observation = observation(&workspace, tree.scan()?)?;
+        if observation.changes.len() > 64 || observation.changes.iter().any(|c| !c.declared_output)
+        {
+            return Err(Error::new(
+                ErrorCode::InvalidContract,
+                "merge proposal requires at most 64 changes, all declared outputs",
+            ));
+        }
+        let mut files = vec![];
+        let mut spec = publish_spec(&workspace.manifest.spec, proposal_type());
+        let mut inputs: BTreeMap<_, _> = spec
+            .inputs
+            .iter()
+            .map(|l| (l.artifact_id.clone(), l.clone()))
+            .collect();
+        for change in &observation.changes {
+            if change.kind == ChangeKind::Deleted {
+                continue;
+            }
+            let expected = observation
+                .files
+                .iter()
+                .find(|f| f.path == change.path)
+                .expect("observed");
+            let (bytes, executable) = tree.read(&change.path)?;
+            if content_digest(&bytes) != expected.digest || executable != expected.executable {
+                return Err(Error::new(
+                    ErrorCode::Changed,
+                    "proposal changed during capture",
+                ));
+            }
+            let ty = workspace
+                .manifest
+                .spec
+                .outputs
+                .iter()
+                .find(|o| o.path == change.path)
+                .expect("declared")
+                .artifact_type
+                .clone();
+            let file_spec = publish_spec(&workspace.manifest.spec, ty);
+            let expected = workflow_artifacts::reference(&file_spec, &bytes)?;
+            let published = artifacts.publish(&file_spec, &mut bytes.as_slice())?;
+            if published != expected {
+                return Err(corrupt("artifact adapter returned another proposal file"));
+            }
+            files.push(CapturedFile {
+                path: change.path.clone(),
+                executable,
+                artifact_id: published.artifact_id.clone(),
+                digest: published.digest.clone(),
+            });
+            inputs.insert(published.artifact_id.clone(), published.link());
+        }
+        if tree.scan()? != observation.files {
+            return Err(Error::new(
+                ErrorCode::Changed,
+                "workspace changed before proposal commit",
+            ));
+        }
+        spec.inputs = inputs.into_values().collect();
+        let proposal = MergeProposal {
+            workspace,
+            observation,
+            files,
+            decision_summary: decision_summary.into(),
+        };
+        let bytes = to_message(&proposal)?;
+        let expected = workflow_artifacts::reference(&spec, &bytes)?;
+        let reference = artifacts.publish(&spec, &mut bytes.as_slice())?;
+        if reference != expected {
+            return Err(corrupt(
+                "artifact adapter returned another proposal manifest",
+            ));
+        }
+        tx.commit().map_err(sql)?;
+        Ok(reference)
     }
 }
 impl WorkspaceStore for LocalWorkspaceStore {

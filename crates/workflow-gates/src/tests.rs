@@ -18,6 +18,94 @@ struct Source {
     unavailable: bool,
     artifacts: BTreeMap<String, ArtifactRef>,
 }
+
+#[test]
+fn input_invalidation_revokes_prior_gate_pass_until_fresh_evidence_is_bound() {
+    let (mut request, mut source) = fixture();
+    let mut spec = source.report.manifest.spec.clone();
+    spec.artifact_type = ArtifactType {
+        identity: version("requirements"),
+        content: ContentSchema::Utf8,
+    };
+    let old = reference(&spec, b"old requirement").unwrap();
+    let new = reference(&spec, b"changed requirement").unwrap();
+    source
+        .artifacts
+        .insert(old.artifact_id.clone(), old.clone());
+    source
+        .artifacts
+        .insert(new.artifact_id.clone(), new.clone());
+    let mut report_spec = source.report.manifest.spec.clone();
+    report_spec.inputs = vec![old.link()];
+    source.report = reference(&report_spec, br#"{"passed":true}"#).unwrap();
+    source.execution.as_mut().unwrap().evidence = vec![source.report.link()];
+    request.target.artifacts = vec![old.link()];
+    request.evidence[0].report = source.report.link();
+    let prior = evaluate(&request, &source, 200).unwrap();
+    assert_eq!(prior.verdict, Verdict::Pass);
+    let plan = RevalidationPlan {
+        schema_version: 1,
+        policy: RevalidationPolicy::RequireFreshEvidence,
+        inventory_digest: sha('f'),
+        replacements: vec![Replacement {
+            old: old.link(),
+            new: new.link(),
+        }],
+        affected: vec![],
+        decision_summary: "Changed requirement requires new test execution".into(),
+    };
+    struct Current {
+        reader: InvalidatedReader,
+        execution: Source,
+    }
+    impl ArtifactReader for Current {
+        fn verify(&self, link: &ArtifactLink) -> Result<ArtifactRef> {
+            self.reader.verify(link)
+        }
+    }
+    impl EvidenceSource for Current {
+        fn executed_check(&self, producer: &Producer) -> Result<Option<ExecutedCheck>> {
+            self.execution.executed_check(producer)
+        }
+    }
+    let current = Current {
+        reader: InvalidatedReader::new(Box::new(source.clone()), &plan).unwrap(),
+        execution: source.clone(),
+    };
+    assert_eq!(
+        evaluate(&request, &current, 201).unwrap().verdict,
+        Verdict::Unknown
+    );
+    assert_eq!(
+        revalidate(&request, &prior, &current, 201)
+            .unwrap_err()
+            .code,
+        ErrorCode::InvalidReference
+    );
+    assert_eq!(
+        evaluate(&request, &source, 201).unwrap().verdict,
+        Verdict::Pass
+    );
+    // Fresh execution under the changed common input restores eligibility.
+    report_spec.inputs = vec![new.link()];
+    report_spec.producer.attempt_id = "attempt-fresh".into();
+    report_spec.producer.input_digest = sha('e');
+    source.report = reference(&report_spec, br#"{"passed":true}"#).unwrap();
+    let execution = source.execution.as_mut().unwrap();
+    execution.producer = report_spec.producer.clone();
+    execution.evidence = vec![source.report.link()];
+    request.target.input_digest = sha('e');
+    request.target.artifacts = vec![new.link()];
+    request.evidence[0].report = source.report.link();
+    let current = Current {
+        reader: InvalidatedReader::new(Box::new(source.clone()), &plan).unwrap(),
+        execution: source,
+    };
+    assert_eq!(
+        evaluate(&request, &current, 202).unwrap().verdict,
+        Verdict::Pass
+    );
+}
 impl ArtifactReader for Source {
     fn verify(&self, link: &ArtifactLink) -> Result<ArtifactRef> {
         if self.unavailable {

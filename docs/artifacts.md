@@ -1,3 +1,5 @@
+See [R07 acceptance and object/workspace operations](artifact-acceptance.md) for the completed cross-adapter workflow.
+
 # Typed artifacts and verified run evidence
 
 Workflow treats a report or file as a versioned handoff. `workflow-artifacts`
@@ -79,7 +81,7 @@ input were replaced, including their producing node/attempt identities. Both are
 read-only projections with page limits 1–100 and an exclusive `next_cursor`.
 They do not edit historical decisions or resume/recompute a run. Changed request
 inputs or an old attempt cannot reuse evidence at result submission. Current run
-inputs remain immutable; general run invalidation/recomputation is future work.
+inputs remain immutable. The [R07 current evidence view](artifact-acceptance.md#current-evidence-after-an-input-change) records replacement policy and rejects transitive stale evidence until recomputed outputs are accepted.
 
 ## Publication, recovery and cleanup
 

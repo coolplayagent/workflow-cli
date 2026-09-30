@@ -114,7 +114,7 @@ impl Worker {
         &self,
         request: &WorkRequest,
         grant: &ExecutionGrant,
-        clock: &impl Clock,
+        clock: &(impl Clock + ?Sized),
     ) -> Result<AcceptedResult> {
         request.validate_shape()?;
         let registration = self

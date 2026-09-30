@@ -25,6 +25,7 @@ workflow-builtin-capabilities = { path = "../workflow-builtin-capabilities" }
 schemars.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+sha2.workspace = true
 workflow-ir = { path = "../workflow-ir" }
 workflow-validator = { path = "../workflow-validator" }
 
@@ -32,6 +33,7 @@ workflow-definitions = { path = "../workflow-definitions" }
 workflow-registry-sqlite = { path = "../workflow-registry-sqlite" }
 
 workflow-artifacts = { path = "../workflow-artifacts" }
+workflow-artifact-s3 = { path = "../workflow-artifact-s3" }
 workflow-artifact-local = { path = "../workflow-artifact-local" }
 
 workflow-workspaces = { path = "../workflow-workspaces" }

@@ -3,6 +3,29 @@ use serde::Serialize;
 use workflow_runstore::{Claimed, ExecutionStore, LeaseRequest, Snapshot};
 use workflow_worker::{Clock, Worker};
 
+/// Host task execution, including any attempt workspace and retained evidence.
+/// Storage still owns claim/lease/result validation and durable completion.
+pub trait TaskExecutor {
+    fn execute_task(
+        &self,
+        request: &workflow_worker::WorkRequest,
+        grant: &workflow_worker::ExecutionGrant,
+        clock: &dyn Clock,
+    ) -> workflow_worker::Result<workflow_worker::WorkResult>;
+}
+impl TaskExecutor for Worker {
+    fn execute_task(
+        &self,
+        request: &workflow_worker::WorkRequest,
+        grant: &workflow_worker::ExecutionGrant,
+        clock: &dyn Clock,
+    ) -> workflow_worker::Result<workflow_worker::WorkResult> {
+        Ok(self
+            .execute_with_clock(request, grant, clock)?
+            .into_result())
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct DriveOptions {
     pub owner: String,
@@ -57,7 +80,7 @@ impl std::error::Error for Error {}
 /// must cooperate with its deadline; expiry fences results but cannot kill code.
 pub fn drive(
     store: &mut impl ExecutionStore,
-    worker: &Worker,
+    worker: &impl TaskExecutor,
     run_id: &str,
     options: &DriveOptions,
     clock: &impl Clock,
@@ -71,7 +94,7 @@ pub fn drive(
 /// failure leaves an unknown effect for query/deduplication recovery.
 pub fn drive_with_effects(
     store: &mut impl workflow_runstore::EffectStore,
-    worker: &Worker,
+    worker: &impl TaskExecutor,
     effects: &impl workflow_effects::EffectAdapter,
     run_id: &str,
     options: &DriveOptions,
@@ -113,7 +136,7 @@ enum EffectProgress {
 }
 fn drive_inner<S: ExecutionStore>(
     store: &mut S,
-    worker: &Worker,
+    worker: &impl TaskExecutor,
     run_id: &str,
     options: &DriveOptions,
     clock: &impl Clock,
@@ -174,19 +197,19 @@ fn drive_inner<S: ExecutionStore>(
                     processed += 1;
                 }
                 Claimed::Task { attempt } => {
-                    let result =
-                        match worker.execute_with_clock(&attempt.request, &attempt.grant, clock) {
-                            Ok(accepted) => accepted.into_result(),
-                            Err(e) => {
-                                let mut error = Error::from(e.clone());
-                                if let Err(storage) =
-                                    store.fail_task(&lease, &attempt.attempt_id, &e, clock)
-                                {
-                                    error.storage = Some(storage);
-                                }
-                                return Err(error);
+                    let result = match worker.execute_task(&attempt.request, &attempt.grant, clock)
+                    {
+                        Ok(accepted) => accepted,
+                        Err(e) => {
+                            let mut error = Error::from(e.clone());
+                            if let Err(storage) =
+                                store.fail_task(&lease, &attempt.attempt_id, &e, clock)
+                            {
+                                error.storage = Some(storage);
                             }
-                        };
+                            return Err(error);
+                        }
+                    };
                     store.finish_task(&lease, &attempt.attempt_id, &result, clock)?;
                     processed += 1;
                     executed += 1;

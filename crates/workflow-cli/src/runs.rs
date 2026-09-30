@@ -5,7 +5,7 @@ use std::io::{Read, Write};
 use workflow_runstore::*;
 use workflow_runstore_sqlite::SqliteRunStore;
 
-pub const HELP: &str = "DURABLE RUN STORAGE\n  workflow run init <db>\n  workflow run migrate <db>\n  workflow run export <db> <new-directory>\n  workflow run start <db> <start.json>\n  workflow run drive <db> <run-id> <owner> <max-commands>\n  workflow run drive-models <db> <run-id> <owner> <max-commands> <bindings.json>\n  workflow run drive-effects <db> <run-id> <owner> <max-commands> <bindings.json> [model-bindings.json]\n  workflow run recovery <db> <run-id>\n  workflow run recovery-acknowledge <db> <run-id> <audit.json>\n  workflow run effect-import <db> <lease.json> <import.json>\n  workflow run effects <db> <run-id> <after-instance> <limit>\n  workflow run effect-claim <db> <lease.json>\n  workflow run effect-observe <db> <lease.json> <attempt-id> <observation.json>\n  workflow run effect-resolve <db> <lease.json> <operation-key> <resolution.json>\n  workflow run execution-history <db> <run-id> <after-sequence> <limit>\n  workflow run status <db> <run-id>\n  workflow run receive <db> <signal.json>\n  workflow run inbox <db> <run-id> <after-revision> <limit>\n  workflow run waits <db> <run-id> <after-instance> <limit>\n  workflow run event <db> <event.json>\n  workflow run cancel <db> <run-id> <event-id> <expected-revision> <at-unix-ms>\n  workflow run <pause|resume> <db> <run-id> <event-id> <expected-revision> <at-unix-ms> <reason>\n  workflow run list <db> <after-id|-> <limit>\n  workflow run history <db> <run-id> <after-revision> <limit>\n  workflow run outbox <db> <run-id> <after-sequence> <limit> <all|pending>\n  workflow run acknowledge <db> <receipt.json>\n  workflow run verify <db> <run-id>\n  workflow run acquire <db> <lease-request.json>\n  workflow run renew <db> <lease.json> <ttl-ms>\n  workflow run release <db> <lease.json>\n  workflow run claim <db> <lease.json>\n  workflow run tick-due <db> <lease.json>\n  workflow run retry-gate <db> <run-id> <instance-id> <event-id> <expected-revision>\n  workflow run finish <db> <lease.json> <attempt-id> <result.json>\n  workflow run attempt-failed <db> <lease.json> <attempt-id> <worker-error.json>\n  workflow run --artifacts <store> <operation> ...\n  workflow schema <run-start|run-receipt|run-lease|run-execution-record|run-signal>\n\nOnly init creates a database. Mutations acknowledge after SQLite commit.\ndrive executes local read-only builtins with a durable run lease; max-commands is 1..100.\nPause persists admission state; in-flight results may commit; resume preserves original deadlines.\nTimers advance on drive or optional daemon serve; use daemon status to query live scheduling. migrate explicitly upgrades v1..v9 storage to v10.\nRuns with artifact evidence require --artifacts on reads and mutations; this location is not persisted.\nclaim/drive checks frozen postconditions; UNKNOWN waits for explicit retry-gate.\nRaw gate events/manual gate receipts and raw successes in gated runs are refused.\nInbox ingress is trusted host input; inspect entry.status: committed receipt does not mean applied approval.\nOther events and delivery receipts are trusted host facts; delivery is not task success.\nExit 0 means committed/read successfully; inspect result.snapshot.status (mutations) or result.status (status).\nExit 1 means rejected request/transition/storage/execution; 2 means usage/input I/O/output failure.\n";
+pub const HELP: &str = "DURABLE RUN STORAGE\n  workflow run init <db>\n  workflow run migrate <db>\n  workflow run export <db> <new-directory>\n  workflow run start <db> <start.json>\n  workflow run drive <db> <run-id> <owner> <max-commands>\n  workflow run drive-workspaces <db> <run-id> <owner> <max-commands> <workspace-binding.json>\n  workflow run drive-models <db> <run-id> <owner> <max-commands> <bindings.json>\n  workflow run drive-effects <db> <run-id> <owner> <max-commands> <bindings.json> [model-bindings.json]\n  workflow run recovery <db> <run-id>\n  workflow run recovery-acknowledge <db> <run-id> <audit.json>\n  workflow run effect-import <db> <lease.json> <import.json>\n  workflow run effects <db> <run-id> <after-instance> <limit>\n  workflow run effect-claim <db> <lease.json>\n  workflow run effect-observe <db> <lease.json> <attempt-id> <observation.json>\n  workflow run effect-resolve <db> <lease.json> <operation-key> <resolution.json>\n  workflow run execution-history <db> <run-id> <after-sequence> <limit>\n  workflow run status <db> <run-id>\n  workflow run receive <db> <signal.json>\n  workflow run inbox <db> <run-id> <after-revision> <limit>\n  workflow run waits <db> <run-id> <after-instance> <limit>\n  workflow run event <db> <event.json>\n  workflow run cancel <db> <run-id> <event-id> <expected-revision> <at-unix-ms>\n  workflow run <pause|resume> <db> <run-id> <event-id> <expected-revision> <at-unix-ms> <reason>\n  workflow run list <db> <after-id|-> <limit>\n  workflow run history <db> <run-id> <after-revision> <limit>\n  workflow run outbox <db> <run-id> <after-sequence> <limit> <all|pending>\n  workflow run acknowledge <db> <receipt.json>\n  workflow run verify <db> <run-id>\n  workflow run acquire <db> <lease-request.json>\n  workflow run renew <db> <lease.json> <ttl-ms>\n  workflow run release <db> <lease.json>\n  workflow run claim <db> <lease.json>\n  workflow run tick-due <db> <lease.json>\n  workflow run retry-gate <db> <run-id> <instance-id> <event-id> <expected-revision>\n  workflow run finish <db> <lease.json> <attempt-id> <result.json>\n  workflow run attempt-failed <db> <lease.json> <attempt-id> <worker-error.json>\n  workflow run --artifacts <store> <operation> ...\n  workflow run --object-artifacts <binding.json> <operation> ...\n  workflow run --revalidated-artifacts <store> <plan-artifact-id> <operation> ...\n  workflow run --revalidated-object-artifacts <binding.json> <plan-artifact-id> <operation> ...\n  workflow schema <run-start|run-receipt|run-lease|run-execution-record|run-signal>\n\nOnly init creates a database. Mutations acknowledge after SQLite commit.\ndrive executes local read-only builtins with a durable run lease; max-commands is 1..100.\nPause persists admission state; in-flight results may commit; resume preserves original deadlines.\nTimers advance on drive or optional daemon serve; use daemon status to query live scheduling. migrate explicitly upgrades v1..v9 storage to v10.\nRuns with artifact evidence require --artifacts on reads and mutations; this location is not persisted.\nclaim/drive checks frozen postconditions; UNKNOWN waits for explicit retry-gate.\nRaw gate events/manual gate receipts and raw successes in gated runs are refused.\nInbox ingress is trusted host input; inspect entry.status: committed receipt does not mean applied approval.\nOther events and delivery receipts are trusted host facts; delivery is not task success.\nExit 0 means committed/read successfully; inspect result.snapshot.status (mutations) or result.status (status).\nExit 1 means rejected request/transition/storage/execution; 2 means usage/input I/O/output failure.\n";
 fn read<T: DeserializeOwned>(p: &str) -> Result<T> {
     let mut bytes = vec![];
     std::fs::File::open(p)
@@ -23,17 +23,49 @@ fn number<T: std::str::FromStr>(s: &str) -> Result<T> {
     s.parse()
         .map_err(|_| Error::new(ErrorCode::InvalidRequest, "unsigned integer required"))
 }
+#[derive(Clone, Copy)]
+pub(crate) enum ArtifactLocation<'a> {
+    Local(&'a str),
+    S3(&'a str),
+    InvalidatedLocal(&'a str, &'a str),
+    InvalidatedS3(&'a str, &'a str),
+}
+fn invalidated(
+    store: impl workflow_artifacts::ArtifactStore + 'static,
+    id: &str,
+) -> Result<Box<dyn workflow_artifacts::ArtifactReader>> {
+    use workflow_artifacts::*;
+    let link = workflow_artifact_local::link_for_id(id)?;
+    verify_expected(&store, &link, &revalidation_type())?;
+    let plan: RevalidationPlan = parse_message(&store.read(&link)?)?;
+    Ok(Box::new(InvalidatedReader::new(Box::new(store), &plan)?))
+}
+fn reader(location: ArtifactLocation<'_>) -> Result<Box<dyn workflow_artifacts::ArtifactReader>> {
+    Ok(match location {
+        ArtifactLocation::Local(root) => {
+            Box::new(workflow_artifact_local::LocalArtifactStore::open(root)?)
+        }
+        ArtifactLocation::S3(binding) => Box::new(crate::artifact_objects::open(binding, false)?),
+        ArtifactLocation::InvalidatedLocal(root, id) => {
+            return invalidated(workflow_artifact_local::LocalArtifactStore::open(root)?, id);
+        }
+        ArtifactLocation::InvalidatedS3(binding, id) => {
+            return invalidated(crate::artifact_objects::open(binding, false)?, id);
+        }
+    })
+}
 pub(crate) fn open(db: &str, artifacts: Option<&str>) -> Result<SqliteRunStore> {
+    open_with(db, artifacts.map(ArtifactLocation::Local))
+}
+fn open_with(db: &str, artifacts: Option<ArtifactLocation<'_>>) -> Result<SqliteRunStore> {
     let store = SqliteRunStore::open(db)?;
-    Ok(if let Some(root) = artifacts {
-        store.with_artifacts(Box::new(workflow_artifact_local::LocalArtifactStore::open(
-            root,
-        )?))
+    Ok(if let Some(location) = artifacts {
+        store.with_artifacts(reader(location)?)
     } else {
         store
     })
 }
-fn execute(args: &[&str], artifacts: Option<&str>) -> Result<Value> {
+fn execute(args: &[&str], artifacts: Option<ArtifactLocation<'_>>) -> Result<Value> {
     match args {
         ["schema", "run-effect-http-binding"] => report(schemars::schema_for!(
             Vec<workflow_effect_http::HttpEffectBinding>
@@ -62,7 +94,11 @@ fn execute(args: &[&str], artifacts: Option<&str>) -> Result<Value> {
             let index = workflow_backup_local::create(
                 &workflow_backup_local::BackupSources {
                     runs: db.into(),
-                    artifacts: artifacts.map(Into::into),
+                    artifacts: match artifacts {
+                        Some(ArtifactLocation::Local(root)) => Some(root.into()),
+                        Some(ArtifactLocation::S3(_) | ArtifactLocation::InvalidatedLocal(..) | ArtifactLocation::InvalidatedS3(..)) => return Err(Error::new(ErrorCode::InvalidRequest,"use the historical local artifact view for a local archive; object-backed archives also require their catalog and retained bucket")),
+                        None => None,
+                    },
                     registry: None,
                 },
                 destination,
@@ -72,19 +108,13 @@ fn execute(args: &[&str], artifacts: Option<&str>) -> Result<Value> {
             Ok(crate::backups::summary(&index))
         }
         ["run", "migrate", db] => {
-            let reader = artifacts
-                .map(workflow_artifact_local::LocalArtifactStore::open)
-                .transpose()?;
-            SqliteRunStore::migrate_with_artifacts(
-                db,
-                reader.map(|r| Box::new(r) as Box<dyn workflow_artifacts::ArtifactReader>),
-            )?;
+            SqliteRunStore::migrate_with_artifacts(db, artifacts.map(reader).transpose()?)?;
             Ok(json!({"migrated":true,"storage_version":10}))
         }
-        ["run", "recovery", db, id] => report(open(db, artifacts)?.recovery_barrier(id)?),
+        ["run", "recovery", db, id] => report(open_with(db, artifacts)?.recovery_barrier(id)?),
         ["run", "recovery-acknowledge", db, id, file] => {
             let resolution: RecoveryAcknowledgement = read(file)?;
-            let mut store = open(db, artifacts)?;
+            let mut store = open_with(db, artifacts)?;
             let duplicate =
                 store.acknowledge_recovery(id, &resolution, &workflow_worker::SystemClock)?;
             Ok(
@@ -92,20 +122,20 @@ fn execute(args: &[&str], artifacts: Option<&str>) -> Result<Value> {
             )
         }
         ["run", "effect-import", db, lease, file] => {
-            report(open(db, artifacts)?.import_restored_effect(
+            report(open_with(db, artifacts)?.import_restored_effect(
                 &read(lease)?,
                 &read(file)?,
                 &workflow_worker::SystemClock,
             )?)
         }
         ["run", "effects", db, id, after, limit] => {
-            report(open(db, artifacts)?.effects(id, number(after)?, number(limit)?)?)
+            report(open_with(db, artifacts)?.effects(id, number(after)?, number(limit)?)?)
         }
-        ["run", "effect-claim", db, lease] => {
-            report(open(db, artifacts)?.claim_effect(&read(lease)?, &workflow_worker::SystemClock)?)
-        }
+        ["run", "effect-claim", db, lease] => report(
+            open_with(db, artifacts)?.claim_effect(&read(lease)?, &workflow_worker::SystemClock)?,
+        ),
         ["run", "effect-observe", db, lease, attempt, file] => {
-            report(open(db, artifacts)?.observe_effect(
+            report(open_with(db, artifacts)?.observe_effect(
                 &read(lease)?,
                 attempt,
                 &read(file)?,
@@ -113,33 +143,33 @@ fn execute(args: &[&str], artifacts: Option<&str>) -> Result<Value> {
             )?)
         }
         ["run", "effect-resolve", db, lease, key, file] => {
-            report(open(db, artifacts)?.resolve_effect(
+            report(open_with(db, artifacts)?.resolve_effect(
                 &read(lease)?,
                 key,
                 &read(file)?,
                 &workflow_worker::SystemClock,
             )?)
         }
-        ["run", "execution-history", db, id, after, limit] => {
-            report(open(db, artifacts)?.execution_history(id, number(after)?, number(limit)?)?)
-        }
+        ["run", "execution-history", db, id, after, limit] => report(
+            open_with(db, artifacts)?.execution_history(id, number(after)?, number(limit)?)?,
+        ),
         ["run", "acquire", db, file] => {
-            report(open(db, artifacts)?.acquire(&read(file)?, &workflow_worker::SystemClock)?)
+            report(open_with(db, artifacts)?.acquire(&read(file)?, &workflow_worker::SystemClock)?)
         }
-        ["run", "renew", db, file, ttl] => report(open(db, artifacts)?.renew(
+        ["run", "renew", db, file, ttl] => report(open_with(db, artifacts)?.renew(
             &read(file)?,
             number(ttl)?,
             &workflow_worker::SystemClock,
         )?),
         ["run", "release", db, file] => {
-            open(db, artifacts)?.release(&read(file)?, &workflow_worker::SystemClock)?;
+            open_with(db, artifacts)?.release(&read(file)?, &workflow_worker::SystemClock)?;
             Ok(json!({"released":true}))
         }
-        ["run", "claim", db, file] => {
-            report(open(db, artifacts)?.claim_next(&read(file)?, &workflow_worker::SystemClock)?)
-        }
+        ["run", "claim", db, file] => report(
+            open_with(db, artifacts)?.claim_next(&read(file)?, &workflow_worker::SystemClock)?,
+        ),
         ["run", "retry-gate", db, id, instance, event_id, revision] => {
-            let mut store = open(db, artifacts)?;
+            let mut store = open_with(db, artifacts)?;
             let instance_id = number(instance)?;
             let expected_revision = number(revision)?;
             // A lost reply must not create another intent or change its timestamp.
@@ -187,16 +217,18 @@ fn execute(args: &[&str], artifacts: Option<&str>) -> Result<Value> {
             report(store.apply(&event)?)
         }
         ["run", "tick-due", db, file] => {
-            report(open(db, artifacts)?.tick_due(&read(file)?, &workflow_worker::SystemClock)?)
+            report(open_with(db, artifacts)?.tick_due(&read(file)?, &workflow_worker::SystemClock)?)
         }
-        ["run", "finish", db, lease, attempt, result] => report(open(db, artifacts)?.finish_task(
-            &read(lease)?,
-            attempt,
-            &read(result)?,
-            &workflow_worker::SystemClock,
-        )?),
+        ["run", "finish", db, lease, attempt, result] => {
+            report(open_with(db, artifacts)?.finish_task(
+                &read(lease)?,
+                attempt,
+                &read(result)?,
+                &workflow_worker::SystemClock,
+            )?)
+        }
         ["run", "attempt-failed", db, lease, attempt, error] => {
-            open(db, artifacts)?.fail_task(
+            open_with(db, artifacts)?.fail_task(
                 &read(lease)?,
                 attempt,
                 &read(error)?,
@@ -206,24 +238,25 @@ fn execute(args: &[&str], artifacts: Option<&str>) -> Result<Value> {
         }
         ["run", "start", db, file] => {
             let request = read(file)?;
-            report(open(db, artifacts)?.start(&request)?)
+            report(open_with(db, artifacts)?.start(&request)?)
         }
-        ["run", "status", db, id] => report(open(db, artifacts)?.get(id)?),
+        ["run", "status", db, id] => report(open_with(db, artifacts)?.get(id)?),
         ["run", "receive", db, file] => report(
-            open(db, artifacts)?.receive_signal(&read(file)?, &workflow_worker::SystemClock)?,
+            open_with(db, artifacts)?
+                .receive_signal(&read(file)?, &workflow_worker::SystemClock)?,
         ),
         ["run", "inbox", db, id, after, limit] => {
-            report(open(db, artifacts)?.inbox(id, number(after)?, number(limit)?)?)
+            report(open_with(db, artifacts)?.inbox(id, number(after)?, number(limit)?)?)
         }
         ["run", "waits", db, id, after, limit] => {
-            report(open(db, artifacts)?.waits(id, number(after)?, number(limit)?)?)
+            report(open_with(db, artifacts)?.waits(id, number(after)?, number(limit)?)?)
         }
         ["run", "event", db, file] => {
             let event = read(file)?;
-            report(open(db, artifacts)?.apply(&event)?)
+            report(open_with(db, artifacts)?.apply(&event)?)
         }
         ["run", "cancel", db, id, event_id, revision, at] => {
-            let mut store = open(db, artifacts)?;
+            let mut store = open_with(db, artifacts)?;
             let snapshot = store.get(id)?;
             let event = Event {
                 event_id: (*event_id).into(),
@@ -245,7 +278,7 @@ fn execute(args: &[&str], artifacts: Option<&str>) -> Result<Value> {
             at,
             reason,
         ] => {
-            let mut store = open(db, artifacts)?;
+            let mut store = open_with(db, artifacts)?;
             let snapshot = store.get(id)?;
             let kind = if *control == "pause" {
                 workflow_kernel::EventKind::Pause {
@@ -265,12 +298,12 @@ fn execute(args: &[&str], artifacts: Option<&str>) -> Result<Value> {
                 kind,
             })?)
         }
-        ["run", "list", db, after, limit] => report(open(db, artifacts)?.list(
+        ["run", "list", db, after, limit] => report(open_with(db, artifacts)?.list(
             if *after == "-" { None } else { Some(after) },
             number(limit)?,
         )?),
         ["run", "history", db, id, after, limit] => {
-            report(open(db, artifacts)?.history(id, number(after)?, number(limit)?)?)
+            report(open_with(db, artifacts)?.history(id, number(after)?, number(limit)?)?)
         }
         [
             "run",
@@ -280,7 +313,7 @@ fn execute(args: &[&str], artifacts: Option<&str>) -> Result<Value> {
             after,
             limit,
             mode @ ("all" | "pending"),
-        ] => report(open(db, artifacts)?.outbox(
+        ] => report(open_with(db, artifacts)?.outbox(
             id,
             number(after)?,
             number(limit)?,
@@ -288,9 +321,9 @@ fn execute(args: &[&str], artifacts: Option<&str>) -> Result<Value> {
         )?),
         ["run", "acknowledge", db, file] => {
             let receipt = read(file)?;
-            report(open(db, artifacts)?.acknowledge(&receipt)?)
+            report(open_with(db, artifacts)?.acknowledge(&receipt)?)
         }
-        ["run", "verify", db, id] => report(open(db, artifacts)?.verify(id)?),
+        ["run", "verify", db, id] => report(open_with(db, artifacts)?.verify(id)?),
         _ => Err(Error::new(ErrorCode::InvalidRequest, "usage")),
     }
 }
@@ -299,7 +332,7 @@ pub(crate) fn drive(
     id: &str,
     owner: &str,
     budget: &str,
-    artifacts: Option<&str>,
+    artifacts: Option<ArtifactLocation<'_>>,
     models: Option<&str>,
     effects: Option<&str>,
 ) -> std::result::Result<Value, workflow_runtime::Error> {
@@ -314,7 +347,7 @@ pub(crate) fn drive(
         lease_ms: 120_000,
         max_commands,
     };
-    let mut store = open(db, artifacts)?;
+    let mut store = open_with(db, artifacts)?;
     let worker = if let Some(path) = models {
         crate::models::worker(&store.bundle(id)?, path)?
     } else {
@@ -343,14 +376,48 @@ pub(crate) fn drive(
 }
 pub fn run(args: &[&str], stdout: &mut impl Write, stderr: &mut impl Write) -> i32 {
     let mut normalized = vec![];
-    let (args, artifacts) = if let ["run", "--artifacts", root, tail @ ..] = args {
+    let (args, artifacts) = if let [
+        "run",
+        mode @ ("--revalidated-artifacts" | "--revalidated-object-artifacts"),
+        root,
+        plan,
+        tail @ ..,
+    ] = args
+    {
         normalized.push("run");
         normalized.extend_from_slice(tail);
-        (normalized.as_slice(), Some(*root))
+        (
+            normalized.as_slice(),
+            Some(if *mode == "--revalidated-artifacts" {
+                ArtifactLocation::InvalidatedLocal(root, plan)
+            } else {
+                ArtifactLocation::InvalidatedS3(root, plan)
+            }),
+        )
+    } else if let [
+        "run",
+        mode @ ("--artifacts" | "--object-artifacts"),
+        root,
+        tail @ ..,
+    ] = args
+    {
+        normalized.push("run");
+        normalized.extend_from_slice(tail);
+        (
+            normalized.as_slice(),
+            Some(if *mode == "--artifacts" {
+                ArtifactLocation::Local(root)
+            } else {
+                ArtifactLocation::S3(root)
+            }),
+        )
     } else {
         (args, None)
     };
-    let outcome = if let ["run", "drive", db, id, owner, budget] = args {
+    let outcome = if let ["run", "drive-workspaces", db, id, owner, budget, binding] = args {
+        drive_workspaces(db, id, owner, budget, artifacts, binding)
+            .map_err(|e| (e.message.clone(), json!(e)))
+    } else if let ["run", "drive", db, id, owner, budget] = args {
         drive(db, id, owner, budget, artifacts, None, None)
             .map_err(|e| (e.message.clone(), json!(e)))
     } else if let ["run", "drive-models", db, id, owner, budget, file] = args {
@@ -398,6 +465,50 @@ pub fn run(args: &[&str], stdout: &mut impl Write, stderr: &mut impl Write) -> i
             write(stdout, &json!({"ok":false,"error":e}).to_string(), code)
         }
     }
+}
+
+fn drive_workspaces(
+    db: &str,
+    id: &str,
+    owner: &str,
+    budget: &str,
+    location: Option<ArtifactLocation<'_>>,
+    binding: &str,
+) -> std::result::Result<Value, workflow_runtime::Error> {
+    let backing: Box<dyn workflow_artifacts::ArtifactStore> = match location {
+        Some(ArtifactLocation::Local(root) | ArtifactLocation::InvalidatedLocal(root, _)) => {
+            Box::new(workflow_artifact_local::LocalArtifactStore::open(root).map_err(Error::from)?)
+        }
+        Some(ArtifactLocation::S3(file) | ArtifactLocation::InvalidatedS3(file, _)) => {
+            Box::new(crate::artifact_objects::open(file, false).map_err(Error::from)?)
+        }
+        None => {
+            return Err(Error::new(
+                ErrorCode::InvalidRequest,
+                "workspace execution requires an artifact store binding",
+            )
+            .into());
+        }
+    };
+    let executor = crate::workspace_execution::Executor::new(read(binding)?, backing)?;
+    let mut store = open_with(db, location)?;
+    let nonce = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_err(|_| Error::new(ErrorCode::InvalidRequest, "clock unavailable"))?
+        .as_nanos();
+    let options = workflow_runtime::DriveOptions {
+        owner: owner.into(),
+        acquisition_id: format!("workspace-cli-{}-{nonce}", std::process::id()),
+        lease_ms: 120_000,
+        max_commands: number(budget)?,
+    };
+    Ok(report(workflow_runtime::drive(
+        &mut store,
+        &executor,
+        id,
+        &options,
+        &workflow_worker::SystemClock,
+    )?)?)
 }
 #[cfg(test)]
 mod tests;

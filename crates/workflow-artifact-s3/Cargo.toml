@@ -1,0 +1,22 @@
+[package]
+name = "workflow-artifact-s3"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+workflow-artifacts = { path = "../workflow-artifacts" }
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+postgres = "0.19.14"
+getrandom = "0.4.3"
+hmac = "0.12"
+time = "0.3"
+reqwest = { version = "0.13.5", default-features = false, features = ["blocking", "rustls-no-provider"] }
+rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
+
+[dev-dependencies]
+workflow-ir = { path = "../workflow-ir" }
+workflow-artifact-local = { path = "../workflow-artifact-local" }

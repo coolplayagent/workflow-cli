@@ -7,7 +7,7 @@ use std::{
 };
 use workflow_artifact_local::{LocalArtifactStore, link_for_id};
 use workflow_artifacts::*;
-pub const HELP: &str = "TYPED ARTIFACTS\n  workflow artifact init <store>\n  workflow artifact prepare <request.json> <type.json> <source.json> <input-refs.json>\n  workflow artifact put <store> <publish.json> <payload>\n  workflow artifact show <store> <artifact-id>\n  workflow artifact verify <store> <artifact-id> <expected-type.json>\n  workflow artifact lineage <store> <artifact-id> <after-id|-> <limit>\n  workflow artifact impact <store> <artifact-id> <after-id|-> <limit>\n  workflow artifact export <store> <artifact-id> <new-payload-path>\n  workflow artifact import <store> <reference.json> <payload>\n  workflow artifact cleanup-orphans <store>\n  workflow schema <artifact-publish|artifact-ref|artifact-type>\n\nOnly init creates storage. put/import acknowledge after durable content and manifest commit.\nReferences use portable artifact:// identities; provenance and scopes are trusted host claims.\nprepare binds the supplied workflow request; finish checks the actual durable attempt.\nCommitted artifacts are retained; cleanup removes only uncommitted objects/uploads.\nStructured JSON is limited to 2 MiB; text/binary to 64 MiB. No workspace isolation or remote authorization is implied.\n";
+pub const HELP: &str = "TYPED ARTIFACTS\n  workflow artifact init <store>\n  workflow artifact prepare <request.json> <type.json> <source.json> <input-refs.json>\n  workflow artifact put <store> <publish.json> <payload>\n  workflow artifact show <store> <artifact-id>\n  workflow artifact verify <store> <artifact-id> <expected-type.json>\n  workflow artifact lineage <store> <artifact-id> <after-id|-> <limit>\n  workflow artifact impact <store> <artifact-id> <after-id|-> <limit>\n  workflow artifact export <store> <artifact-id> <new-payload-path>\n  workflow artifact import <store> <reference.json> <payload>\n  workflow artifact cleanup-orphans <store>\n  workflow artifact invalidate <store> <request.json> <source.json> <replacements.json> <summary.json>\n  workflow artifact s3-init <binding.json>\n  workflow artifact s3-import <binding.json> <local-store> <artifact-id>\n  workflow artifact s3-export <binding.json> <artifact-id> <local-store>\n  workflow artifact s3-show <binding.json> <artifact-id>\n  workflow artifact s3-download-grant <binding.json> <artifact-id> <seconds> <new-private-file>\n  workflow artifact s3-cleanup-orphans <binding.json> <after-key|-> <limit>\n  workflow schema <artifact-publish|artifact-ref|artifact-type>\n\nOnly init creates storage. put/import acknowledge after durable content and manifest commit.\nReferences use portable artifact:// identities; provenance and scopes are trusted host claims.\nprepare binds the supplied workflow request; finish checks the actual durable attempt.\nCommitted artifacts are retained; cleanup removes only uncommitted objects/uploads.\nStructured JSON is limited to 2 MiB; text/binary to 64 MiB. No workspace isolation or remote authorization is implied.\n";
 fn invalid(message: impl Into<String>) -> Error {
     Error::new(ErrorCode::InvalidDocument, message)
 }
@@ -27,6 +27,9 @@ fn report(v: impl Serialize) -> Result<Value> {
     serde_json::to_value(v).map_err(|e| invalid(e.to_string()))
 }
 fn execute(args: &[&str]) -> Result<Value> {
+    if let Some(value) = crate::artifact_objects::execute(args) {
+        return value;
+    }
     match args {
         [
             "schema",
@@ -150,6 +153,40 @@ fn execute(args: &[&str]) -> Result<Value> {
         }
         ["artifact", "cleanup-orphans", root] => {
             report(LocalArtifactStore::open(root)?.cleanup_orphans()?)
+        }
+        [
+            "artifact",
+            "invalidate",
+            root,
+            request,
+            source,
+            changes,
+            summary,
+        ] => {
+            let mut store = LocalArtifactStore::open(root)?;
+            let changes: Vec<Replacement> = read(changes)?;
+            let plan = plan_revalidation(&store, &changes, &read::<String>(summary)?)?;
+            let producer = workflow_runstore::artifact_producer(&read(request)?)
+                .map_err(|e| invalid(e.message))?;
+            let mut inputs = std::collections::BTreeMap::new();
+            for change in &changes {
+                for link in [&change.old, &change.new] {
+                    inputs.insert(link.artifact_id.clone(), link.clone());
+                }
+            }
+            let spec = PublishSpec {
+                schema_version: 1,
+                artifact_type: revalidation_type(),
+                access: AccessScope::Run {
+                    run_id: producer.run_id.clone(),
+                },
+                producer,
+                source_revision: read(source)?,
+                inputs: inputs.into_values().collect(),
+                retention: Retention::RunDependency,
+            };
+            let reference = store.publish(&spec, &mut to_message(&plan)?.as_slice())?;
+            Ok(json!({"plan":plan,"artifact":reference}))
         }
         _ => Err(invalid("usage")),
     }

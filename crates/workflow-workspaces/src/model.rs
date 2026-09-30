@@ -38,6 +38,8 @@ pub struct Environment {
     pub os: String,
     pub architecture: String,
     pub git_version: String,
+    #[serde(default, skip_serializing_if = "std::collections::BTreeMap::is_empty")]
+    pub tools: std::collections::BTreeMap<String, String>,
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
@@ -130,4 +132,41 @@ pub struct SourceFile {
     pub path: String,
     pub bytes: Vec<u8>,
     pub executable: bool,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct MergeProposal {
+    pub workspace: WorkspaceRef,
+    pub observation: Observation,
+    pub files: Vec<CapturedFile>,
+    pub decision_summary: String,
+}
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct MergeConflict {
+    pub path: String,
+    pub proposals: Vec<String>,
+}
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct MergePlan {
+    pub schema_version: u32,
+    pub source_revision: SourceRevision,
+    pub baseline_tree_digest: String,
+    pub proposals: Vec<ArtifactLink>,
+    /// Exact path -> selected proposal ID. Required only for conflicting changes.
+    pub resolutions: std::collections::BTreeMap<String, String>,
+    pub files: Vec<FileEntry>,
+    pub conflicts: Vec<MergeConflict>,
+    pub requires_revalidation: bool,
+}
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct MergeCommit {
+    pub plan_digest: String,
+    pub source_revision: SourceRevision,
+    pub tree_digest: String,
+    pub requires_revalidation: bool,
+    pub decision_summary: String,
 }
