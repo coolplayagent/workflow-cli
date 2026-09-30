@@ -63,7 +63,7 @@ pub(super) fn initialize(tx: &mut Transaction<'_>) -> Result<()> {
     }
     check(tx)
 }
-fn check(tx: &mut Transaction<'_>) -> Result<()> {
+pub(super) fn check(tx: &mut Transaction<'_>) -> Result<()> {
     let version: i32 = tx
         .query_one(
             "SELECT version FROM workflow_effect_dispatch.schema_version WHERE singleton=true",
@@ -108,7 +108,7 @@ fn load(tx: &mut Transaction<'_>, who: &Identity, id: &str) -> Result<Assignment
     live(tx, who)?;
     Ok(a)
 }
-fn authority(store: &mut SqliteRunStore, run: &str) -> Result<Authority> {
+pub(super) fn authority(store: &mut SqliteRunStore, run: &str) -> Result<Authority> {
     let mut authority = Authority::new(run, store.started_at(run)?);
     let mut cursor = 0;
     loop {

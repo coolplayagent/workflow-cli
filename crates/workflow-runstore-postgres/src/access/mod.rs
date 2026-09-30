@@ -10,12 +10,16 @@ mod artifact_policy;
 mod artifact_upload;
 mod effects;
 mod operations;
+mod restoration;
 mod tasks;
 pub use artifact_download::{ArtifactCleanup, ArtifactDownloadChunk, ArtifactDownloadGrant};
 pub use artifact_policy::{ArtifactOutputPolicy, ArtifactPolicy};
 pub use artifact_upload::{ARTIFACT_CHUNK_BYTES, ArtifactUploadRequest, ArtifactUploadStatus};
 pub use effects::{EffectDispatch, EffectRule, OutstandingEffect};
 pub use operations::{RunControl, RunControlRequest};
+pub use restoration::{
+    DatabaseRestoreReport, DatabaseRestoreRequest, RestoredAdministrator, RestoredDatabase,
+};
 pub use tasks::{Dispatch, OutstandingAssignment, TaskReceipt};
 #[cfg(test)]
 mod tests;

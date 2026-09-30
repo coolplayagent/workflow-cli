@@ -162,3 +162,6 @@ Shared storage: [PostgreSQL authority library and contract boundary](docs/postgr
 Authenticated shared artifact uploads/downloads and artifact-backed remote result
 recovery are documented in [shared artifacts](docs/shared-artifacts.md). Transfers
 use PostgreSQL storage, scoped credentials and current assignments.
+
+Shared database recovery and the R04 evidence matrix are documented in
+[shared recovery](docs/shared-recovery.md).

@@ -6,7 +6,7 @@ use workflow_runstore_postgres::access::{
     ArtifactUploadRequest, AuthenticatedService, CapabilityRule, Role,
 };
 use workflow_service::*;
-pub const HELP: &str = "REMOTE SERVICE\n  workflow service serve <server-binding.json>\n  workflow service init-artifacts <server-binding.json>\n  workflow service init-effects <server-binding.json>\n  workflow service migrate-access <server-binding.json>\n  workflow service bootstrap <server-binding.json> <tenant> <project> <actor> <private-token-output>\n  workflow service issue <server-binding.json> <admin-secret-ref.json> <provision.json> <private-token-output>\n  workflow remote call <client-binding.json> <request.json>\n  workflow remote validate <client-binding.json> <file.json|file.yaml>\n  workflow remote artifact-upload <client-binding.json> <assignment-id> <request-id> <artifact-type.json> <content-file>\n  workflow remote artifact-download <client-binding.json> <download-request.json> <private-output>\n  workflow remote work <client-binding.json> <iterations> <poll-ms>\n  workflow remote work-models <client-binding.json> <bundle.json> <model-bindings.json> <iterations> <poll-ms>\n  workflow remote work-effects <client-binding.json> <effect-bindings.json> <iterations> <poll-ms>\n  workflow remote schedule <client-binding.json> <scheduler.json> <iterations> <poll-ms>\n\nTLS and a scoped bearer are required. Bindings contain secret references, never literal tokens.\nCredential creation is a trusted local administrative operation with exclusive 0600 output.\nwork executes registered builtin read-only capabilities; work-models adds frozen model policies using host provider bindings; work-effects also invokes explicitly bound gateways. Scheduler effects require effects:true. Iterations are bounded; service managers may supervise commands.\n";
+pub const HELP: &str = "REMOTE SERVICE\n  workflow service serve <server-binding.json>\n  workflow service fence-restored <isolated-server-binding.json> <restore-request.json> <private-administrator-output>\n  workflow service init-artifacts <server-binding.json>\n  workflow service init-effects <server-binding.json>\n  workflow service migrate-access <server-binding.json>\n  workflow service bootstrap <server-binding.json> <tenant> <project> <actor> <private-token-output>\n  workflow service issue <server-binding.json> <admin-secret-ref.json> <provision.json> <private-token-output>\n  workflow remote call <client-binding.json> <request.json>\n  workflow remote validate <client-binding.json> <file.json|file.yaml>\n  workflow remote artifact-upload <client-binding.json> <assignment-id> <request-id> <artifact-type.json> <content-file>\n  workflow remote artifact-download <client-binding.json> <download-request.json> <private-output>\n  workflow remote work <client-binding.json> <iterations> <poll-ms>\n  workflow remote work-models <client-binding.json> <bundle.json> <model-bindings.json> <iterations> <poll-ms>\n  workflow remote work-effects <client-binding.json> <effect-bindings.json> <iterations> <poll-ms>\n  workflow remote schedule <client-binding.json> <scheduler.json> <iterations> <poll-ms>\n\nTLS and a scoped bearer are required. Bindings contain secret references, never literal tokens.\nCredential creation is a trusted local administrative operation with exclusive 0600 output.\nwork executes registered builtin read-only capabilities; work-models adds frozen model policies using host provider bindings; work-effects also invokes explicitly bound gateways. Scheduler effects require effects:true. Iterations are bounded; service managers may supervise commands.\n";
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 struct Provision {
@@ -81,6 +81,35 @@ pub fn run(args: &[&str], stdout: &mut impl Write, stderr: &mut impl Write) -> i
     }
     let result = (|| -> Result<serde_json::Value> {
         match args {
+            ["service", "fence-restored", binding, request, output] => {
+                if Path::new(output).symlink_metadata().is_ok() {
+                    return Err(Error::new(
+                        ErrorCode::InvalidRequest,
+                        "private restore output must not exist",
+                    ));
+                }
+                let binding: ServerBinding = read(binding)?;
+                let request =
+                    read::<workflow_runstore_postgres::access::DatabaseRestoreRequest>(request)?;
+                let restored = AuthenticatedService::fence_restored_database(
+                    &mut binding.database.connect()?,
+                    &request,
+                )?;
+                let administrators: Vec<_> = restored.administrators.iter().map(|a| json!({
+                    "tenant":a.tenant, "project":a.project, "credential_id":a.credential.id,
+                    "expires_at_unix_ms":a.credential.expires_at_unix_ms, "secret":a.credential.expose_secret()
+                })).collect();
+                let private = serde_json::to_vec(
+                    &json!({"report":restored.report,"administrators":administrators}),
+                )
+                .map_err(|_| {
+                    Error::new(ErrorCode::Storage, "restore delivery serialization failed")
+                })?;
+                write_private_output(Path::new(output), &private)?;
+                serde_json::to_value(restored.report).map_err(|_| {
+                    Error::new(ErrorCode::Storage, "restore report serialization failed")
+                })
+            }
             [
                 "remote",
                 "work-models",
