@@ -3,8 +3,9 @@ use serde::{Deserialize, Serialize};
 use workflow_runstore::*;
 use workflow_runstore_postgres::access::{
     ArtifactCleanup, ArtifactDownloadChunk, ArtifactDownloadGrant, ArtifactUploadRequest,
-    ArtifactUploadStatus, AuditEntry, AuditExport, AuthenticatedService, Dispatch, EffectDispatch,
-    OutstandingAssignment, OutstandingEffect, TaskReceipt,
+    ArtifactUploadStatus, AuditEntry, AuditExport, AuthenticatedService, DeadLetter,
+    DeadLetterResolution, Dispatch, EffectDispatch, OutstandingAssignment, OutstandingEffect,
+    RoutedDispatch, TaskReceipt, WorkerStatus,
 };
 
 pub const PROTOCOL_VERSION: u32 = 1;
@@ -21,6 +22,44 @@ pub struct Request {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)]
 pub enum Operation {
+    Renew {
+        lease: Lease,
+        ttl_ms: u64,
+    },
+    WorkerHeartbeat {
+        runtime_version: String,
+        drain: bool,
+    },
+    WorkerStatus {
+        worker_id: String,
+    },
+    ControlWorker {
+        worker_id: String,
+        drain: bool,
+        reason: String,
+    },
+    SetPriority {
+        run_id: String,
+        priority: u8,
+    },
+    ScheduleCandidates {
+        limit: u32,
+    },
+    DispatchRouted {
+        lease: Lease,
+        worker_ids: Vec<String>,
+        effects: bool,
+    },
+    DeadLetters {
+        after: String,
+        limit: u32,
+    },
+    ResolveDeadLetter {
+        resolution: DeadLetterResolution,
+    },
+    DeadLetter {
+        id: String,
+    },
     Acceptance {
         run_id: String,
     },
@@ -214,6 +253,11 @@ pub struct Reply {
     deny_unknown_fields
 )]
 pub enum Response {
+    DeadLetter(Box<workflow_runstore_postgres::access::DeadLetterRecord>),
+    WorkerStatus(WorkerStatus),
+    Candidates(Vec<RunSummary>),
+    RoutedDispatch(RoutedDispatch),
+    DeadLetters(Page<DeadLetter, String>),
     Acceptance(Box<AcceptanceManifest>),
     AuditExport(AuditExport),
     StorageUpgrade(StorageUpgrade),
@@ -268,6 +312,47 @@ impl Request {
             return Err(invalid());
         }
         match &self.operation {
+            Operation::DeadLetter { id } => service
+                .dead_letter(token, id)
+                .map(|r| Response::DeadLetter(Box::new(r))),
+            Operation::Renew { lease, ttl_ms } => {
+                service.renew(token, lease, *ttl_ms).map(Response::Lease)
+            }
+            Operation::WorkerHeartbeat {
+                runtime_version,
+                drain,
+            } => service
+                .worker_heartbeat(token, runtime_version, *drain)
+                .map(Response::WorkerStatus),
+            Operation::WorkerStatus { worker_id } => service
+                .worker_status(token, worker_id)
+                .map(Response::WorkerStatus),
+            Operation::ControlWorker {
+                worker_id,
+                drain,
+                reason,
+            } => service
+                .control_worker(token, worker_id, *drain, reason)
+                .map(Response::WorkerStatus),
+            Operation::SetPriority { run_id, priority } => service
+                .set_priority(token, run_id, *priority)
+                .map(|_| Response::Unit),
+            Operation::ScheduleCandidates { limit } => service
+                .schedule_candidates(token, *limit)
+                .map(Response::Candidates),
+            Operation::DispatchRouted {
+                lease,
+                worker_ids,
+                effects,
+            } => service
+                .dispatch_routed(token, lease, worker_ids, *effects)
+                .map(Response::RoutedDispatch),
+            Operation::DeadLetters { after, limit } => service
+                .dead_letters(token, after, *limit)
+                .map(Response::DeadLetters),
+            Operation::ResolveDeadLetter { resolution } => service
+                .resolve_dead_letter(token, resolution)
+                .map(|_| Response::Unit),
             Operation::ExportAudit => service.export_audit(token).map(Response::AuditExport),
             Operation::Acceptance { run_id } => service
                 .acceptance(token, run_id)
@@ -516,6 +601,27 @@ impl Request {
                 | (Operation::Waits { .. }, Response::Waits(_))
                 | (Operation::Inbox { .. }, Response::Inbox(_))
                 | (Operation::Acquire { .. }, Response::Lease(_))
+                | (Operation::Renew { .. }, Response::Lease(_))
+                | (
+                    Operation::WorkerHeartbeat { .. }
+                        | Operation::WorkerStatus { .. }
+                        | Operation::ControlWorker { .. },
+                    Response::WorkerStatus(_)
+                )
+                | (
+                    Operation::SetPriority { .. } | Operation::ResolveDeadLetter { .. },
+                    Response::Unit
+                )
+                | (
+                    Operation::ScheduleCandidates { .. },
+                    Response::Candidates(_)
+                )
+                | (
+                    Operation::DispatchRouted { .. },
+                    Response::RoutedDispatch(_)
+                )
+                | (Operation::DeadLetters { .. }, Response::DeadLetters(_))
+                | (Operation::DeadLetter { .. }, Response::DeadLetter(_))
                 | (Operation::Release { .. }, Response::Unit)
                 | (Operation::Tick { .. }, Response::Tick(_))
                 | (Operation::Dispatch { .. }, Response::Dispatch(_))

@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "tenant": {"concurrent": 4, "per_minute": 240},
+  "project": {"concurrent": 2, "per_minute": 120},
+  "capability": {"concurrent": 2, "per_minute": 120},
+  "model": {"concurrent": 2, "per_minute": 30},
+  "worker": {"concurrent": 1, "per_minute": 120},
+  "project_limits": {},
+  "capability_limits": {},
+  "model_limits": {},
+  "model_pools": {},
+  "allowed_worker_versions": ["1.0.0", "2.0.0"],
+  "heartbeat_ms": 60000,
+  "priority_step_ms": 1000,
+  "max_active_runs_per_project": 128
+}

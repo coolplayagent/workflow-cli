@@ -7,12 +7,14 @@ mod execution;
 mod protocol;
 mod server;
 mod transport;
+mod worker_session;
 pub use binding::*;
 pub use client::*;
 pub use execution::*;
 pub use protocol::*;
 pub use server::*;
 pub use transport::{InProcessTransport, TaskTransport};
+pub use worker_session::{DrainHandle, WorkerSession};
 pub use workflow_runstore::{Error, ErrorCode, Result};
 
 fn invalid() -> Error {

@@ -296,6 +296,10 @@ impl PostgresRunStore {
                 "authority changed or admission expired before database write",
             ));
         }
+        let activating = before.as_ref().is_none_or(|s| {
+            !matches!(s.status, RunStatus::Running | RunStatus::Cancelling) || s.pause.is_some()
+        });
+        access::scheduling::sync(tx, tenant, project, &after, activating)?;
         Ok((result, lower, upper))
     }
 }
