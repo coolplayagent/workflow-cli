@@ -1,0 +1,158 @@
+{
+  "$defs": {
+    "CapabilityBinding": {
+      "additionalProperties": false,
+      "properties": {
+        "capability": {
+          "$ref": "#/$defs/VersionRef"
+        },
+        "contract_digest": {
+          "type": "string"
+        },
+        "host_binding": {
+          "description": "Logical host binding name; contains no provider credential or endpoint.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "capability",
+        "contract_digest",
+        "host_binding"
+      ],
+      "type": "object"
+    },
+    "Environment": {
+      "additionalProperties": false,
+      "properties": {
+        "approvers": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "uniqueItems": true
+        },
+        "capabilities": {
+          "items": {
+            "$ref": "#/$defs/CapabilityBinding"
+          },
+          "type": "array"
+        },
+        "effect_targets": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "uniqueItems": true
+        },
+        "mode": {
+          "$ref": "#/$defs/ExecutionMode"
+        },
+        "model_policies": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/ModelBinding"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "mode",
+        "capabilities",
+        "effect_targets",
+        "approvers"
+      ],
+      "type": "object"
+    },
+    "ExecutionMode": {
+      "enum": [
+        "local",
+        "shared"
+      ],
+      "type": "string"
+    },
+    "ModelBinding": {
+      "additionalProperties": false,
+      "properties": {
+        "host_binding": {
+          "type": "string"
+        },
+        "policy": {
+          "$ref": "#/$defs/ModelPolicyBinding"
+        }
+      },
+      "required": [
+        "policy",
+        "host_binding"
+      ],
+      "type": "object"
+    },
+    "ModelPolicyBinding": {
+      "additionalProperties": false,
+      "properties": {
+        "digest": {
+          "type": "string"
+        },
+        "policy": {
+          "$ref": "#/$defs/VersionRef"
+        }
+      },
+      "required": [
+        "policy",
+        "digest"
+      ],
+      "type": "object"
+    },
+    "VersionRef": {
+      "additionalProperties": false,
+      "description": "Versions are immutable opaque release identifiers, never ranges or `latest`.",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "version"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "business_facts": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array",
+      "uniqueItems": true
+    },
+    "environment": {
+      "$ref": "#/$defs/Environment"
+    },
+    "parameters": {
+      "additionalProperties": true,
+      "type": "object"
+    },
+    "run_id": {
+      "type": "string"
+    },
+    "started_at_unix_ms": {
+      "format": "uint64",
+      "minimum": 0,
+      "type": "integer"
+    }
+  },
+  "required": [
+    "run_id",
+    "parameters",
+    "business_facts",
+    "environment",
+    "started_at_unix_ms"
+  ],
+  "title": "InstanceRequest",
+  "type": "object"
+}

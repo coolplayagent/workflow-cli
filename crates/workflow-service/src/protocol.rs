@@ -22,6 +22,23 @@ pub struct Request {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)]
 pub enum Operation {
+    TemplatePropose {
+        candidate: Box<workflow_templates::Candidate>,
+    },
+    TemplateCandidate {
+        digest: String,
+    },
+    TemplateReview {
+        digest: String,
+        decision: workflow_templates::ReviewDecision,
+        reason: String,
+    },
+    TemplatePublish {
+        digest: String,
+    },
+    TemplateGet {
+        identity: workflow_ir::VersionRef,
+    },
     Renew {
         lease: Lease,
         ttl_ms: u64,
@@ -253,6 +270,10 @@ pub struct Reply {
     deny_unknown_fields
 )]
 pub enum Response {
+    TemplateProposed(String),
+    TemplateCandidate(Box<workflow_templates::Candidate>),
+    TemplateReviewed(Box<workflow_templates::Review>),
+    TemplatePublication(Box<workflow_templates::Publication>),
     DeadLetter(Box<workflow_runstore_postgres::access::DeadLetterRecord>),
     WorkerStatus(WorkerStatus),
     Candidates(Vec<RunSummary>),
@@ -312,6 +333,25 @@ impl Request {
             return Err(invalid());
         }
         match &self.operation {
+            Operation::TemplatePropose { candidate } => service
+                .propose_template(token, candidate)
+                .map(Response::TemplateProposed),
+            Operation::TemplateCandidate { digest } => service
+                .template_candidate(token, digest)
+                .map(|c| Response::TemplateCandidate(Box::new(c))),
+            Operation::TemplateReview {
+                digest,
+                decision,
+                reason,
+            } => service
+                .review_template(token, digest, *decision, reason)
+                .map(|r| Response::TemplateReviewed(Box::new(r))),
+            Operation::TemplatePublish { digest } => service
+                .publish_template(token, digest)
+                .map(|p| Response::TemplatePublication(Box::new(p))),
+            Operation::TemplateGet { identity } => service
+                .template_publication(token, identity)
+                .map(|p| Response::TemplatePublication(Box::new(p))),
             Operation::DeadLetter { id } => service
                 .dead_letter(token, id)
                 .map(|r| Response::DeadLetter(Box::new(r))),
@@ -594,6 +634,22 @@ impl Request {
                     Response::ArtifactCleanup(_)
                 )
                 | (Operation::Publish { .. }, Response::Published(_))
+                | (
+                    Operation::TemplatePropose { .. },
+                    Response::TemplateProposed(_)
+                )
+                | (
+                    Operation::TemplateCandidate { .. },
+                    Response::TemplateCandidate(_)
+                )
+                | (
+                    Operation::TemplateReview { .. },
+                    Response::TemplateReviewed(_)
+                )
+                | (
+                    Operation::TemplatePublish { .. } | Operation::TemplateGet { .. },
+                    Response::TemplatePublication(_)
+                )
                 | (Operation::Start { .. }, Response::Committed(_))
                 | (Operation::Get { .. }, Response::Snapshot(_))
                 | (Operation::Acceptance { .. }, Response::Acceptance(_))

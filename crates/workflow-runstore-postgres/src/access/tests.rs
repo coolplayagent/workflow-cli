@@ -5,6 +5,7 @@ mod migration;
 mod restoration;
 mod scheduling;
 mod security;
+mod templates;
 mod waits;
 use std::sync::atomic::{AtomicU64, Ordering};
 static NEXT: AtomicU64 = AtomicU64::new(0);

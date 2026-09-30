@@ -1,8 +1,8 @@
 schema_version: 4
 artifact_kind: map
 map_type: knowledge
-map_version: 31
-updated_at: unix:1790750824
+map_version: 32
+updated_at: unix:1790757754
 directories:
 - directory: domain
   purpose: Domain concepts, models, and business rules.
@@ -58,6 +58,7 @@ topics:
   - artifact-contracts
   - attempt-workspaces
   - authenticated-authority
+  - cluster-scheduling
   - definition-acceptance
   - definition-authoring
   - definition-semantics
@@ -84,8 +85,8 @@ topics:
   - version-migration
   - worker-protocol
   - workflow-evidence-gates
-  ref: topics/topic-4ca303a3bf7ddf7b-85f21bcc8469c2bfcc4f353587cf3556aa4d0a2a8664c747acf3cd17057f523f.yaml
-  digest: 85f21bcc8469c2bfcc4f353587cf3556aa4d0a2a8664c747acf3cd17057f523f
+  ref: topics/topic-4ca303a3bf7ddf7b-a62bb12c1241fd4fa3a9580526a4be7838c4560f09c3ad41357785609ad70d1b.yaml
+  digest: a62bb12c1241fd4fa3a9580526a4be7838c4560f09c3ad41357785609ad70d1b
 - id: business-knowledge
   title: Business knowledge
   description: Version-controlled business domains, terminology, aliases, semantics, and technical mappings.
@@ -101,12 +102,8 @@ topics:
   ref: topics/topic-247e2a0d6f43d185-fc2d5534a38a5ddc28536afa855ff77db8e2941ccaccbfa79f948ddcfaec2f7d.yaml
   digest: fc2d5534a38a5ddc28536afa855ff77db8e2941ccaccbfa79f948ddcfaec2f7d
 history:
-  omitted_through: 15
+  omitted_through: 16
   recent:
-  - version: 16
-    action: source.add
-    actor: cli
-    summary: Added source 'local-backup-recovery' to topic 'architecture'.
   - version: 17
     action: source.add
     actor: cli
@@ -167,3 +164,7 @@ history:
     action: source.add
     actor: cli
     summary: Added source 'release-acceptance' to topic 'architecture'.
+  - version: 32
+    action: source.add
+    actor: cli
+    summary: Added source 'cluster-scheduling' to topic 'architecture'.

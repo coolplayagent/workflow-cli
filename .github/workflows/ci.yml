@@ -57,6 +57,14 @@ jobs:
       - run: python3 examples/security/acceptance.py target/debug/workflow
       - run: python3 examples/cluster/acceptance.py target/debug/workflow
       - run: python3 examples/gates/release-acceptance.py target/debug/workflow --https
+      - run: python3 examples/templates/acceptance.py target/debug/workflow --output template-acceptance
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always()
+        with:
+          name: template-acceptance
+          path: template-acceptance
+          if-no-files-found: error
+          retention-days: 14
       - run: python3 examples/migrations/acceptance.py target/debug/workflow --https
       - run: python3 examples/remote/database-recovery.py target/debug/workflow --container "${{ job.services.postgres.id }}"
       - run: python3 examples/artifacts/object-contract.py target/debug/workflow

@@ -1,8 +1,8 @@
 schema_version: 4
 artifact_kind: map
 map_type: knowledge
-map_version: 32
-updated_at: unix:1790757754
+map_version: 33
+updated_at: unix:1790773022
 directories:
 - directory: domain
   purpose: Domain concepts, models, and business rules.
@@ -77,6 +77,7 @@ topics:
   - release-acceptance
   - remote-effects
   - remote-service
+  - reviewed-templates
   - run-store
   - runtime-postconditions
   - security-acceptance
@@ -85,8 +86,8 @@ topics:
   - version-migration
   - worker-protocol
   - workflow-evidence-gates
-  ref: topics/topic-4ca303a3bf7ddf7b-a62bb12c1241fd4fa3a9580526a4be7838c4560f09c3ad41357785609ad70d1b.yaml
-  digest: a62bb12c1241fd4fa3a9580526a4be7838c4560f09c3ad41357785609ad70d1b
+  ref: topics/topic-4ca303a3bf7ddf7b-80bcfb8dbaf52524504df0b06ff9266208dda62fb29e3d87cc0c287d2cee44bd.yaml
+  digest: 80bcfb8dbaf52524504df0b06ff9266208dda62fb29e3d87cc0c287d2cee44bd
 - id: business-knowledge
   title: Business knowledge
   description: Version-controlled business domains, terminology, aliases, semantics, and technical mappings.
@@ -102,12 +103,8 @@ topics:
   ref: topics/topic-247e2a0d6f43d185-fc2d5534a38a5ddc28536afa855ff77db8e2941ccaccbfa79f948ddcfaec2f7d.yaml
   digest: fc2d5534a38a5ddc28536afa855ff77db8e2941ccaccbfa79f948ddcfaec2f7d
 history:
-  omitted_through: 16
+  omitted_through: 17
   recent:
-  - version: 17
-    action: source.add
-    actor: cli
-    summary: Added source 'local-daemon' to topic 'architecture'.
   - version: 18
     action: source.add
     actor: cli
@@ -168,3 +165,7 @@ history:
     action: source.add
     actor: cli
     summary: Added source 'cluster-scheduling' to topic 'architecture'.
+  - version: 33
+    action: source.add
+    actor: cli
+    summary: Added source 'reviewed-templates' to topic 'architecture'.

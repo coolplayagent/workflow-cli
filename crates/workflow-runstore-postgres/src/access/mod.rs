@@ -16,6 +16,7 @@ mod operations;
 mod restoration;
 pub(crate) mod scheduling;
 mod tasks;
+mod templates;
 pub use artifact_download::{ArtifactCleanup, ArtifactDownloadChunk, ArtifactDownloadGrant};
 pub use artifact_policy::{ArtifactOutputPolicy, ArtifactPolicy};
 pub use artifact_upload::{ARTIFACT_CHUNK_BYTES, ArtifactUploadRequest, ArtifactUploadStatus};

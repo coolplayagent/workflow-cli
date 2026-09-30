@@ -1,0 +1,90 @@
+{
+  "run_id": "example-release",
+  "parameters": {
+    "request": "Return the sum of two integers and pass the candidate test.",
+    "repository": "project-source",
+    "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "name": "candidate-1"
+  },
+  "business_facts": [
+    "pinned-source",
+    "isolated-tests"
+  ],
+  "environment": {
+    "mode": "local",
+    "capabilities": [
+      {
+        "capability": {
+          "id": "delivery.health",
+          "version": "1.0.0"
+        },
+        "contract_digest": "sha256:1d469a05c76405ba4666652df79b4f29acf0ed0f0b19c52e990f81a05251549b",
+        "host_binding": "project-adapters"
+      },
+      {
+        "capability": {
+          "id": "delivery.publish",
+          "version": "1.0.0"
+        },
+        "contract_digest": "sha256:f2817e4140a85544df46290b440b216940af35d92467950d55becd3f71ca6c91",
+        "host_binding": "project-adapters"
+      },
+      {
+        "capability": {
+          "id": "delivery.query",
+          "version": "1.0.0"
+        },
+        "contract_digest": "sha256:a60a60954477ac458a337c636bd1b266043ad70f3457c3fde4e43a8fceea5989",
+        "host_binding": "project-adapters"
+      },
+      {
+        "capability": {
+          "id": "delivery.rollback",
+          "version": "1.0.0"
+        },
+        "contract_digest": "sha256:dac8ce0491d72cf9ca7d7352738c36bb1bc24220da9b1c838bc562a456b86bbd",
+        "host_binding": "project-adapters"
+      },
+      {
+        "capability": {
+          "id": "sdlc.prepare-release",
+          "version": "1.0.0"
+        },
+        "contract_digest": "sha256:820dd8563967d843e150a141c84575089d68201f87d5d055ba1dbcd486e01f71",
+        "host_binding": "project-adapters"
+      },
+      {
+        "capability": {
+          "id": "sdlc.propose",
+          "version": "1.0.0"
+        },
+        "contract_digest": "sha256:06e9237d5cb3eb61dc8d3a509d19ca9a195f3223e1866a3bc53d3b3543f16327",
+        "host_binding": "project-adapters"
+      },
+      {
+        "capability": {
+          "id": "sdlc.test",
+          "version": "1.0.0"
+        },
+        "contract_digest": "sha256:9d13f9437efe0bee4566ab09b9b8360b33bb58c3baaabe2193c874675bd61018",
+        "host_binding": "project-adapters"
+      },
+      {
+        "capability": {
+          "id": "sdlc.verify",
+          "version": "1.0.0"
+        },
+        "contract_digest": "sha256:2ae9425bb29e58ba50e70b213c9136a915df9a6c55cd4b6b7c32c5def20192fe",
+        "host_binding": "project-adapters"
+      }
+    ],
+    "effect_targets": [
+      "sdlc-delivery@1.0.0"
+    ],
+    "approvers": [
+      "delivery-reviewer"
+    ],
+    "model_policies": []
+  },
+  "started_at_unix_ms": 1000
+}

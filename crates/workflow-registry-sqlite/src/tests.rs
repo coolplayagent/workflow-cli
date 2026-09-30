@@ -7,9 +7,9 @@ use std::{
 };
 use workflow_ir::*;
 static SEQUENCE: AtomicU64 = AtomicU64::new(0);
-struct Database(PathBuf);
+pub(crate) struct Database(pub(crate) PathBuf);
 impl Database {
-    fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self(std::env::temp_dir().join(format!(
             "workflow-registry-{}-{}.sqlite",
             std::process::id(),

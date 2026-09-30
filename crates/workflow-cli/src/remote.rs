@@ -7,7 +7,7 @@ use workflow_runstore_postgres::access::{
 };
 use workflow_service::*;
 mod managed;
-pub const HELP: &str = "REMOTE SERVICE\n  workflow service serve <server-binding.json>\n  workflow service configure-scheduling <server-binding.json> <cluster-configuration.json>\n  workflow service fence-restored <isolated-server-binding.json> <restore-request.json> <private-administrator-output>\n  workflow service init-artifacts <server-binding.json>\n  workflow service init-effects <server-binding.json>\n  workflow service migrate-access <server-binding.json>\n  workflow service bootstrap <server-binding.json> <tenant> <project> <actor> <private-token-output>\n  workflow service issue <server-binding.json> <admin-secret-ref.json> <provision.json> <private-token-output>\n  workflow remote call <client-binding.json> <request.json>\n  workflow remote audit-export <client-binding.json> <new-private-output>\n  workflow remote acceptance <client-binding.json> <run-id> <new-private-output>\n  workflow remote validate <client-binding.json> <file.json|file.yaml>\n  workflow remote artifact-upload <client-binding.json> <assignment-id> <request-id> <artifact-type.json> <content-file>\n  workflow remote artifact-download <client-binding.json> <download-request.json> <private-output>\n  workflow remote managed-work <client-binding.json> <worker.json> <iterations> <poll-ms>\n  workflow remote work <client-binding.json> <iterations> <poll-ms>\n  workflow remote work-models <client-binding.json> <bundle.json> <model-bindings.json> <iterations> <poll-ms>\n  workflow remote work-effects <client-binding.json> <effect-bindings.json> <iterations> <poll-ms>\n  workflow remote schedule <client-binding.json> <scheduler.json> <iterations> <poll-ms>\n\nTLS and a scoped bearer are required. Bindings contain secret references, never literal tokens.\nCredential creation is a trusted local administrative operation with exclusive 0600 output.\nwork executes registered builtin read-only capabilities; work-models adds frozen model policies using host provider bindings; work-effects also invokes explicitly bound gateways. Scheduler effects require effects:true. Iterations are bounded; service managers may supervise commands.\n";
+pub const HELP: &str = "REMOTE SERVICE\n  workflow service serve <server-binding.json>\n  workflow service configure-scheduling <server-binding.json> <cluster-configuration.json>\n  workflow service configure-template-owners <server-binding.json> <template-owners.json>\n  workflow remote template-plan <client-binding.json> <template-id> <version> <instance.json>\n  workflow service fence-restored <isolated-server-binding.json> <restore-request.json> <private-administrator-output>\n  workflow service init-artifacts <server-binding.json>\n  workflow service init-effects <server-binding.json>\n  workflow service migrate-access <server-binding.json>\n  workflow service bootstrap <server-binding.json> <tenant> <project> <actor> <private-token-output>\n  workflow service issue <server-binding.json> <admin-secret-ref.json> <provision.json> <private-token-output>\n  workflow remote call <client-binding.json> <request.json>\n  workflow remote audit-export <client-binding.json> <new-private-output>\n  workflow remote acceptance <client-binding.json> <run-id> <new-private-output>\n  workflow remote validate <client-binding.json> <file.json|file.yaml>\n  workflow remote artifact-upload <client-binding.json> <assignment-id> <request-id> <artifact-type.json> <content-file>\n  workflow remote artifact-download <client-binding.json> <download-request.json> <private-output>\n  workflow remote managed-work <client-binding.json> <worker.json> <iterations> <poll-ms>\n  workflow remote work <client-binding.json> <iterations> <poll-ms>\n  workflow remote work-models <client-binding.json> <bundle.json> <model-bindings.json> <iterations> <poll-ms>\n  workflow remote work-effects <client-binding.json> <effect-bindings.json> <iterations> <poll-ms>\n  workflow remote schedule <client-binding.json> <scheduler.json> <iterations> <poll-ms>\n\nTLS and a scoped bearer are required. Bindings contain secret references, never literal tokens.\nCredential creation is a trusted local administrative operation with exclusive 0600 output.\nwork executes registered builtin read-only capabilities; work-models adds frozen model policies using host provider bindings; work-effects also invokes explicitly bound gateways. Scheduler effects require effects:true. Iterations are bounded; service managers may supervise commands.\n";
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 struct Provision {
@@ -34,6 +34,14 @@ struct ClusterSetup {
     tenant: String,
     expected_revision: Option<u64>,
     policy: workflow_runstore_postgres::access::SchedulingPolicy,
+}
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct TemplateSetup {
+    tenant: String,
+    project: String,
+    expected_revision: Option<u64>,
+    policy: workflow_templates::OwnerPolicy,
 }
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -103,6 +111,56 @@ pub fn run(args: &[&str], stdout: &mut impl Write, stderr: &mut impl Write) -> i
                 Ok(
                     json!({"tenant":config.tenant,"revision":revision,"policy_digest":workflow_worker::digest(&config.policy)?}),
                 )
+            }
+            [
+                "service",
+                "configure-template-owners",
+                binding,
+                configuration,
+            ] => {
+                let binding: ServerBinding = read(binding)?;
+                let config: TemplateSetup = read(configuration)?;
+                let revision = AuthenticatedService::configure_template_owners(
+                    &mut binding.database.connect()?,
+                    &config.tenant,
+                    &config.project,
+                    config.expected_revision,
+                    &config.policy,
+                )?;
+                Ok(json!({"tenant":config.tenant,"project":config.project,"revision":revision}))
+            }
+            ["remote", "template-plan", binding, id, version, instance] => {
+                let client = RemoteClient::new(read(binding)?)?;
+                let Response::TemplatePublication(p) = client.call(&Request {
+                    protocol_version: PROTOCOL_VERSION,
+                    request_id: "template-plan".into(),
+                    operation: Operation::TemplateGet {
+                        identity: workflow_ir::VersionRef {
+                            id: (*id).into(),
+                            version: (*version).into(),
+                        },
+                    },
+                })?
+                else {
+                    return Err(Error::new(
+                        ErrorCode::InvalidRequest,
+                        "unexpected template publication response",
+                    ));
+                };
+                p.verify().map_err(|_| {
+                    Error::new(
+                        ErrorCode::InvalidRequest,
+                        "template publication integrity differs",
+                    )
+                })?;
+                let plan = workflow_templates::plan(&p.candidate.template, &read(instance)?)
+                    .map_err(|error| {
+                        Error::new(
+                            ErrorCode::InvalidRequest,
+                            format!("{}: {}", error.path, error.message),
+                        )
+                    })?;
+                Ok(json!({"publication_digest":p.digest,"plan":plan}))
             }
             ["remote", "managed-work", binding, config, iterations, poll] => {
                 managed::run(binding, config, iterations, poll)

@@ -24,7 +24,10 @@ explicit records checked during settlement and recovery. Verified local backups 
 run and artifact history; restored runs use fresh lease generations and require
 external-effect reconciliation before admitting writes. Authenticated HTTPS
 execution connects separate schedulers and workers to PostgreSQL, with scoped
-credentials, fenced task results and opt-in authenticated write-effect recovery. Remaining acceptance work follows the
+credentials, fenced task results and opt-in authenticated write-effect recovery.
+[Reviewed SDLC templates](docs/reviewed-templates.md) add pure parameter/binding
+plans, immutable shared subflows and independently reviewed publications with
+local and TLS regression evidence. Remaining acceptance work follows the
 [issue roadmap](docs/roadmap.md). `validate` is a
 static check, not permission to execute a capability or proof of a successful run.
 
