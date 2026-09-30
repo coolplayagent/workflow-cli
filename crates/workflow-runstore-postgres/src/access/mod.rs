@@ -1,18 +1,21 @@
 //! Authenticated application boundary for trusted service hosts. Database clients
 //! stay on the host; callers provide opaque bearer credentials, never scope/actor.
 //! Artifact authority is bound to exact assignments and capability policies.
-//! Network TLS lives in workflow-service; effect execution is not exposed here.
+//! Network TLS lives in workflow-service; external I/O stays on assigned workers.
 use crate::*;
 use serde::{Deserialize, Serialize};
 mod artifact_catalog;
 mod artifact_download;
 mod artifact_policy;
 mod artifact_upload;
+mod effects;
 mod operations;
 mod tasks;
 pub use artifact_download::{ArtifactCleanup, ArtifactDownloadChunk, ArtifactDownloadGrant};
 pub use artifact_policy::{ArtifactOutputPolicy, ArtifactPolicy};
 pub use artifact_upload::{ARTIFACT_CHUNK_BYTES, ArtifactUploadRequest, ArtifactUploadStatus};
+pub use effects::{EffectDispatch, EffectRule, OutstandingEffect};
+pub use operations::{RunControl, RunControlRequest};
 pub use tasks::{Dispatch, OutstandingAssignment, TaskReceipt};
 #[cfg(test)]
 mod tests;
@@ -56,6 +59,8 @@ pub struct CapabilityRule {
     pub contract_digest: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub artifacts: Option<ArtifactPolicy>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub effect: Option<EffectRule>,
 }
 impl CapabilityRule {
     fn matches(&self, request: &workflow_worker::WorkRequest) -> bool {
@@ -109,6 +114,10 @@ struct Identity {
     expires: i64,
     not_before: std::cell::Cell<i64>,
     deadline: std::cell::Cell<i64>,
+    // Execution expiry is a recoverable fence, not credential revocation. Keep
+    // the windows separate through the final post-audit database-time check.
+    execution_not_before: std::cell::Cell<i64>,
+    execution_deadline: std::cell::Cell<i64>,
 }
 fn denied() -> Error {
     Error::new(
@@ -154,6 +163,8 @@ fn identity(row: &postgres::Row) -> Result<Identity> {
         expires: row.get(7),
         not_before: std::cell::Cell::new(row.get(6)),
         deadline: std::cell::Cell::new(row.get(7)),
+        execution_not_before: std::cell::Cell::new(0),
+        execution_deadline: std::cell::Cell::new(i64::MAX),
     })
 }
 fn authenticate(tx: &mut Transaction<'_>, token: &str) -> Result<Identity> {
@@ -170,6 +181,12 @@ fn live(tx: &mut Transaction<'_>, identity: &Identity) -> Result<()> {
     let at = now(tx)?;
     if at <= 0 || at < identity.not_before.get() || at >= identity.deadline.get() {
         return Err(denied());
+    }
+    if at < identity.execution_not_before.get() || at >= identity.execution_deadline.get() {
+        return Err(Error::new(
+            ErrorCode::LeaseConflict,
+            "execution authority expired during transaction",
+        ));
     }
     identity.not_before.set(at);
     Ok(())
@@ -208,6 +225,9 @@ fn issue(
     }
     let mut unique = std::collections::BTreeSet::new();
     for c in capabilities {
+        if let Some(effect) = &c.effect {
+            effect.validate()?;
+        }
         if let Some(policy) = &c.artifacts {
             policy.validate()?;
         }
@@ -271,6 +291,7 @@ impl AuthenticatedService {
         }
         check_schema(&mut tx)?;
         artifact_catalog::initialize(&mut tx)?;
+        effects::initialize(&mut tx)?;
         if tx.query_one("SELECT EXISTS(SELECT 1 FROM workflow_access.credentials WHERE tenant=$1 AND project=$2)", &[&tenant,&project]).map_err(storage)?.get::<_,bool>(0) { return Err(denied()); }
         let issued = issue(
             &mut tx,
@@ -293,6 +314,14 @@ impl AuthenticatedService {
         PostgresRunStore::transaction_settings(&mut tx)?;
         check_schema(&mut tx)?;
         artifact_catalog::initialize(&mut tx)?;
+        tx.commit().map_err(storage)
+    }
+    /// Explicit, additive initialization for authenticated effect assignments.
+    pub fn initialize_effects(client: &mut Client) -> Result<()> {
+        let mut tx = client.transaction().map_err(storage)?;
+        PostgresRunStore::transaction_settings(&mut tx)?;
+        check_schema(&mut tx)?;
+        effects::initialize(&mut tx)?;
         tx.commit().map_err(storage)
     }
     pub fn open(mut client: Client) -> Result<Self> {

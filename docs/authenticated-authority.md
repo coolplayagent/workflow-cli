@@ -29,12 +29,12 @@ roles. Administrative issuance always inherits the administrator's scope.
 | --- | --- |
 | Administrator | Issue, rotate and revoke credentials; read audit and unresolved assignments; clean expired artifact transfers |
 | Definition maintainer | Validate definitions; publish an immutable bundle; read runs |
-| Runner | Validate definitions; start only a published bundle; read runs |
+| Runner | Validate definitions; start only a published bundle; read runs; pause/resume/cancel with CAS |
 | Viewer | Read run state, history, inbox and waits |
 | Approver | Read runs; submit a decision with the authenticated actor stamped as source |
-| Scheduler | Read runs, acquire/release ownership, advance timers, dispatch authorized tasks |
+| Scheduler | Read runs, acquire/release ownership, advance timers, dispatch authorized tasks/effects |
 | Worker | Retrieve its own task and return results; publish/read artifacts within its explicit capability policy |
-| Recovery | Read runs, audit and unresolved assignments; acknowledge an existing recovery barrier with the authenticated actor; clean expired artifact transfers |
+| Recovery | Read runs, audit and unresolved assignments; acquire/release ownership for audited effect reconciliation; control runs; acknowledge an existing recovery barrier; clean expired artifact transfers |
 
 Publication admits an immutable bundle digest and freezes its workflow,
 capability and policy versions in one transaction, before any start. Conflicting
@@ -83,9 +83,8 @@ after the lease is released or replaced.
 Rotation issues a new credential and revokes the old one atomically. Outstanding
 assignments remain bound to the old credential. Administrators can page through
 them for reconciliation and let fenced scheduler recovery create new attempts;
-rotation never silently transfers a running task to a new identity. This version
-admits read-only task execution only and has no authenticated effect-dispatch
-endpoint. Revocation cannot physically stop code already running in a worker.
+rotation never silently transfers a running task to a new identity. The [effect protocol](remote-effects.md) adds separate assignments with exact
+target/principal/policy grants, single delivery and audited manual resolution. Revocation cannot physically stop code already running in a worker.
 
 ## Audit and remaining boundaries
 
@@ -112,8 +111,7 @@ result with local execution.
 
 R14 and R09 remain open. Enterprise identity provisioning, provider secret grants,
 artifact archive/deletion policy, sandbox/resource/egress restrictions,
-scoped export/restore with ownership, shared definition lifecycle, audited
-external-effect reconciliation, scheduling quotas/fairness, version routing and
+scoped export/restore with ownership, shared definition lifecycle, scheduling quotas/fairness, version routing and
 production performance/fault evidence remain required. The service guide states
 the supported transport and fault model; these library tests make no throughput
 claim.

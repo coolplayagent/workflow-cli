@@ -6,7 +6,7 @@ use workflow_runstore_postgres::access::{
     ArtifactUploadRequest, AuthenticatedService, CapabilityRule, Role,
 };
 use workflow_service::*;
-pub const HELP: &str = "REMOTE SERVICE\n  workflow service serve <server-binding.json>\n  workflow service init-artifacts <server-binding.json>\n  workflow service bootstrap <server-binding.json> <tenant> <project> <actor> <private-token-output>\n  workflow service issue <server-binding.json> <admin-secret-ref.json> <provision.json> <private-token-output>\n  workflow remote call <client-binding.json> <request.json>\n  workflow remote validate <client-binding.json> <file.json|file.yaml>\n  workflow remote artifact-upload <client-binding.json> <assignment-id> <request-id> <artifact-type.json> <content-file>\n  workflow remote artifact-download <client-binding.json> <download-request.json> <private-output>\n  workflow remote work <client-binding.json> <iterations> <poll-ms>\n  workflow remote schedule <client-binding.json> <scheduler.json> <iterations> <poll-ms>\n\nTLS and a scoped bearer are required. Bindings contain secret references, never literal tokens.\nCredential creation is a trusted local administrative operation with exclusive 0600 output.\nwork executes registered builtin read-only capabilities. Iterations are bounded; service managers may supervise commands.\n";
+pub const HELP: &str = "REMOTE SERVICE\n  workflow service serve <server-binding.json>\n  workflow service init-artifacts <server-binding.json>\n  workflow service init-effects <server-binding.json>\n  workflow service bootstrap <server-binding.json> <tenant> <project> <actor> <private-token-output>\n  workflow service issue <server-binding.json> <admin-secret-ref.json> <provision.json> <private-token-output>\n  workflow remote call <client-binding.json> <request.json>\n  workflow remote validate <client-binding.json> <file.json|file.yaml>\n  workflow remote artifact-upload <client-binding.json> <assignment-id> <request-id> <artifact-type.json> <content-file>\n  workflow remote artifact-download <client-binding.json> <download-request.json> <private-output>\n  workflow remote work <client-binding.json> <iterations> <poll-ms>\n  workflow remote work-effects <client-binding.json> <effect-bindings.json> <iterations> <poll-ms>\n  workflow remote schedule <client-binding.json> <scheduler.json> <iterations> <poll-ms>\n\nTLS and a scoped bearer are required. Bindings contain secret references, never literal tokens.\nCredential creation is a trusted local administrative operation with exclusive 0600 output.\nwork executes registered builtin read-only capabilities; work-effects also invokes explicitly bound gateways. Scheduler effects require effects:true. Iterations are bounded; service managers may supervise commands.\n";
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 struct Provision {
@@ -18,6 +18,8 @@ struct Provision {
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 struct Schedule {
+    #[serde(default)]
+    effects: bool,
     instance_id: String,
     worker_ids: Vec<String>,
     lease_ms: u64,
@@ -79,6 +81,35 @@ pub fn run(args: &[&str], stdout: &mut impl Write, stderr: &mut impl Write) -> i
     }
     let result = (|| -> Result<serde_json::Value> {
         match args {
+            ["service", "init-effects", path] => {
+                let binding: ServerBinding = read(path)?;
+                AuthenticatedService::initialize_effects(&mut binding.database.connect()?)?;
+                Ok(json!({"effect_dispatch_schema":1,"initialized":true}))
+            }
+            ["remote", "work-effects", binding, effects, iterations, poll] => {
+                let (iterations, poll) = bounds(iterations, poll)?;
+                let client = RemoteClient::new(read(binding)?)?;
+                let effects = workflow_effect_http::HttpEffects::new(read(effects)?)?;
+                let worker = workflow_builtin_capabilities::worker()?;
+                let mut observed = 0;
+                let mut failed = 0;
+                let mut completed = 0;
+                let mut fenced = 0;
+                for i in 0..iterations {
+                    let effects = work_effects_once(&client, &effects, 100)?;
+                    let tasks = work_once(&client, &worker, 100)?;
+                    observed += effects.completed;
+                    completed += tasks.completed;
+                    failed += tasks.failed;
+                    fenced += effects.fenced + tasks.fenced;
+                    if i + 1 < iterations {
+                        std::thread::sleep(poll);
+                    }
+                }
+                Ok(
+                    json!({"observed_effect_calls":observed,"completed_tasks":completed,"failed_tasks":failed,"fenced":fenced}),
+                )
+            }
             ["service", "init-artifacts", path] => {
                 let binding: ServerBinding = read(path)?;
                 AuthenticatedService::initialize_artifacts(&mut binding.database.connect()?)?;
@@ -209,19 +240,28 @@ pub fn run(args: &[&str], stdout: &mut impl Write, stderr: &mut impl Write) -> i
                 let client = RemoteClient::new(read(binding)?)?;
                 let config: Schedule = read(config)?;
                 let mut scheduler = Scheduler::new(&config.instance_id, config.worker_ids)?;
+                if config.effects {
+                    scheduler = scheduler.with_effects();
+                }
                 let mut dispatched = 0;
+                let mut effect_waiting = 0;
+                let mut effect_manual = 0;
                 let mut busy = 0;
                 let mut fenced = 0;
                 for i in 0..iterations {
                     let report = scheduler.step(&client, config.lease_ms, config.scan_limit)?;
                     dispatched += report.dispatched;
+                    effect_waiting += report.effect_waiting;
+                    effect_manual += report.effect_manual;
                     busy += report.busy;
                     fenced += report.fenced;
                     if i + 1 < iterations {
                         std::thread::sleep(poll);
                     }
                 }
-                Ok(json!({"dispatched":dispatched,"busy":busy,"fenced":fenced}))
+                Ok(
+                    json!({"dispatched":dispatched,"busy":busy,"fenced":fenced,"effect_waiting":effect_waiting,"effect_manual":effect_manual}),
+                )
             }
             _ => Err(Error::new(ErrorCode::InvalidRequest, HELP)),
         }

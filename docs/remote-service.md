@@ -99,7 +99,7 @@ notifications or dispatch replies can therefore be recovered by scanning.
 Worker transport failures use a fixed diagnostic in the execution ledger. Already
 settled assignments are not executed again. Uncertain completion transport errors
 are surfaced for reconciliation. This worker CLI registers builtin read-only
-capabilities; this API does not dispatch external effects. A host may compose its
+capabilities; explicit opt-in effect workers use the [authenticated effect protocol](remote-effects.md). A host may compose its
 own compatible Worker through the library. Possessing an assignment does not grant
 arbitrary filesystem, model, artifact or external write access.
 
@@ -122,7 +122,7 @@ These mechanisms do not complete R09/R14: shared quotas and tenant/model/capabil
 fairness, priorities, measured throughput/p95 delay, dead-letter administration,
 worker version routing and rolling drain, lease renewal with assignment rebinding,
 public edge admission policy, sandbox/egress, provider secret grants, artifact archive/deletion policy,
-and authenticated external-effect reconciliation remain required. This transport
+and broader external-effect failure evidence remain required. This transport
 is not permission to launch a general multi-tenant public deployment.
 
 ## Executable acceptance evidence
@@ -171,3 +171,11 @@ full report parity and authorization; a separate executable CLI fixture compares
 output bytes. Both run in mandatory CI. Publication recompiles the bundle and
 atomically freezes all immutable versions; conflicts are rejected before first
 start, and concurrent differing publications have exactly one winner.
+
+## Authenticated effects and run controls
+
+[Remote effects](remote-effects.md) documents exact worker policy grants, atomic
+intent/assignment commits, single delivery, gateway execution and query-first
+recovery. `effects: true` explicitly enables scheduler dispatch. `work-effects`
+uses private host bindings. Typed `control` requests expose pause/resume/cancel
+to runners and recovery operators; no arbitrary event ingress is exposed.

@@ -34,7 +34,14 @@ pub(super) fn load(tx: &mut Transaction<'_>, who: &Identity, id: &str) -> Result
         expires: row.get(2),
         settled: row.get(3),
     };
-    who.fence(a.lease.issued_at_unix_ms as i64, a.expires);
+    let at = now(tx)?;
+    if at < a.lease.issued_at_unix_ms as i64 || at >= a.expires {
+        return Err(Error::new(
+            ErrorCode::LeaseConflict,
+            "task assignment expired",
+        ));
+    }
+    who.fence_execution(a.lease.issued_at_unix_ms as i64, a.expires);
     if !who.capabilities.iter().any(|c| c.matches(&a.task.request)) {
         return Err(denied());
     }
@@ -103,7 +110,7 @@ impl AuthenticatedService {
                 Claimed::Task{attempt}=>{
                     if !worker.capabilities.iter().any(|c|c.matches(&attempt.request)) {return Err(denied());}
                     let expires=(lease.expires_at_unix_ms.min(attempt.request.deadline_unix_ms) as i64).min(worker.expires);
-                    who.fence(attempt.request.issued_at_unix_ms as i64,expires);
+                    who.fence_execution(attempt.request.issued_at_unix_ms as i64,expires);
                     let id=random("assignment-")?;
                     let lease_json=serde_json::to_string(lease).map_err(|_|corrupt("assignment serialization failed"))?;
                     let task_json=serde_json::to_string(&attempt).map_err(|_|corrupt("assignment serialization failed"))?;

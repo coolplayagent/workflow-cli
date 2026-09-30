@@ -6,6 +6,7 @@ license.workspace = true
 rust-version.workspace = true
 
 [dependencies]
+workflow-effects = { path = "../workflow-effects" }
 workflow-ir = { path = "../workflow-ir" }
 workflow-validator = { path = "../workflow-validator" }
 workflow-artifacts = { path = "../workflow-artifacts" }
@@ -29,6 +30,7 @@ libc = "0.2"
 getrandom = "0.4.3"
 
 [dev-dependencies]
+workflow-effect-http = { path = "../workflow-effect-http" }
 workflow-runstore-sqlite = { path = "../workflow-runstore-sqlite" }
 workflow-runtime = { path = "../workflow-runtime" }
 workflow-builtin-capabilities = { path = "../workflow-builtin-capabilities" }

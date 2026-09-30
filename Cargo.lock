@@ -2667,6 +2667,8 @@ dependencies = [
  "tokio-rustls",
  "workflow-artifacts",
  "workflow-builtin-capabilities",
+ "workflow-effect-http",
+ "workflow-effects",
  "workflow-ir",
  "workflow-kernel",
  "workflow-runstore",

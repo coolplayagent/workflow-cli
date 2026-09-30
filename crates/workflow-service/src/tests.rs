@@ -1,5 +1,6 @@
 use super::*;
 mod artifacts;
+mod effects;
 mod validation;
 use serde_json::{Value, json};
 use std::{
@@ -188,6 +189,7 @@ fn service_child() {
     };
     let s: Value = serde_json::from_str(&spec).unwrap();
     match s["kind"].as_str().unwrap() {
+        "effect_worker_crash" => effects::crashing_worker(&s),
         "server" => {
             let binding: ServerBinding =
                 serde_json::from_slice(&std::fs::read(s["config"].as_str().unwrap()).unwrap())
@@ -207,6 +209,9 @@ fn service_child() {
             let client = RemoteClient::new(binding).unwrap();
             let workers = serde_json::from_value(s["workers"].clone()).unwrap();
             let mut scheduler = Scheduler::new(s["id"].as_str().unwrap(), workers).unwrap();
+            if s["effects"].as_bool().unwrap_or(false) {
+                scheduler = scheduler.with_effects();
+            }
             for _ in 0..500 {
                 if Path::new(s["stop"].as_str().unwrap()).exists() {
                     break;
@@ -270,7 +275,12 @@ fn service_child() {
             let client =
                 RemoteClient::new(serde_json::from_value(s["binding"].clone()).unwrap()).unwrap();
             let until = Instant::now() + Duration::from_secs(120);
-            let assignment = loop {
+            let worker = workflow_builtin_capabilities::worker().unwrap();
+            let (assignment, task, result) = loop {
+                assert!(
+                    Instant::now() < until,
+                    "no current assignment before fault injection"
+                );
                 let Response::Pending(p) = call(
                     &client,
                     Operation::Pending {
@@ -279,28 +289,37 @@ fn service_child() {
                     },
                 )
                 .unwrap() else {
-                    panic!()
+                    panic!("pending")
                 };
-                if let Some(id) = p.items.first() {
-                    break id.clone();
-                }
-                assert!(Instant::now() < until);
-                std::thread::sleep(Duration::from_millis(20));
+                let Some(id) = p.items.first() else {
+                    std::thread::sleep(Duration::from_millis(20));
+                    continue;
+                };
+                let task = match call(
+                    &client,
+                    Operation::Assignment {
+                        assignment_id: id.clone(),
+                    },
+                ) {
+                    Ok(Response::Assignment(task)) => task,
+                    Err(e) if e.code == ErrorCode::LeaseConflict => continue,
+                    other => panic!("assignment failed: {other:?}"),
+                };
+                let result = match worker.execute(&task.request, &task.grant) {
+                    Ok(r) => r.into_result(),
+                    Err(e)
+                        if matches!(
+                            e.code,
+                            workflow_worker::ErrorCode::Expired
+                                | workflow_worker::ErrorCode::DeadlineExceeded
+                        ) =>
+                    {
+                        continue;
+                    }
+                    other => panic!("execution failed: {other:?}"),
+                };
+                break (id.clone(), task, result);
             };
-            let Response::Assignment(task) = call(
-                &client,
-                Operation::Assignment {
-                    assignment_id: assignment.clone(),
-                },
-            )
-            .unwrap() else {
-                panic!()
-            };
-            let result = workflow_builtin_capabilities::worker()
-                .unwrap()
-                .execute(&task.request, &task.grant)
-                .unwrap()
-                .into_result();
             std::fs::write(
                 s["ready"].as_str().unwrap(),
                 json!({"assignment":assignment,"epoch":task.epoch}).to_string(),
@@ -453,6 +472,7 @@ fn credential(
             .map(|d| {
                 let c = workflow_worker::Capability::new(d).unwrap();
                 CapabilityRule {
+                    effect: None,
                     id: c.descriptor().capability.id.clone(),
                     version: c.descriptor().capability.version.clone(),
                     contract_digest: c.digest().into(),
@@ -701,6 +721,16 @@ fn tls_two_schedulers_three_workers_owner_kill_and_stale_result_contract() {
     let image = workflow_runstore_sqlite::RunImage::parse(&bytes).unwrap();
     let mut recovered = workflow_runstore_sqlite::SqliteRunStore::from_image(&image, None).unwrap();
     local_request.started_at_unix_ms = recovered.started_at(&request.run_id).unwrap();
+    // The local comparison starts at that same logical instant. Charging it for
+    // time spent running the preceding remote fault would expire its loop before
+    // its first task, testing a different scenario rather than semantic parity.
+    struct LocalTime(u64);
+    impl workflow_worker::Clock for LocalTime {
+        fn now_unix_ms(&self) -> workflow_worker::Result<u64> {
+            Ok(self.0)
+        }
+    }
+    let local_time = LocalTime(local_request.started_at_unix_ms);
     local.start(&local_request).unwrap();
     workflow_runtime::drive(
         &mut local,
@@ -712,7 +742,7 @@ fn tls_two_schedulers_three_workers_owner_kill_and_stale_result_contract() {
             lease_ms: 120000,
             max_commands: 100,
         },
-        &workflow_worker::SystemClock,
+        &local_time,
     )
     .unwrap();
     let target = local
@@ -738,7 +768,7 @@ fn tls_two_schedulers_three_workers_owner_kill_and_stale_result_contract() {
                     expires_at_unix_ms: target.deadline_unix_ms,
                 },
             },
-            &workflow_worker::SystemClock,
+            &local_time,
         )
         .unwrap();
     let local_state = local.get(&request.run_id).unwrap();

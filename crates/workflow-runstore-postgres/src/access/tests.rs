@@ -1,5 +1,6 @@
 use super::*;
 mod artifacts;
+mod effects;
 use std::sync::atomic::{AtomicU64, Ordering};
 static NEXT: AtomicU64 = AtomicU64::new(0);
 fn client() -> Client {
@@ -81,6 +82,7 @@ fn rules() -> Vec<CapabilityRule> {
         .map(|d| {
             let c = workflow_worker::Capability::new(d).unwrap();
             CapabilityRule {
+                effect: None,
                 id: c.descriptor().capability.id.clone(),
                 version: c.descriptor().capability.version.clone(),
                 contract_digest: c.digest().into(),
@@ -137,6 +139,50 @@ fn bearer_shape_and_debug_do_not_disclose_secret() {
     };
     assert!(!format!("{issued:?}").contains(issued.expose_secret()));
 }
+#[test]
+#[ignore = "requires disposable PostgreSQL; mandatory postgres CI job runs this"]
+fn execution_expiry_at_commit_is_retryable_without_expiring_the_credential() {
+    let mut f = Fixture::new();
+    let runner = f.credential("runner", Role::Runner);
+    let scheduler = f.credential("scheduler", Role::Scheduler);
+    f.service
+        .start(runner.expose_secret(), &request("deadline"))
+        .unwrap();
+    let prepared = std::cell::Cell::new(false);
+    let result = f.service.transact(
+        scheduler.expose_secret(),
+        &[Role::Scheduler],
+        "acquire",
+        "deadline",
+        |tx, who| {
+            who.change(tx, "deadline", false, |s, c| {
+                s.acquire(
+                    &LeaseRequest {
+                        run_id: "deadline".into(),
+                        owner: who.id.clone(),
+                        acquisition_id: "delayed-commit".into(),
+                        ttl_ms: 2000,
+                    },
+                    c,
+                )
+            })?;
+            prepared.set(true);
+            tx.query_one("SELECT pg_sleep(2.05)", &[])
+                .map_err(storage)?;
+            Ok(())
+        },
+    );
+    assert!(prepared.get());
+    assert_eq!(result.unwrap_err().code, ErrorCode::LeaseConflict);
+    // The speculative lease was rolled back. The same credential still works.
+    let lease = f
+        .service
+        .acquire(scheduler.expose_secret(), "deadline", "retry", 120000)
+        .unwrap();
+    assert_eq!(lease.epoch, 1);
+    assert!(f.service.get(runner.expose_secret(), "deadline").is_ok());
+}
+
 #[test]
 #[ignore = "requires disposable PostgreSQL; mandatory postgres CI job runs this"]
 fn authenticated_scope_roles_dispatch_result_and_approval_contract() {

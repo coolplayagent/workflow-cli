@@ -171,8 +171,9 @@ refuse v8. These are bounded fixtures, not a production reliability measurement.
 
 For declared reverse dependencies, original receipt binding, irreversible effects
 and manual takeover after a failed undo, see [ordered compensation](ordered-compensation.md).
-Authenticated multi-tenant ingress, distributed RunStore/transport, mandatory
-action-specific approval/current-workspace checks, remote artifact access and
-source-to-target ownership migration remain separate roadmap work.
+[Authenticated remote effects](remote-effects.md) now connects the shared
+PostgreSQL ledger, HTTPS scheduler/worker protocol and audited recovery. Mandatory
+action-specific approval/current-workspace checks, effect-bound remote artifact
+access and source-to-target ownership migration remain separate roadmap work.
 [Local recovery](backup-recovery.md) preserves known intents and supports audited
-import of actual post-backup provider receipts under a durable recovery barrier. R05 remains open.
+import of actual post-backup provider receipts under a durable recovery barrier. The remote effect guide maps the complete R05 acceptance evidence.

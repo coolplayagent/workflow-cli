@@ -3,8 +3,8 @@ use serde::{Deserialize, Serialize};
 use workflow_runstore::*;
 use workflow_runstore_postgres::access::{
     ArtifactCleanup, ArtifactDownloadChunk, ArtifactDownloadGrant, ArtifactUploadRequest,
-    ArtifactUploadStatus, AuditEntry, AuthenticatedService, Dispatch, OutstandingAssignment,
-    TaskReceipt,
+    ArtifactUploadStatus, AuditEntry, AuthenticatedService, Dispatch, EffectDispatch,
+    OutstandingAssignment, OutstandingEffect, TaskReceipt,
 };
 
 pub const PROTOCOL_VERSION: u32 = 1;
@@ -21,6 +21,38 @@ pub struct Request {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)]
 pub enum Operation {
+    Control {
+        request: workflow_runstore_postgres::access::RunControlRequest,
+    },
+    DispatchEffect {
+        lease: Lease,
+        worker_id: String,
+    },
+    PendingEffects {
+        after: String,
+        limit: u32,
+    },
+    EffectAssignment {
+        assignment_id: String,
+    },
+    ObserveEffect {
+        assignment_id: String,
+        observation: Box<workflow_effects::Observation>,
+    },
+    Effects {
+        run_id: String,
+        after: u64,
+        limit: u32,
+    },
+    ResolveEffect {
+        lease: Lease,
+        operation_key: String,
+        resolution: Box<workflow_effects::ManualResolution>,
+    },
+    OutstandingEffects {
+        after: String,
+        limit: u32,
+    },
     ValidateDefinition {
         source: String,
         format: workflow_ir::Format,
@@ -141,6 +173,10 @@ pub struct Reply {
     deny_unknown_fields
 )]
 pub enum Response {
+    EffectDispatch(EffectDispatch),
+    EffectAssignment(Box<workflow_effects::EffectAttempt>),
+    Effects(Page<workflow_effects::EffectState, u64>),
+    OutstandingEffects(Page<OutstandingEffect, String>),
     Validation(workflow_validator::ValidationReport),
     ArtifactUpload(Box<ArtifactUploadStatus>),
     Artifact(Box<workflow_artifacts::ArtifactRef>),
@@ -182,6 +218,41 @@ impl Request {
     pub fn execute(&self, service: &mut AuthenticatedService, token: &str) -> Result<Response> {
         self.validate()?;
         match &self.operation {
+            Operation::Control { request } => service
+                .control(token, request)
+                .map(|r| Response::Committed(Box::new(r))),
+            Operation::DispatchEffect { lease, worker_id } => service
+                .dispatch_effect(token, lease, worker_id)
+                .map(Response::EffectDispatch),
+            Operation::PendingEffects { after, limit } => service
+                .pending_effects(token, after, *limit)
+                .map(Response::Pending),
+            Operation::EffectAssignment { assignment_id } => service
+                .effect_assignment(token, assignment_id)
+                .map(|a| Response::EffectAssignment(Box::new(a))),
+            Operation::ObserveEffect {
+                assignment_id,
+                observation,
+            } => service
+                .observe_assigned_effect(token, assignment_id, observation)
+                .map(Response::Finished),
+            Operation::Effects {
+                run_id,
+                after,
+                limit,
+            } => service
+                .effects(token, run_id, *after, *limit)
+                .map(Response::Effects),
+            Operation::ResolveEffect {
+                lease,
+                operation_key,
+                resolution,
+            } => service
+                .resolve_effect(token, lease, operation_key, resolution)
+                .map(Response::Finished),
+            Operation::OutstandingEffects { after, limit } => service
+                .outstanding_effects(token, after, *limit)
+                .map(Response::OutstandingEffects),
             Operation::ValidateDefinition {
                 source,
                 format,
@@ -303,10 +374,28 @@ impl Request {
     pub fn accepts(&self, response: &Response) -> bool {
         matches!(
             (&self.operation, response),
-            (
-                Operation::ValidateDefinition { .. },
-                Response::Validation(_)
-            ) | (Operation::ArtifactBegin { .. }, Response::ArtifactUpload(_))
+            (Operation::Control { .. }, Response::Committed(_))
+                | (
+                    Operation::DispatchEffect { .. },
+                    Response::EffectDispatch(_)
+                )
+                | (Operation::PendingEffects { .. }, Response::Pending(_))
+                | (
+                    Operation::EffectAssignment { .. },
+                    Response::EffectAssignment(_)
+                )
+                | (Operation::ObserveEffect { .. }, Response::Finished(_))
+                | (Operation::Effects { .. }, Response::Effects(_))
+                | (Operation::ResolveEffect { .. }, Response::Finished(_))
+                | (
+                    Operation::OutstandingEffects { .. },
+                    Response::OutstandingEffects(_)
+                )
+                | (
+                    Operation::ValidateDefinition { .. },
+                    Response::Validation(_)
+                )
+                | (Operation::ArtifactBegin { .. }, Response::ArtifactUpload(_))
                 | (Operation::ArtifactPut { .. }, Response::ArtifactUpload(_))
                 | (Operation::ArtifactComplete { .. }, Response::Artifact(_))
                 | (Operation::ArtifactGrant { .. }, Response::ArtifactGrant(_))

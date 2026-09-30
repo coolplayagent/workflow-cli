@@ -1,5 +1,20 @@
 use super::*;
-const READ: &[Role] = &[
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)]
+pub enum RunControl {
+    Pause { reason: String },
+    Resume { reason: String },
+    Cancel,
+}
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct RunControlRequest {
+    pub run_id: String,
+    pub event_id: String,
+    pub expected_revision: u64,
+    pub control: RunControl,
+}
+pub(super) const READ: &[Role] = &[
     Role::DefinitionMaintainer,
     Role::Viewer,
     Role::Runner,
@@ -11,6 +26,12 @@ impl Identity {
     pub(super) fn fence(&self, lower: i64, upper: i64) {
         self.not_before.set(self.not_before.get().max(lower));
         self.deadline.set(self.deadline.get().min(upper));
+    }
+    pub(super) fn fence_execution(&self, lower: i64, upper: i64) {
+        self.execution_not_before
+            .set(self.execution_not_before.get().max(lower));
+        self.execution_deadline
+            .set(self.execution_deadline.get().min(upper));
     }
     pub(super) fn change<T>(
         &self,
@@ -30,7 +51,7 @@ impl Identity {
         let reader = artifact_catalog::load(tx, self, id)?;
         let (result, lower, upper) =
             PostgresRunStore::change_in(tx, &self.tenant, &self.project, reader, id, create, f)?;
-        self.fence(lower, upper);
+        self.fence_execution(lower, upper);
         Ok(result)
     }
     pub(super) fn read<T>(
@@ -50,6 +71,57 @@ impl Identity {
     }
 }
 impl AuthenticatedService {
+    /// Bounded control commands, never arbitrary task outcomes or state writes.
+    pub fn control(&mut self, token: &str, request: &RunControlRequest) -> Result<Committed> {
+        self.transact(
+            token,
+            &[Role::Runner, Role::Recovery],
+            "control",
+            &request.run_id,
+            |tx, who| {
+                validate_id(&request.event_id)?;
+                who.change(tx, &request.run_id, false, |s, c| {
+                    let state = s.get(&request.run_id)?;
+                    let kind = match &request.control {
+                        RunControl::Pause { reason } => workflow_kernel::EventKind::Pause {
+                            reason: reason.clone(),
+                        },
+                        RunControl::Resume { reason } => workflow_kernel::EventKind::Resume {
+                            reason: reason.clone(),
+                        },
+                        RunControl::Cancel => workflow_kernel::EventKind::Cancel,
+                    };
+                    // Retry uses the original time; changed control/revision still
+                    // conflicts with the event digest in the authoritative reducer.
+                    let mut at = c.now_unix_ms()?;
+                    let mut cursor = 0;
+                    loop {
+                        let page = s.history(&request.run_id, cursor, 100)?;
+                        if let Some(old) = page
+                            .items
+                            .iter()
+                            .find(|e| e.event.event_id == request.event_id)
+                        {
+                            at = old.event.at_unix_ms;
+                            break;
+                        }
+                        match page.next_cursor {
+                            Some(next) => cursor = next,
+                            None => break,
+                        }
+                    }
+                    s.apply(&Event {
+                        event_id: request.event_id.clone(),
+                        run_id: request.run_id.clone(),
+                        run_digest: state.run_digest,
+                        expected_revision: request.expected_revision,
+                        at_unix_ms: at,
+                        kind,
+                    })
+                })
+            },
+        )
+    }
     /// A bounded scan for control-plane reconciliation. IDs are scoped by the
     /// authenticated credential; each returned aggregate is locked and verified.
     pub fn runs(
@@ -239,20 +311,26 @@ impl AuthenticatedService {
         acquisition: &str,
         ttl_ms: u64,
     ) -> Result<Lease> {
-        self.transact(token, &[Role::Scheduler], "acquire", run, |tx, who| {
-            let request = LeaseRequest {
-                run_id: run.into(),
-                owner: who.id.clone(),
-                acquisition_id: acquisition.into(),
-                ttl_ms,
-            };
-            who.change(tx, run, false, |s, c| s.acquire(&request, c))
-        })
+        self.transact(
+            token,
+            &[Role::Scheduler, Role::Recovery],
+            "acquire",
+            run,
+            |tx, who| {
+                let request = LeaseRequest {
+                    run_id: run.into(),
+                    owner: who.id.clone(),
+                    acquisition_id: acquisition.into(),
+                    ttl_ms,
+                };
+                who.change(tx, run, false, |s, c| s.acquire(&request, c))
+            },
+        )
     }
     pub fn release(&mut self, token: &str, lease: &Lease) -> Result<()> {
         self.transact(
             token,
-            &[Role::Scheduler],
+            &[Role::Scheduler, Role::Recovery],
             "release",
             &lease.run_id,
             |tx, who| {
