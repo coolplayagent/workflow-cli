@@ -240,6 +240,7 @@ pub(super) fn dispatch_in(
     live(tx, &worker)?;
     who.fence(worker.issued, worker.expires);
     let claimed = who.change(tx, &lease.run_id, false, |s, c| s.claim_next(lease, c))?;
+    scheduling::ensure_dispatchable(tx, who, &lease.run_id)?;
     match claimed {
         Claimed::Task { attempt } => {
             if !worker

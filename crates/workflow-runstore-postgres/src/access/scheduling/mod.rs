@@ -193,6 +193,21 @@ pub(in crate::access) fn configuration_guard(tx: &mut Transaction<'_>, tenant: &
     .map_err(storage)?;
     Ok(())
 }
+/// Call while holding the run lock, including for commands that do not create
+/// an execution permit. A parked frontier must not advance through legacy RPC.
+pub(in crate::access) fn ensure_dispatchable(
+    tx: &mut Transaction<'_>,
+    who: &Identity,
+    run: &str,
+) -> Result<()> {
+    if exists(tx)? && control::active_letter(tx, who, run)?.is_some() {
+        return Err(Error::new(
+            ErrorCode::ManualReconciliation,
+            "run has an unresolved dispatch dead letter",
+        ));
+    }
+    Ok(())
+}
 pub(crate) fn sync(
     tx: &mut Transaction<'_>,
     tenant: &str,

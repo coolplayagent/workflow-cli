@@ -357,7 +357,9 @@ pub(super) fn dispatch_in(
     let worker = identity(&row)?;
     live(tx, &worker)?;
     who.fence(worker.issued, worker.expires);
-    match who.change(tx, &lease.run_id, false, |s, c| s.claim_effect(lease, c))? {
+    let claimed = who.change(tx, &lease.run_id, false, |s, c| s.claim_effect(lease, c))?;
+    scheduling::ensure_dispatchable(tx, who, &lease.run_id)?;
+    match claimed {
         EffectClaim::Call { attempt } => {
             permitted(&worker, &attempt)?;
             scheduling::worker_ready(tx, who, &worker)?;

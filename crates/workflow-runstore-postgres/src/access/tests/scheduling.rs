@@ -26,16 +26,16 @@ pub(super) fn policy() -> SchedulingPolicy {
     }
 }
 fn simple(id: &str) -> StartRun {
+    fixture_start("examples/execution/valid-start.json", id)
+}
+fn fixture_start(file: &str, id: &str) -> StartRun {
     let root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
     let root = if let Ok(dir) = std::env::var("TEST_SRCDIR") {
         std::path::PathBuf::from(dir).join(std::env::var("TEST_WORKSPACE").unwrap())
     } else {
         root
     };
-    let mut r: StartRun = serde_json::from_slice(
-        &std::fs::read(root.join("examples/execution/valid-start.json")).unwrap(),
-    )
-    .unwrap();
+    let mut r: StartRun = serde_json::from_slice(&std::fs::read(root.join(file)).unwrap()).unwrap();
     r.run_id = id.into();
     r
 }
@@ -548,6 +548,56 @@ fn expired_heartbeat_readonly_database_and_reviewed_execution_failure_fail_close
     };
     c.finish(&assignment_id, 0);
     // Advance the remaining decision/terminal commands after the recovered task.
+    let letter =
+        c.f.service
+            .transact(
+                c.scheduler.expose_secret(),
+                &[Role::Scheduler],
+                "fixture_park",
+                "heartbeat",
+                |tx, who| {
+                    crate::access::scheduling::park(tx, who, "heartbeat", "review_control_frontier")
+                },
+            )
+            .unwrap()
+            .unwrap();
+    let before =
+        c.f.service
+            .get(c.runner.expose_secret(), "heartbeat")
+            .unwrap();
+    assert_eq!(
+        c.f.service
+            .dispatch(c.scheduler.expose_secret(), &lease, &c.workers[0].id)
+            .unwrap_err()
+            .code,
+        ErrorCode::ManualReconciliation
+    );
+    assert_eq!(
+        c.f.service
+            .dispatch_effect(c.scheduler.expose_secret(), &lease, &c.workers[0].id)
+            .unwrap_err()
+            .code,
+        ErrorCode::ManualReconciliation
+    );
+    assert_eq!(
+        c.f.service
+            .get(c.runner.expose_secret(), "heartbeat")
+            .unwrap(),
+        before,
+        "park must also roll back internal commands that do not consume a quota permit"
+    );
+    c.f.service
+        .resolve_dead_letter(
+            c.recovery.expose_secret(),
+            &DeadLetterResolution {
+                id: letter.id,
+                expected_revision: letter.revision,
+                expected_snapshot_digest: letter.snapshot_digest,
+                retry: false,
+                reason: "archived reviewed terminal record".into(),
+            },
+        )
+        .unwrap();
     for _ in 0..4 {
         let _ = c.dispatch(&lease, 0);
     }
@@ -566,5 +616,89 @@ fn expired_heartbeat_readonly_database_and_reviewed_execution_failure_fail_close
     assert_eq!(
         AuthenticatedService::access_schema_version(&mut client()).unwrap(),
         3
+    );
+}
+
+#[test]
+#[ignore = "requires disposable PostgreSQL; mandatory postgres CI job runs this"]
+fn parked_gate_cannot_advance_through_single_worker_dispatch() {
+    let mut c = Cluster::new(&policy());
+    let mut request = fixture_start("examples/gates/guarded-start.json", "parked-gate");
+    request.bundle.root.version = "9.0.0".into();
+    for w in &mut request.bundle.workflows {
+        w.version = "9.0.0".into();
+    }
+    for gate in &mut request.bundle.postconditions {
+        gate.workflow.version = "9.0.0".into();
+    }
+    let author = c.f.credential("gate-author", Role::DefinitionMaintainer);
+    c.f.service
+        .publish(author.expose_secret(), &request.bundle)
+        .unwrap();
+    c.f.service
+        .start(c.runner.expose_secret(), &request)
+        .unwrap();
+    let lease =
+        c.f.service
+            .acquire(
+                c.scheduler.expose_secret(),
+                "parked-gate",
+                "gate-owner",
+                300000,
+            )
+            .unwrap();
+    let RoutedDispatch::Task { assignment_id } = c.dispatch(&lease, 0) else {
+        panic!("gate checker task");
+    };
+    c.finish(&assignment_id, 0);
+    let letter =
+        c.f.service
+            .transact(
+                c.scheduler.expose_secret(),
+                &[Role::Scheduler],
+                "fixture_park",
+                "parked-gate",
+                |tx, who| {
+                    crate::access::scheduling::park(tx, who, "parked-gate", "review_gate_frontier")
+                },
+            )
+            .unwrap()
+            .unwrap();
+    let before =
+        c.f.service
+            .get(c.runner.expose_secret(), "parked-gate")
+            .unwrap();
+    assert_eq!(
+        c.f.service
+            .dispatch(c.scheduler.expose_secret(), &lease, &c.workers[0].id)
+            .unwrap_err()
+            .code,
+        ErrorCode::ManualReconciliation
+    );
+    assert_eq!(
+        c.f.service
+            .get(c.runner.expose_secret(), "parked-gate")
+            .unwrap(),
+        before
+    );
+    c.f.service
+        .resolve_dead_letter(
+            c.recovery.expose_secret(),
+            &DeadLetterResolution {
+                id: letter.id,
+                expected_revision: letter.revision,
+                expected_snapshot_digest: letter.snapshot_digest,
+                retry: true,
+                reason: "reviewed pending gate evaluation".into(),
+            },
+        )
+        .unwrap();
+    assert!(matches!(c.dispatch(&lease, 0), RoutedDispatch::Handled));
+    assert!(
+        c.f.service
+            .get(c.runner.expose_secret(), "parked-gate")
+            .unwrap()
+            .revision
+            > before.revision
     );
 }
