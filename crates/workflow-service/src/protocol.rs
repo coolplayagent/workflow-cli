@@ -21,6 +21,25 @@ pub struct Request {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)]
 pub enum Operation {
+    PlanStorageUpgrade {
+        run_id: String,
+    },
+    UpgradeStorage {
+        run_id: String,
+        plan: StorageUpgrade,
+    },
+    PlanMigration {
+        run_id: String,
+        request: Box<MigrationRequest>,
+    },
+    MigrateDefinition {
+        lease: Lease,
+        plan: Box<MigrationPlan>,
+    },
+    HistoricalSnapshot {
+        run_id: String,
+        revision: u64,
+    },
     RecoveryBarrier {
         run_id: String,
     },
@@ -183,6 +202,8 @@ pub struct Reply {
     deny_unknown_fields
 )]
 pub enum Response {
+    StorageUpgrade(StorageUpgrade),
+    MigrationPlan(Box<MigrationPlan>),
     RecoveryBarrier(Option<Box<RecoveryBarrier>>),
     EffectDispatch(EffectDispatch),
     EffectAssignment(Box<workflow_effects::EffectAttempt>),
@@ -230,6 +251,21 @@ impl Request {
     pub fn execute(&self, service: &mut AuthenticatedService, token: &str) -> Result<Response> {
         self.validate()?;
         match &self.operation {
+            Operation::PlanStorageUpgrade { run_id } => service
+                .plan_storage_upgrade(token, run_id)
+                .map(Response::StorageUpgrade),
+            Operation::UpgradeStorage { run_id, plan } => service
+                .upgrade_storage(token, run_id, plan)
+                .map(Response::StorageUpgrade),
+            Operation::PlanMigration { run_id, request } => service
+                .plan_migration(token, run_id, request)
+                .map(|p| Response::MigrationPlan(Box::new(p))),
+            Operation::MigrateDefinition { lease, plan } => service
+                .migrate_definition(token, lease, plan)
+                .map(|r| Response::Committed(Box::new(r))),
+            Operation::HistoricalSnapshot { run_id, revision } => service
+                .historical_snapshot(token, run_id, *revision)
+                .map(|s| Response::Snapshot(Box::new(s))),
             Operation::RecoveryBarrier { run_id } => service
                 .recovery_barrier(token, run_id)
                 .map(|r| Response::RecoveryBarrier(r.map(Box::new))),
@@ -396,12 +432,20 @@ impl Request {
         matches!(
             (&self.operation, response),
             (
-                Operation::RecoveryBarrier { .. },
-                Response::RecoveryBarrier(_)
-            ) | (
-                Operation::ImportRestoredEffect { .. },
-                Response::Committed(_)
-            ) | (Operation::Control { .. }, Response::Committed(_))
+                Operation::PlanStorageUpgrade { .. } | Operation::UpgradeStorage { .. },
+                Response::StorageUpgrade(_)
+            ) | (Operation::PlanMigration { .. }, Response::MigrationPlan(_))
+                | (Operation::MigrateDefinition { .. }, Response::Committed(_))
+                | (Operation::HistoricalSnapshot { .. }, Response::Snapshot(_))
+                | (
+                    Operation::RecoveryBarrier { .. },
+                    Response::RecoveryBarrier(_)
+                )
+                | (
+                    Operation::ImportRestoredEffect { .. },
+                    Response::Committed(_)
+                )
+                | (Operation::Control { .. }, Response::Committed(_))
                 | (
                     Operation::DispatchEffect { .. },
                     Response::EffectDispatch(_)

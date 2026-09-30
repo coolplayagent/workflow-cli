@@ -1,8 +1,8 @@
 schema_version: 4
 artifact_kind: map
 map_type: knowledge
-map_version: 28
-updated_at: unix:1790740601
+map_version: 29
+updated_at: unix:1790745020
 directories:
 - directory: domain
   purpose: Domain concepts, models, and business rules.
@@ -79,10 +79,11 @@ topics:
   - runtime-postconditions
   - shared-artifacts
   - shared-recovery
+  - version-migration
   - worker-protocol
   - workflow-evidence-gates
-  ref: topics/topic-4ca303a3bf7ddf7b-78cc9ac95b8001575cd97d3307ce10b82d73242793c07e0a4bc8bbc2718545a2.yaml
-  digest: 78cc9ac95b8001575cd97d3307ce10b82d73242793c07e0a4bc8bbc2718545a2
+  ref: topics/topic-4ca303a3bf7ddf7b-7535176f6c6a553a349446bcf4c42b5ad476877085c800c0c74688fb140c1314.yaml
+  digest: 7535176f6c6a553a349446bcf4c42b5ad476877085c800c0c74688fb140c1314
 - id: business-knowledge
   title: Business knowledge
   description: Version-controlled business domains, terminology, aliases, semantics, and technical mappings.
@@ -98,12 +99,8 @@ topics:
   ref: topics/topic-247e2a0d6f43d185-fc2d5534a38a5ddc28536afa855ff77db8e2941ccaccbfa79f948ddcfaec2f7d.yaml
   digest: fc2d5534a38a5ddc28536afa855ff77db8e2941ccaccbfa79f948ddcfaec2f7d
 history:
-  omitted_through: 12
+  omitted_through: 13
   recent:
-  - version: 13
-    action: source.add
-    actor: cli
-    summary: Added source 'event-inbox' to topic 'architecture'.
   - version: 14
     action: source.add
     actor: cli
@@ -164,3 +161,7 @@ history:
     action: source.add
     actor: cli
     summary: Added source 'artifact-acceptance' to topic 'architecture'.
+  - version: 29
+    action: source.add
+    actor: cli
+    summary: Added source 'version-migration' to topic 'architecture'.

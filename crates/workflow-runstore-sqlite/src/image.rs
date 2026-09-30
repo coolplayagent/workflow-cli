@@ -3,6 +3,7 @@
 use crate::*;
 use rusqlite::{params_from_iter, types::Value};
 use serde::{Deserialize, Serialize};
+use workflow_artifacts::ArtifactReader;
 
 pub const MAX_IMAGE_BYTES: usize = 64 * 1024 * 1024;
 // Order respects foreign keys. Columns are fixed by STORAGE_VERSION, not input.
@@ -18,6 +19,7 @@ const TABLES: &[(&str, usize)] = &[
     ("receipts", 4),
     ("execution_heads", 3),
     ("execution_events", 4),
+    ("storage_migrations", 3),
 ];
 
 /// The external transaction must atomically admit its write inside this window.
@@ -62,6 +64,36 @@ pub struct ImageBinding {
     pub digest: String,
 }
 impl RunImage {
+    /// Explicitly validate and convert the previous image format. Normal parse
+    /// refuses it so a rolling deployment cannot silently change old storage.
+    pub fn upgrade_previous(
+        bytes: &[u8],
+        artifacts: Option<Box<dyn ArtifactReader>>,
+    ) -> Result<(Self, StorageUpgrade)> {
+        if bytes.len() > MAX_IMAGE_BYTES {
+            return Err(corrupt("run image exceeds 64 MiB"));
+        }
+        let mut old: Self =
+            serde_json::from_slice(bytes).map_err(|_| corrupt("invalid run image"))?;
+        if old.schema_version != 10 || old.tables.len() != TABLES.len() - 1 {
+            return Err(Error::new(
+                ErrorCode::UnsupportedStorage,
+                "only v10 images require this upgrade",
+            ));
+        }
+        old.schema_version = STORAGE_VERSION;
+        old.tables.push(vec![]);
+        let mut store = SqliteRunStore::from_image(&old, artifacts)?;
+        let tx = store.connection.transaction().map_err(storage)?;
+        let report = storage_upgrade::record(
+            &tx,
+            10,
+            workflow_artifacts::content_digest(bytes),
+            store.artifacts.as_deref(),
+        )?;
+        tx.commit().map_err(storage)?;
+        Ok((store.export_image(&old.run_id)?, report))
+    }
     pub fn parse(bytes: &[u8]) -> Result<Self> {
         if bytes.len() > MAX_IMAGE_BYTES {
             return Err(corrupt("run image exceeds 64 MiB"));
@@ -128,6 +160,9 @@ impl SqliteRunStore {
             .execute_batch(execution::SCHEMA)
             .map_err(storage)?;
         connection
+            .execute_batch(storage_upgrade::SCHEMA)
+            .map_err(storage)?;
+        connection
             .pragma_update(None, "application_id", APPLICATION_ID)
             .map_err(storage)?;
         connection
@@ -167,6 +202,7 @@ impl SqliteRunStore {
         Self::check_single_run(&store.connection, &image.run_id)?;
         store.verify(&image.run_id)?;
         store.execution_history(&image.run_id, 0, 1)?;
+        store.storage_history()?;
         Ok(store)
     }
     fn check_single_run(connection: &Connection, id: &str) -> Result<()> {

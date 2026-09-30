@@ -1,0 +1,139 @@
+{
+  "schema_version": 1,
+  "bundle": {
+    "schema_version": 1,
+    "root": {
+      "id": "versioned-review",
+      "version": "2.0.0"
+    },
+    "workflows": [
+      {
+        "schema_version": 1,
+        "id": "versioned-review",
+        "version": "2.0.0",
+        "entry": "review",
+        "inputs": {
+          "review_digest": {
+            "value_type": {
+              "type": "string"
+            },
+            "required": true
+          }
+        },
+        "nodes": [
+          {
+            "id": "review",
+            "kind": {
+              "type": "wait",
+              "event": "local-review",
+              "timeout_ms": 120000
+            },
+            "inputs": {
+              "review_digest": {
+                "value_type": {
+                  "type": "string"
+                },
+                "required": true
+              }
+            },
+            "bindings": {
+              "review_digest": {
+                "source": "workflow_input",
+                "field": "review_digest"
+              }
+            }
+          },
+          {
+            "id": "done",
+            "kind": {
+              "type": "terminal",
+              "outcome": "succeeded"
+            }
+          },
+          {
+            "id": "declined",
+            "kind": {
+              "type": "terminal",
+              "outcome": "cancelled"
+            }
+          },
+          {
+            "id": "expired",
+            "kind": {
+              "type": "terminal",
+              "outcome": "failed"
+            }
+          }
+        ],
+        "edges": [
+          {
+            "id": "approved",
+            "from": "review",
+            "to": "done",
+            "route": {
+              "type": "accepted"
+            }
+          },
+          {
+            "id": "declined",
+            "from": "review",
+            "to": "declined",
+            "route": {
+              "type": "rejected"
+            }
+          },
+          {
+            "id": "expired",
+            "from": "review",
+            "to": "expired",
+            "route": {
+              "type": "timed_out"
+            }
+          }
+        ]
+      }
+    ],
+    "capabilities": [],
+    "wait_policies": [
+      {
+        "workflow": {
+          "id": "versioned-review",
+          "version": "2.0.0"
+        },
+        "node_id": "review",
+        "policy": {
+          "identity": {
+            "id": "design-approval",
+            "version": "1.0.0"
+          },
+          "kind": "human_approval",
+          "responders": [
+            "approver",
+            "reviewer"
+          ],
+          "subjects": {
+            "review_digest": "digest"
+          },
+          "max_validity_ms": 86400000,
+          "exception": {
+            "identity": {
+              "id": "design-exception",
+              "version": "1.0.0"
+            },
+            "responders": [
+              "emergency-reviewer"
+            ],
+            "codes": [
+              "incident-recovery"
+            ]
+          }
+        }
+      }
+    ]
+  },
+  "run_id": "versioned-v2",
+  "inputs": {
+    "review_digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+  },
+  "started_at_unix_ms": 1000
+}

@@ -1,0 +1,37 @@
+{
+  "ok": true,
+  "result": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "additionalProperties": false,
+    "properties": {
+      "source_digest": {
+        "type": "string"
+      },
+      "source_version": {
+        "format": "int64",
+        "type": "integer"
+      },
+      "target_version": {
+        "format": "int64",
+        "type": "integer"
+      },
+      "verified_history_digest": {
+        "type": "string"
+      },
+      "verified_runs": {
+        "format": "uint64",
+        "minimum": 0,
+        "type": "integer"
+      }
+    },
+    "required": [
+      "source_version",
+      "target_version",
+      "source_digest",
+      "verified_history_digest",
+      "verified_runs"
+    ],
+    "title": "StorageUpgrade",
+    "type": "object"
+  }
+}

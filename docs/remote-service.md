@@ -179,3 +179,8 @@ intent/assignment commits, single delivery, gateway execution and query-first
 recovery. `effects: true` explicitly enables scheduler dispatch. `work-effects`
 uses private host bindings. Typed `control` requests expose pause/resume/cancel
 to runners and recovery operators; no arbitrary event ingress is exposed.
+
+Administrators can preview and apply reviewed definition migrations, inspect
+historical snapshots and explicitly upgrade prior transaction images through
+the same HTTPS endpoint. See [R11 version migration](version-migration.md) for
+role, publication, source CAS and lease constraints.

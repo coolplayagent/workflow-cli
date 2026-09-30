@@ -154,6 +154,7 @@ pub fn schema(kind: &str) -> Result<String> {
         "restored-effect" => schemars::schema_for!(RestoredEffect),
         "migration-request" => schemars::schema_for!(workflow_kernel::MigrationRequest),
         "migration-plan" => schemars::schema_for!(workflow_kernel::MigrationPlan),
+        "storage-upgrade" => schemars::schema_for!(StorageUpgrade),
         "effect-resolution" => schemars::schema_for!(workflow_effects::ManualResolution),
         _ => {
             return Err(Error::new(

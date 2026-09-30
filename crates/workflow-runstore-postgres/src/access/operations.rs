@@ -357,7 +357,7 @@ impl AuthenticatedService {
     ) -> Result<Lease> {
         self.transact(
             token,
-            &[Role::Scheduler, Role::Recovery],
+            &[Role::Scheduler, Role::Recovery, Role::Administrator],
             "acquire",
             run,
             |tx, who| {
@@ -374,7 +374,7 @@ impl AuthenticatedService {
     pub fn release(&mut self, token: &str, lease: &Lease) -> Result<()> {
         self.transact(
             token,
-            &[Role::Scheduler, Role::Recovery],
+            &[Role::Scheduler, Role::Recovery, Role::Administrator],
             "release",
             &lease.run_id,
             |tx, who| {

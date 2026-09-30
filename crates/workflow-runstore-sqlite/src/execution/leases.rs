@@ -9,48 +9,12 @@ impl SqliteRunStore {
         artifacts: Option<Box<dyn workflow_artifacts::ArtifactReader>>,
     ) -> Result<Self> {
         let mut connection = connect(path.as_ref(), OpenFlags::SQLITE_OPEN_READ_WRITE)?;
-        let tx = connection
-            .transaction_with_behavior(TransactionBehavior::Immediate)
-            .map_err(storage)?;
-        let app: i64 = tx
-            .pragma_query_value(None, "application_id", |r| r.get(0))
-            .map_err(storage)?;
-        let version: i64 = tx
-            .pragma_query_value(None, "user_version", |r| r.get(0))
-            .map_err(storage)?;
-        if app != APPLICATION_ID || !(1..=STORAGE_VERSION).contains(&version) {
-            return Err(Error::new(
-                ErrorCode::UnsupportedStorage,
-                "only run store schema 1 through 10 can migrate",
-            ));
-        }
-        if version < STORAGE_VERSION {
-            if version == 1 {
-                tx.execute_batch(SCHEMA).map_err(storage)?;
-            }
-            let ids = {
-                let mut q = tx
-                    .prepare("SELECT run_id FROM runs ORDER BY run_id")
-                    .map_err(storage)?;
-                q.query_map([], |r| r.get::<_, String>(0))
-                    .map_err(storage)?
-                    .collect::<std::result::Result<Vec<_>, _>>()
-                    .map_err(storage)?
-            };
-            for id in &ids {
-                if version == 1 {
-                    init_head(&tx, id)?;
-                }
-            }
-            tx.pragma_update(None, "user_version", STORAGE_VERSION)
-                .map_err(storage)?;
-            for id in ids {
-                crate::recovery::recover(&tx, &id, artifacts.as_deref())?;
-            }
-        } else {
-            check_version(&tx)?;
-        }
-        tx.commit().map_err(storage)?;
+        crate::storage_upgrade::upgrade_connection(
+            &mut connection,
+            artifacts.as_deref(),
+            None,
+            |_| {},
+        )?;
         Ok(Self {
             connection,
             admission: Default::default(),

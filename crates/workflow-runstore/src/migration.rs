@@ -37,7 +37,11 @@ pub fn migration_event_id(migration_id: &str) -> Result<String> {
 pub fn migration_delivery_id(plan_digest: &str, sequence: u64) -> Result<String> {
     let hash = plan_digest
         .strip_prefix("sha256:")
-        .filter(|s| s.len() == 64)
+        .filter(|s| {
+            s.len() == 64
+                && s.bytes()
+                    .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
+        })
         .ok_or_else(|| Error::new(ErrorCode::InvalidRequest, "invalid migration plan digest"))?;
     Ok(format!("migration-{hash}-{sequence}"))
 }
@@ -89,4 +93,14 @@ pub trait MigrationStore: ExecutionStore {
         clock: &dyn workflow_worker::Clock,
     ) -> Result<Committed>;
     fn historical_snapshot(&mut self, run_id: &str, revision: u64) -> Result<Snapshot>;
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct StorageUpgrade {
+    pub source_version: i64,
+    pub target_version: i64,
+    pub source_digest: String,
+    pub verified_history_digest: String,
+    pub verified_runs: u64,
 }

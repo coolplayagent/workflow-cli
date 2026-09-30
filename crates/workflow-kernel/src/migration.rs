@@ -38,7 +38,8 @@ pub struct NodeMapping {
 #[serde(rename_all = "snake_case")]
 pub enum MigrationExecutionPolicy {
     /// Recompute all results, gates and approvals from explicit target inputs.
-    /// Business effects must be reconciled outside this policy before migration.
+    /// Any existing effect ledger blocks this policy. Finish the old run or
+    /// explicitly reconcile a separate new execution instead.
     RestartWithFreshEvidence,
 }
 

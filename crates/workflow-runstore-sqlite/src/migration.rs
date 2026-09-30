@@ -7,7 +7,7 @@ fn eligible(authority: &Authority) -> Result<()> {
     if authority.recovery.is_some() || !authority.effects.is_empty() {
         return Err(Error::new(
             ErrorCode::MigrationBlocked,
-            "finish or reconcile the old run before migration; recorded business effects and recovery barriers cannot be restarted",
+            "recorded business effects or recovery barriers block definition restart; finish the old run or reconcile a separate new execution",
         ));
     }
     Ok(())

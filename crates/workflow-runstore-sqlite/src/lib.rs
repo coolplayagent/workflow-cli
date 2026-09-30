@@ -10,6 +10,9 @@ pub use image::{AdmissionWindow, ImageBinding, RunImage};
 mod reads;
 mod recovery;
 mod restoration;
+mod storage_upgrade;
+pub use db::STORAGE_VERSION;
+pub use storage_upgrade::StorageUpgrade;
 mod writes;
 use db::*;
 use rusqlite::{Connection, OpenFlags, TransactionBehavior};
@@ -56,6 +59,7 @@ impl SqliteRunStore {
             }
             tx.execute_batch(SCHEMA).map_err(storage)?;
             tx.execute_batch(execution::SCHEMA).map_err(storage)?;
+            tx.execute_batch(storage_upgrade::SCHEMA).map_err(storage)?;
             tx.pragma_update(None, "application_id", APPLICATION_ID)
                 .map_err(storage)?;
             tx.pragma_update(None, "user_version", STORAGE_VERSION)
