@@ -383,3 +383,70 @@ fn replacing_an_input_identifies_transitive_producers_without_rewriting_history(
         );
     }
 }
+
+#[test]
+fn durable_revalidation_view_blocks_old_and_new_stale_descendants_but_preserves_history() {
+    let d = Dir::new();
+    let mut store = d.store();
+    let original = put(&mut store, &spec(), b"true");
+    let mut dependent_spec = spec();
+    dependent_spec.producer.node_instance_id = "test".into();
+    dependent_spec.inputs = vec![original.link()];
+    let old_report = put(&mut store, &dependent_spec, b"true");
+    let mut new_spec = spec();
+    new_spec.source_revision.revision = "b".repeat(40);
+    new_spec.producer.attempt_id = "replacement".into();
+    let replacement = put(&mut store, &new_spec, b"false");
+    let plan = plan_revalidation(
+        &store,
+        &[Replacement {
+            old: original.link(),
+            new: replacement.link(),
+        }],
+        "Requirement changed; regenerate dependent test evidence",
+    )
+    .unwrap();
+    assert_eq!(
+        plan.affected
+            .iter()
+            .map(|a| a.artifact.artifact_id.clone())
+            .collect::<BTreeSet<_>>(),
+        BTreeSet::from([original.artifact_id.clone(), old_report.artifact_id.clone()])
+    );
+    let view = InvalidatedReader::new(Box::new(d.store()), &plan).unwrap();
+    assert!(view.verify(&old_report.link()).is_err());
+    assert_eq!(view.verify(&replacement.link()).unwrap(), replacement);
+    // A report published after the projection still cannot launder the stale input.
+    dependent_spec.producer.attempt_id = "late-report".into();
+    dependent_spec.inputs = vec![old_report.link()];
+    let late = put(&mut store, &dependent_spec, b"true");
+    assert!(view.verify(&late.link()).is_err());
+    dependent_spec.inputs = vec![replacement.link()];
+    dependent_spec.producer.attempt_id = "fresh-report".into();
+    dependent_spec.source_revision.revision = "b".repeat(40);
+    let fresh = put(&mut store, &dependent_spec, b"true");
+    assert_eq!(view.verify(&fresh.link()).unwrap(), fresh);
+    assert_eq!(store.verify(&old_report.link()).unwrap(), old_report);
+    assert!(
+        plan_revalidation(
+            &store,
+            &[Replacement {
+                old: original.link(),
+                new: late.link()
+            }],
+            "cannot replace with stale output"
+        )
+        .is_err()
+    );
+    assert!(
+        plan_revalidation(
+            &store,
+            &[Replacement {
+                old: original.link(),
+                new: original.link()
+            }],
+            "not a change"
+        )
+        .is_err()
+    );
+}

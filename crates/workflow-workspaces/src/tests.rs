@@ -41,6 +41,7 @@ fn reference_for(s: CheckoutSpec) -> WorkspaceRef {
             os: "linux".into(),
             architecture: "x86_64".into(),
             git_version: "git version fixture".into(),
+            tools: Default::default(),
         },
     })
     .unwrap()

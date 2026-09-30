@@ -27,7 +27,14 @@ fn committed_workspace_schemas_match() {
     } else {
         std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..")
     };
-    for kind in ["checkout", "ref", "observation", "output"] {
+    for kind in [
+        "checkout",
+        "ref",
+        "observation",
+        "output",
+        "merge-plan",
+        "merge-proposal",
+    ] {
         let mut out = vec![];
         assert_eq!(
             run(

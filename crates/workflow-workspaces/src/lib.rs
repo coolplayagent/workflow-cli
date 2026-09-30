@@ -1,5 +1,7 @@
 //! Portable attempt workspace contracts. Filesystem/Git and worker SDKs belong in adapters.
+mod merge;
 mod model;
+pub use merge::*;
 mod validation;
 pub use model::*;
 use schemars::JsonSchema;
@@ -77,10 +79,12 @@ pub fn schema(kind: &str) -> Result<String> {
         "ref" => schemars::schema_for!(WorkspaceRef),
         "observation" => schemars::schema_for!(Observation),
         "output" => schemars::schema_for!(OutputManifest),
+        "merge-plan" => schemars::schema_for!(MergePlan),
+        "merge-proposal" => schemars::schema_for!(MergeProposal),
         _ => {
             return Err(Error::new(
                 ErrorCode::InvalidContract,
-                "workspace schema must be checkout, ref, observation or output",
+                "workspace schema must be checkout, ref, observation, output, merge-plan or merge-proposal",
             ));
         }
     };

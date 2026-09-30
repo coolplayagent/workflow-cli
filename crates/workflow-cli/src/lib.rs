@@ -3,6 +3,7 @@ use std::io::{Read, Write};
 use workflow_ir::{Diagnostic, Format, MAX_DOCUMENT_BYTES, Workflow};
 use workflow_validator::ValidationReport as Report;
 
+mod artifact_objects;
 mod artifacts;
 mod backups;
 mod daemon;
@@ -13,6 +14,7 @@ mod registry;
 mod remote;
 mod runs;
 mod worker;
+mod workspace_execution;
 mod workspaces;
 
 const HELP: &str = "workflow — portable SOP definition compiler\n\nUSAGE\n  workflow validate <file.json|file.yaml>\n  workflow export <file.json|file.yaml> <json|yaml>\n  workflow schema\n  workflow help\n\nvalidate emits JSON with valid, digest and diagnostics.\nExit codes: 0 success, 1 invalid definition, 2 usage or I/O error.\nRelative files resolve against the caller's current directory.\n";
@@ -143,7 +145,12 @@ pub fn run(
         args @ ["workspace", ..]
         | args @ [
             "schema",
-            "workspace-checkout" | "workspace-ref" | "workspace-observation" | "workspace-output",
+            "workspace-checkout"
+            | "workspace-ref"
+            | "workspace-observation"
+            | "workspace-output"
+            | "workspace-merge-plan"
+            | "workspace-merge-proposal",
         ] => workspaces::run(args, stdout, stderr),
         args @ ["gate", ..] | args @ ["schema", "gate-request" | "gate-decision"] => {
             gates::run(args, stdout, stderr)

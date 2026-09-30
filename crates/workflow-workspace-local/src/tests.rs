@@ -7,6 +7,206 @@ use std::{
 };
 use workflow_artifacts::{ArtifactStore, Producer, SourceRevision};
 static SERIAL: AtomicU64 = AtomicU64::new(0);
+
+#[test]
+fn sealed_parallel_repairs_require_explicit_conflict_resolution_and_create_a_new_verified_revision()
+{
+    let mut f = Fixture::new();
+    f.spec.outputs = vec![
+        OutputFile {
+            path: "input.txt".into(),
+            artifact_type: file_type(),
+        },
+        OutputFile {
+            path: "new.txt".into(),
+            artifact_type: file_type(),
+        },
+    ];
+    let a = f.checkout();
+    let first = f.store().path(&a.link()).unwrap();
+    let mut second_spec = f.spec.clone();
+    second_spec.producer.attempt_id = "attempt-2".into();
+    let b = f.store().checkout(&second_spec, &f.source()).unwrap();
+    let second = f.store().path(&b.link()).unwrap();
+    fs::write(first.join("input.txt"), b"repair A\n").unwrap();
+    fs::write(first.join("new.txt"), b"shared output\n").unwrap();
+    fs::write(second.join("input.txt"), b"repair B\n").unwrap();
+    let mut artifacts =
+        workflow_artifact_local::LocalArtifactStore::create(f.dir.join("artifacts")).unwrap();
+    let left = f
+        .store()
+        .seal_proposal(
+            &a.link(),
+            "Fix A with its independent file evidence",
+            &mut artifacts,
+        )
+        .unwrap();
+    let right = f
+        .store()
+        .seal_proposal(&b.link(), "Fix B with a conflicting edit", &mut artifacts)
+        .unwrap();
+    let mut proposals = vec![left.link(), right.link()];
+    proposals.sort_by(|a, b| a.artifact_id.cmp(&b.artifact_id));
+    let source = f.source().read(&f.spec.source_revision).unwrap();
+    let unresolved = plan_merge(&source, &proposals, &Default::default(), &artifacts).unwrap();
+    assert_eq!(unresolved.conflicts.len(), 1);
+    assert_eq!(unresolved.conflicts[0].path, "input.txt");
+    assert!(merged_files(&source, &unresolved, &artifacts).is_err());
+    let resolutions =
+        std::collections::BTreeMap::from([("input.txt".into(), right.artifact_id.clone())]);
+    let plan = plan_merge(&source, &proposals, &resolutions, &artifacts).unwrap();
+    assert!(plan.conflicts.is_empty());
+    assert!(plan.requires_revalidation);
+    // Work continuing in an old directory cannot change the retained proposal.
+    fs::write(second.join("input.txt"), b"later unreviewed edit\n").unwrap();
+    let files = merged_files(&source, &plan, &artifacts).unwrap();
+    assert_eq!(
+        files.iter().find(|f| f.path == "input.txt").unwrap().bytes,
+        b"repair B\n"
+    );
+    assert_eq!(
+        files.iter().find(|f| f.path == "new.txt").unwrap().bytes,
+        b"shared output\n"
+    );
+    let destination = f.dir.join("merged.git");
+    let revision = GitSource::write_merge(&destination, &plan, &files).unwrap();
+    use std::os::unix::fs::PermissionsExt;
+    assert_eq!(
+        fs::metadata(&destination).unwrap().permissions().mode() & 0o777,
+        0o700
+    );
+    assert_ne!(revision.revision, f.revision);
+    assert_eq!(revision.revision.len(), 64);
+    let actual = GitSource::open(&revision.repository, &destination)
+        .unwrap()
+        .read(&revision)
+        .unwrap();
+    assert_eq!(
+        actual
+            .files
+            .iter()
+            .map(|f| (&f.path, &f.bytes, f.executable))
+            .collect::<Vec<_>>(),
+        files
+            .iter()
+            .map(|f| (&f.path, &f.bytes, f.executable))
+            .collect::<Vec<_>>()
+    );
+    assert_eq!(
+        GitSource::write_merge(f.dir.join("retry.git"), &plan, &files).unwrap(),
+        revision
+    );
+    assert!(GitSource::write_merge(&destination, &plan, &files).is_err());
+    assert_eq!(
+        fs::read(f.dir.join("repo/input.txt")).unwrap(),
+        b"original\n"
+    );
+    assert_eq!(artifacts.lineage(&left.link()).unwrap().last(), Some(&left));
+    let mut tampered = plan.clone();
+    tampered.files[0].digest = content_digest(b"changed");
+    assert!(merged_files(&source, &tampered, &artifacts).is_err());
+    let mut invalid = std::collections::BTreeMap::new();
+    invalid.insert("input.txt".into(), "not-a-proposal".into());
+    assert!(plan_merge(&source, &proposals, &invalid, &artifacts).is_err());
+}
+#[test]
+fn sealing_rejects_adapter_substitution_of_file_or_proposal_identity() {
+    struct Substitute {
+        inner: workflow_artifact_local::LocalArtifactStore,
+        proposal: bool,
+    }
+    impl workflow_artifacts::ArtifactReader for Substitute {
+        fn verify(
+            &self,
+            link: &workflow_artifacts::ArtifactLink,
+        ) -> workflow_artifacts::Result<workflow_artifacts::ArtifactRef> {
+            self.inner.verify(link)
+        }
+    }
+    impl ArtifactStore for Substitute {
+        fn publish(
+            &mut self,
+            spec: &workflow_artifacts::PublishSpec,
+            bytes: &mut dyn std::io::Read,
+        ) -> workflow_artifacts::Result<workflow_artifacts::ArtifactRef> {
+            let mut result = self.inner.publish(spec, bytes)?;
+            if (spec.artifact_type == proposal_type()) == self.proposal {
+                result.digest = content_digest(b"different artifact");
+            }
+            Ok(result)
+        }
+        fn read(
+            &self,
+            link: &workflow_artifacts::ArtifactLink,
+        ) -> workflow_artifacts::Result<Vec<u8>> {
+            self.inner.read(link)
+        }
+    }
+    for proposal in [false, true] {
+        let mut f = Fixture::new();
+        f.spec.outputs = vec![OutputFile {
+            path: "input.txt".into(),
+            artifact_type: file_type(),
+        }];
+        let reference = f.checkout();
+        fs::write(
+            f.store().path(&reference.link()).unwrap().join("input.txt"),
+            b"changed\n",
+        )
+        .unwrap();
+        let mut artifacts = Substitute {
+            inner: workflow_artifact_local::LocalArtifactStore::create(f.dir.join("artifacts"))
+                .unwrap(),
+            proposal,
+        };
+        assert_eq!(
+            f.store()
+                .seal_proposal(&reference.link(), "reviewed change", &mut artifacts)
+                .unwrap_err()
+                .code,
+            ErrorCode::CorruptStorage
+        );
+    }
+}
+
+#[test]
+fn merge_proposals_record_deletions_and_reject_undeclared_changes() {
+    let mut f = Fixture::new();
+    f.spec.outputs = vec![OutputFile {
+        path: "input.txt".into(),
+        artifact_type: file_type(),
+    }];
+    let reference = f.checkout();
+    let path = f.store().path(&reference.link()).unwrap();
+    let mut artifacts =
+        workflow_artifact_local::LocalArtifactStore::create(f.dir.join("artifacts")).unwrap();
+    fs::write(path.join("undeclared.txt"), b"outside contract").unwrap();
+    assert!(
+        f.store()
+            .seal_proposal(&reference.link(), "unscoped change", &mut artifacts)
+            .is_err()
+    );
+    fs::remove_file(path.join("undeclared.txt")).unwrap();
+    fs::remove_file(path.join("input.txt")).unwrap();
+    let proposal = f
+        .store()
+        .seal_proposal(&reference.link(), "Remove obsolete input", &mut artifacts)
+        .unwrap();
+    let source = f.source().read(&f.spec.source_revision).unwrap();
+    let plan = plan_merge(&source, &[proposal.link()], &Default::default(), &artifacts).unwrap();
+    let files = merged_files(&source, &plan, &artifacts).unwrap();
+    assert!(!files.iter().any(|f| f.path == "input.txt"));
+    let revision = GitSource::write_merge(f.dir.join("merged.git"), &plan, &files).unwrap();
+    assert!(
+        !GitSource::open(&revision.repository, f.dir.join("merged.git"))
+            .unwrap()
+            .read(&revision)
+            .unwrap()
+            .files
+            .iter()
+            .any(|f| f.path == "input.txt")
+    );
+}
 struct Fixture {
     dir: PathBuf,
     spec: CheckoutSpec,

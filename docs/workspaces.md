@@ -7,9 +7,7 @@ Bazel `rust_library` targets. Kernel, worker and artifact contracts remain separ
 
 The allocation is bound to one run/node-instance/attempt, its exact worker request
 and input digests, a fixed source commit, input artifact links, declared typed
-outputs and an explicit merge policy. It is a host-managed building block for R07.
-The run executor does not automatically allocate workspaces or authenticate these
-host claims in this increment.
+outputs and an explicit merge policy. The integrated `run drive-workspaces` command now binds actual durable claims, allocates workspaces, verifies input bytes and captures typed reports. Standalone allocation remains a trusted host building block; see [R07 acceptance](artifact-acceptance.md).
 
 ## Run the real example
 
@@ -96,7 +94,7 @@ different contract is a conflict. An exact retry returns the original allocation
 and preserves any edits, including after a lost reply. It never resets a working
 directory. The current adapter records `merge_policy: explicit`: edits remain
 proposals until a separate authorized merge produces a new revision and new
-evidence. There is no automatic writeback to the source repository.
+evidence. The explicit seal/plan/apply commands produce a separate verified Git revision; they never write back to the source repository.
 
 Directory separation is not an OS process sandbox. A host running arbitrary
 commands must separately restrict their filesystem, network, credentials and
@@ -140,10 +138,7 @@ attachments to that accepted result or make new evidence eligible retroactively.
 Filesystem observation is not an atomic compare-and-swap with an external action.
 The host must serialize cooperating writers during a capture. A hostile or
 uncoordinated process can change files after a read, and equal scans do not prove
-that no intermediate change occurred. The next R03 integration must bind actual
-execution and gate consumption to current observations; the current gate executor
-still uses its frozen target and accepted evidence, without automatic workspace
-inspection.
+that no intermediate change occurred. The integrated workspace executor verifies the complete source observation and captures outputs before fenced settlement. Gates consume those immutable artifacts against their frozen source/input target. A mutable working directory is not a release target; seal and merge it to a new revision before revalidation.
 
 ## Durability, retention and budgets
 
@@ -185,6 +180,4 @@ kinds, captured lineage and upstream corruption, SQLite capacity exhaustion,
 independent process races, concurrent catalog snapshots, and termination
 before/after publication and commit.
 This establishes the tested deterministic and process-crash behavior, not power-loss
-recovery, production throughput or business benefit. R07 remains open for automatic
-executor binding, sandboxed command execution, shared-resource coordination,
-explicit merge/revalidation nodes and remote workspace/storage authorization.
+recovery, production throughput or business benefit. The [R07 acceptance guide](artifact-acceptance.md) describes automatic executor binding, reviewed merge/revalidation, current evidence invalidation and shared object storage. Arbitrary process sandboxing and secret/tool policy are tracked in R14.

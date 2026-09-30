@@ -34,6 +34,58 @@
         ],
         "type": "object"
       },
+      "CapturedFile": {
+        "additionalProperties": false,
+        "properties": {
+          "artifact_id": {
+            "type": "string"
+          },
+          "digest": {
+            "type": "string"
+          },
+          "executable": {
+            "type": "boolean"
+          },
+          "path": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "path",
+          "executable",
+          "artifact_id",
+          "digest"
+        ],
+        "type": "object"
+      },
+      "Change": {
+        "additionalProperties": false,
+        "properties": {
+          "declared_output": {
+            "type": "boolean"
+          },
+          "kind": {
+            "$ref": "#/$defs/ChangeKind"
+          },
+          "path": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "path",
+          "kind",
+          "declared_output"
+        ],
+        "type": "object"
+      },
+      "ChangeKind": {
+        "enum": [
+          "added",
+          "modified",
+          "deleted"
+        ],
+        "type": "string"
+      },
       "CheckoutSpec": {
         "additionalProperties": false,
         "properties": {
@@ -182,6 +234,44 @@
             "type": "string"
           }
         ]
+      },
+      "Observation": {
+        "additionalProperties": false,
+        "properties": {
+          "changes": {
+            "items": {
+              "$ref": "#/$defs/Change"
+            },
+            "type": "array"
+          },
+          "clean": {
+            "type": "boolean"
+          },
+          "files": {
+            "items": {
+              "$ref": "#/$defs/FileEntry"
+            },
+            "type": "array"
+          },
+          "source_revision": {
+            "$ref": "#/$defs/SourceRevision"
+          },
+          "tree_digest": {
+            "type": "string"
+          },
+          "workspace": {
+            "$ref": "#/$defs/WorkspaceLink"
+          }
+        },
+        "required": [
+          "workspace",
+          "source_revision",
+          "tree_digest",
+          "files",
+          "clean",
+          "changes"
+        ],
+        "type": "object"
       },
       "OutputFile": {
         "additionalProperties": false,
@@ -353,6 +443,22 @@
         ],
         "type": "object"
       },
+      "WorkspaceLink": {
+        "additionalProperties": false,
+        "properties": {
+          "digest": {
+            "type": "string"
+          },
+          "workspace_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "workspace_id",
+          "digest"
+        ],
+        "type": "object"
+      },
       "WorkspaceManifest": {
         "additionalProperties": false,
         "properties": {
@@ -383,31 +489,58 @@
           "environment"
         ],
         "type": "object"
+      },
+      "WorkspaceRef": {
+        "additionalProperties": false,
+        "properties": {
+          "digest": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          },
+          "manifest": {
+            "$ref": "#/$defs/WorkspaceManifest"
+          },
+          "workspace_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "workspace_id",
+          "digest",
+          "location",
+          "manifest"
+        ],
+        "type": "object"
       }
     },
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "additionalProperties": false,
     "properties": {
-      "digest": {
+      "decision_summary": {
         "type": "string"
       },
-      "location": {
-        "type": "string"
+      "files": {
+        "items": {
+          "$ref": "#/$defs/CapturedFile"
+        },
+        "type": "array"
       },
-      "manifest": {
-        "$ref": "#/$defs/WorkspaceManifest"
+      "observation": {
+        "$ref": "#/$defs/Observation"
       },
-      "workspace_id": {
-        "type": "string"
+      "workspace": {
+        "$ref": "#/$defs/WorkspaceRef"
       }
     },
     "required": [
-      "workspace_id",
-      "digest",
-      "location",
-      "manifest"
+      "workspace",
+      "observation",
+      "files",
+      "decision_summary"
     ],
-    "title": "WorkspaceRef",
+    "title": "MergeProposal",
     "type": "object"
   }
 }

@@ -165,3 +165,5 @@ use PostgreSQL storage, scoped credentials and current assignments.
 
 Shared database recovery and the R04 evidence matrix are documented in
 [shared recovery](docs/shared-recovery.md).
+
+Artifact/workspace execution, reviewed merges, stale-evidence policy and S3 interoperability are covered by the [R07 acceptance guide](docs/artifact-acceptance.md).

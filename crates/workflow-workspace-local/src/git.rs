@@ -26,6 +26,123 @@ impl GitSource {
             path: std::fs::canonicalize(path).map_err(io)?,
         })
     }
+
+    /// Export a reviewed merge as an actual deterministic Git commit in a new
+    /// bare repository. No caller checkout, index or existing ref is mutated.
+    /// Source ancestry is in the retained merge plan; this is a new root commit.
+    pub fn write_merge(
+        path: impl AsRef<Path>,
+        plan: &MergePlan,
+        files: &[SourceFile],
+    ) -> Result<workflow_artifacts::SourceRevision> {
+        let entries: Vec<_> = files
+            .iter()
+            .map(|f| FileEntry {
+                path: f.path.clone(),
+                digest: content_digest(&f.bytes),
+                bytes: f.bytes.len() as u64,
+                executable: f.executable,
+            })
+            .collect();
+        validate_files(&entries)?;
+        if entries != plan.files || !plan.conflicts.is_empty() || !plan.requires_revalidation {
+            return Err(Error::new(
+                ErrorCode::Conflict,
+                "merge content differs from reviewed plan",
+            ));
+        }
+        // create_dir rejects an existing destination, including symlinks.
+        use std::os::unix::fs::DirBuilderExt;
+        std::fs::DirBuilder::new()
+            .mode(0o700)
+            .create(path.as_ref())
+            .map_err(io)?;
+        let source = Self::open(&plan.source_revision.repository, path)?;
+        source.command(
+            &["init", "--bare", "--object-format=sha256", "--template="],
+            vec![],
+            4096,
+        )?;
+        let mut stream = vec![];
+        for (index, file) in files.iter().enumerate() {
+            stream.extend_from_slice(
+                format!("blob\nmark :{}\ndata {}\n", index + 1, file.bytes.len()).as_bytes(),
+            );
+            stream.extend_from_slice(&file.bytes);
+            stream.push(b'\n');
+        }
+        let message = format!(
+            "Workflow merge plan {}\nBase repository {}\nBase revision {}\nRevalidation required\n",
+            digest(plan)?,
+            plan.source_revision.repository,
+            plan.source_revision.revision
+        );
+        stream.extend_from_slice(format!("commit refs/heads/merged\ncommitter Workflow Merge <merge@workflow.invalid> 0 +0000\ndata {}\n{}\n",message.len(),message).as_bytes());
+        for (index, file) in files.iter().enumerate() {
+            let quoted = serde_json::to_string(&file.path).map_err(|e| corrupt(e.to_string()))?;
+            stream.extend_from_slice(
+                format!(
+                    "M {} :{} {quoted}\n",
+                    if file.executable { "100755" } else { "100644" },
+                    index + 1
+                )
+                .as_bytes(),
+            );
+        }
+        stream.extend_from_slice(b"\ndone\n");
+        source.command(
+            &["fast-import", "--date-format=raw", "--done", "--quiet"],
+            stream,
+            4096,
+        )?;
+        let revision =
+            String::from_utf8(source.command(&["rev-parse", "refs/heads/merged"], vec![], 128)?)
+                .map_err(|_| corrupt("invalid merged revision"))?
+                .trim()
+                .to_owned();
+        let reference = workflow_artifacts::SourceRevision {
+            repository: plan.source_revision.repository.clone(),
+            revision,
+        };
+        let checked = source.read(&reference)?;
+        if checked.files.len() != files.len()
+            || checked.files.iter().zip(files).any(|(a, b)| {
+                a.path != b.path || a.bytes != b.bytes || a.executable != b.executable
+            })
+        {
+            return Err(corrupt("Git commit differs from merged file set"));
+        }
+        // Git fast-import has closed its pack/ref files. Sync every regular file
+        // and directory before returning a revision to the host.
+        fn sync(path: &Path) -> Result<()> {
+            for entry in std::fs::read_dir(path).map_err(io)? {
+                let entry = entry.map_err(io)?;
+                let kind = entry.file_type().map_err(io)?;
+                if kind.is_dir() {
+                    sync(&entry.path())?;
+                } else if kind.is_file() {
+                    std::fs::File::open(entry.path())
+                        .map_err(io)?
+                        .sync_all()
+                        .map_err(io)?;
+                } else {
+                    return Err(corrupt("unexpected merged repository entry"));
+                }
+            }
+            std::fs::File::open(path)
+                .map_err(io)?
+                .sync_all()
+                .map_err(io)
+        }
+        sync(&source.path)?;
+        if let Some(parent) = source.path.parent() {
+            std::fs::File::open(parent)
+                .map_err(io)?
+                .sync_all()
+                .map_err(io)?;
+        }
+        Ok(reference)
+    }
     fn command(&self, args: &[&str], input: Vec<u8>, limit: usize) -> Result<Vec<u8>> {
         let mut cmd = Command::new("git");
         for (k, _) in std::env::vars_os() {
@@ -301,6 +418,7 @@ impl WorkspaceSource for GitSource {
                     .map_err(|_| corrupt("Git version encoding"))?
                     .trim()
                     .into(),
+                tools: Default::default(),
             },
         })
     }

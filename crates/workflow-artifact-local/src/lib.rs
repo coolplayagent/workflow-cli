@@ -173,6 +173,11 @@ impl ArtifactReader for LocalArtifactStore {
         Ok(graph.last().expect("root artifact").clone())
     }
 }
+impl ArtifactInventory for LocalArtifactStore {
+    fn retained_manifests(&self) -> Result<Vec<ArtifactRef>> {
+        LocalArtifactStore::retained_manifests(self)
+    }
+}
 impl ArtifactStore for LocalArtifactStore {
     fn publish(
         &mut self,

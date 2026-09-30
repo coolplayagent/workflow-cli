@@ -156,11 +156,15 @@ impl EffectAdapter for Adapter {
     ) -> workflow_worker::Result<Observation> {
         let observation = self.http.execute_with_secret(a, c, "sandbox-effect-test")?;
         if let Some(path) = &self.crash_marker {
+            // Publish the complete receipt atomically: the parent kills us as
+            // soon as this path appears, so create-then-write exposes an empty JSON file.
+            let pending = path.with_extension("pending");
             std::fs::write(
-                path,
+                &pending,
                 serde_json::to_vec(&json!({"attempt":a,"observation":observation})).unwrap(),
             )
             .unwrap();
+            std::fs::rename(pending, path).unwrap();
             loop {
                 std::thread::park();
             }

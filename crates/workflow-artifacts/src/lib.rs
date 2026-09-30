@@ -1,6 +1,8 @@
 //! Portable, typed artifact identities and immutable provenance. No storage or worker dependency.
 mod codec;
 mod model;
+mod revalidation;
+pub use revalidation::*;
 mod validation;
 pub use codec::{digest, parse_message, to_message};
 pub use model::*;
@@ -63,6 +65,10 @@ pub trait ArtifactStore: ArtifactReader {
         content: &mut dyn std::io::Read,
     ) -> Result<ArtifactRef>;
     fn read(&self, reference: &ArtifactLink) -> Result<Vec<u8>>;
+}
+/// Complete retained manifest inventory. Payload verification is still required.
+pub trait ArtifactInventory: ArtifactStore {
+    fn retained_manifests(&self) -> Result<Vec<ArtifactRef>>;
 }
 pub fn schema(kind: &str) -> Result<String> {
     let s = match kind {
