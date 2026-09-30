@@ -182,6 +182,7 @@ including process startup, verification and syncing, were 95.5 ms for backup,
 fixture observations, not production capacity or recovery guarantees. Full sample
 metadata is retained with the MR evidence.
 
-R04/R08 remain open for their remaining deployment and unattended operation
-acceptance. Tenant authorization, encrypted/signed distribution, archive retention
-policy and source-to-target ownership transfer remain their separate roadmap work.
+Shared PostgreSQL restoration is covered by the [shared recovery and R04
+acceptance guide](shared-recovery.md). Encrypted/signed archive distribution,
+deployment archive retention and source-to-target ownership transfer remain
+separate deployment and roadmap work.

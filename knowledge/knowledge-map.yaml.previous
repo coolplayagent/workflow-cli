@@ -1,8 +1,8 @@
 schema_version: 4
 artifact_kind: map
 map_type: knowledge
-map_version: 25
-updated_at: unix:1790734098
+map_version: 26
+updated_at: unix:1790735986
 directories:
 - directory: domain
   purpose: Domain concepts, models, and business rules.
@@ -68,6 +68,7 @@ topics:
   - local-backup-recovery
   - local-daemon
   - local-execution
+  - model-boundaries-acceptance
   - model-execution
   - ordered-compensation
   - postgres-authority
@@ -78,8 +79,8 @@ topics:
   - shared-artifacts
   - worker-protocol
   - workflow-evidence-gates
-  ref: topics/topic-4ca303a3bf7ddf7b-775e9c1c38d7d6a80b7f02b5487b337b552bc4647706b445bea01fbd8ac39632.yaml
-  digest: 775e9c1c38d7d6a80b7f02b5487b337b552bc4647706b445bea01fbd8ac39632
+  ref: topics/topic-4ca303a3bf7ddf7b-dac953f834484508b2962882c89e624126a6207fd1a2e02c9f5c1db2f15c2c5f.yaml
+  digest: dac953f834484508b2962882c89e624126a6207fd1a2e02c9f5c1db2f15c2c5f
 - id: business-knowledge
   title: Business knowledge
   description: Version-controlled business domains, terminology, aliases, semantics, and technical mappings.
@@ -95,12 +96,8 @@ topics:
   ref: topics/topic-247e2a0d6f43d185-fc2d5534a38a5ddc28536afa855ff77db8e2941ccaccbfa79f948ddcfaec2f7d.yaml
   digest: fc2d5534a38a5ddc28536afa855ff77db8e2941ccaccbfa79f948ddcfaec2f7d
 history:
-  omitted_through: 9
+  omitted_through: 10
   recent:
-  - version: 10
-    action: source.add
-    actor: cli
-    summary: Added source 'runtime-postconditions' to topic 'architecture'.
   - version: 11
     action: source.add
     actor: cli
@@ -161,3 +158,7 @@ history:
     action: source.add
     actor: cli
     summary: Added source 'durable-approval' to topic 'architecture'.
+  - version: 26
+    action: source.add
+    actor: cli
+    summary: Added source 'model-boundaries-acceptance' to topic 'architecture'.

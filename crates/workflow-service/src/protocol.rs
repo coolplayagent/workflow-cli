@@ -21,6 +21,13 @@ pub struct Request {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)]
 pub enum Operation {
+    RecoveryBarrier {
+        run_id: String,
+    },
+    ImportRestoredEffect {
+        lease: Lease,
+        request: Box<RestoredEffect>,
+    },
     Control {
         request: workflow_runstore_postgres::access::RunControlRequest,
     },
@@ -176,6 +183,7 @@ pub struct Reply {
     deny_unknown_fields
 )]
 pub enum Response {
+    RecoveryBarrier(Option<Box<RecoveryBarrier>>),
     EffectDispatch(EffectDispatch),
     EffectAssignment(Box<workflow_effects::EffectAttempt>),
     Effects(Page<workflow_effects::EffectState, u64>),
@@ -222,6 +230,12 @@ impl Request {
     pub fn execute(&self, service: &mut AuthenticatedService, token: &str) -> Result<Response> {
         self.validate()?;
         match &self.operation {
+            Operation::RecoveryBarrier { run_id } => service
+                .recovery_barrier(token, run_id)
+                .map(|r| Response::RecoveryBarrier(r.map(Box::new))),
+            Operation::ImportRestoredEffect { lease, request } => service
+                .import_restored_effect(token, lease, request)
+                .map(|r| Response::Committed(Box::new(r))),
             Operation::Control { request } => service
                 .control(token, request)
                 .map(|r| Response::Committed(Box::new(r))),
@@ -381,7 +395,13 @@ impl Request {
     pub fn accepts(&self, response: &Response) -> bool {
         matches!(
             (&self.operation, response),
-            (Operation::Control { .. }, Response::Committed(_))
+            (
+                Operation::RecoveryBarrier { .. },
+                Response::RecoveryBarrier(_)
+            ) | (
+                Operation::ImportRestoredEffect { .. },
+                Response::Committed(_)
+            ) | (Operation::Control { .. }, Response::Committed(_))
                 | (
                     Operation::DispatchEffect { .. },
                     Response::EffectDispatch(_)
