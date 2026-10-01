@@ -98,6 +98,7 @@ class Harness:
         self.binary, self.temp, self.output = binary, directory, output
         self.clients, self.credentials = {}, {}
         self.serial = 0
+        self.lease_handoffs = 0
         self.child = None
         self.source = directory / "source"
         self.source.mkdir()
@@ -229,6 +230,16 @@ class Case:
         else:
             self.local("release", self.h.save(self.lease))
 
+    def keep_lease(self):
+        # Every fixture invocation completes synchronously before this boundary.
+        # Yield and reacquire while the old lease is live, without extending any
+        # frozen task, approval or effect deadline. This also works when shared
+        # cluster scheduling has not been configured for the fixture tenant.
+        if self.lease["expires_at_unix_ms"] - now() <= 90000:
+            self.release()
+            self.acquire()
+            self.h.lease_handoffs += 1
+
     def state(self):
         return self.h.remote("viewer", {"type": "get", "run_id": self.id}) if self.mode == "shared" else self.local("status", self.id)
 
@@ -312,6 +323,7 @@ class Case:
     def drive(self, expiring=False):
         h = self.h
         for _ in range(160):
+            self.keep_lease()
             snapshot = self.state()
             if snapshot["status"] != "running":
                 return self.complete(snapshot)
@@ -373,6 +385,8 @@ class Case:
         h = self.h
         accepted = self.scenario in ["success", "rework"]
         assert snapshot["status"] == ("succeeded" if accepted else "cancelled" if self.scenario == "rejected" else "failed"), (self.id, snapshot)
+        # Reading/exporting the final evidence needs no execution ownership.
+        self.release()
         manifest = h.remote("viewer", {"type": "acceptance", "run_id": self.id}) if self.mode == "shared" else self.local("acceptance", self.id)
         assert manifest["status"] == ("accepted" if accepted else "incomplete"), (self.id, manifest)
         assert manifest["bundle_digest"] == self.plan["bundle_digest"]
@@ -389,7 +403,6 @@ class Case:
         (h.output / (self.id + ".acceptance.json")).write_text(json.dumps(manifest, indent=2) + "\n")
         result = {"scenario": self.scenario, "mode": self.mode, "run_digest": manifest["run_digest"], "bundle_digest": manifest["bundle_digest"], "report_digest": manifest["digest"], "artifacts": sorted(set(self.artifacts)), "terminal_status": snapshot["status"], "accepted": accepted, "repair_rounds": self.rounds}
         print(json.dumps({"case": self.id, "status": "pass", "rounds": self.rounds, "artifacts": len(self.artifacts)}), flush=True)
-        self.release()
         return result
 
 
@@ -454,7 +467,7 @@ def main():
                     instantiated = h.run("remote", "template-plan", h.clients["runner"], template["identity"]["id"], "1.0.0", h.save(instance))
                     assert instantiated["publication_digest"] == shared_publication["digest"]
                     (args.output / (kind + ".publication.json")).write_text(json.dumps(shared_publication, indent=2) + "\n")
-            summary = {"status": "pass", "complete_matrix": not args.quick and not args.local_only, "cases": sum(len(v) for v in results.values()), "provider_writes": Provider.writes, "compensations": Provider.compensations}
+            summary = {"status": "pass", "complete_matrix": not args.quick and not args.local_only, "cases": sum(len(v) for v in results.values()), "provider_writes": Provider.writes, "compensations": Provider.compensations, "lease_handoffs": h.lease_handoffs}
             (args.output / "summary.json").write_text(json.dumps(summary, indent=2) + "\n")
             print(json.dumps(summary), flush=True)
         finally:
