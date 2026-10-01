@@ -6,6 +6,10 @@ license.workspace = true
 rust-version.workspace = true
 
 [dependencies]
+serde.workspace = true
+serde_json.workspace = true
+workflow-templates = { path = "../workflow-templates" }
+workflow-runstore-sqlite = { path = "../workflow-runstore-sqlite" }
 rusqlite.workspace = true
 workflow-ir = { path = "../workflow-ir" }
 workflow-definitions = { path = "../workflow-definitions" }

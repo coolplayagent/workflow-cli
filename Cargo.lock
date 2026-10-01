@@ -2481,6 +2481,7 @@ dependencies = [
  "workflow-runstore-sqlite",
  "workflow-runtime",
  "workflow-service",
+ "workflow-templates",
  "workflow-validator",
  "workflow-worker",
  "workflow-workspace-local",
@@ -2618,8 +2619,12 @@ name = "workflow-registry-sqlite"
 version = "0.1.0"
 dependencies = [
  "rusqlite",
+ "serde",
+ "serde_json",
  "workflow-definitions",
  "workflow-ir",
+ "workflow-runstore-sqlite",
+ "workflow-templates",
 ]
 
 [[package]]
@@ -2655,6 +2660,7 @@ dependencies = [
  "workflow-runstore",
  "workflow-runstore-sqlite",
  "workflow-runtime",
+ "workflow-templates",
  "workflow-validator",
  "workflow-worker",
 ]
@@ -2725,6 +2731,22 @@ dependencies = [
  "workflow-runstore-postgres",
  "workflow-runstore-sqlite",
  "workflow-runtime",
+ "workflow-templates",
+ "workflow-validator",
+ "workflow-worker",
+]
+
+[[package]]
+name = "workflow-templates"
+version = "0.1.0"
+dependencies = [
+ "schemars",
+ "serde",
+ "serde_json",
+ "workflow-ir",
+ "workflow-kernel",
+ "workflow-models",
+ "workflow-runstore",
  "workflow-validator",
  "workflow-worker",
 ]

@@ -13,6 +13,7 @@ mod models;
 mod registry;
 mod remote;
 mod runs;
+mod templates;
 mod worker;
 mod workspace_execution;
 mod workspaces;
@@ -113,7 +114,7 @@ pub fn run(
         [] | ["help" | "--help" | "-h"] => write(
             stdout,
             &format!(
-                "{HELP}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}",
+                "{HELP}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}",
                 registry::HELP,
                 worker::HELP,
                 kernel::HELP,
@@ -124,11 +125,17 @@ pub fn run(
                 models::HELP,
                 backups::HELP,
                 daemon::HELP,
-                remote::HELP
+                remote::HELP,
+                templates::HELP
             ),
             0,
         ),
         args @ ["service" | "remote", ..] => remote::run(args, stdout, stderr),
+        args @ ["template", ..]
+        | args @ [
+            "schema",
+            "template" | "template-instance" | "template-candidate" | "template-owners",
+        ] => templates::run(args, stdout, stderr),
         args @ ["daemon", ..] | args @ ["schema", "daemon-config"] => {
             daemon::run(args, stdout, stderr)
         }
