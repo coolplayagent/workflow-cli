@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Workflow CLI · One skill, durable workflows</title>
+<meta name="description" content="Define, execute and verify business SOPs with one skill, durable state, evidence gates and replayable history.">
+<link rel="stylesheet" href="style.css"></head>
+<body>
+<header><nav aria-label="Main navigation"><a class="brand" href="index.en.html"><span class="mark">w</span>workflow</a><a href="docs/en/skill-distribution.html">Install</a><a href="docs/en/index.html">The book</a><a class="language-switch" lang="zh-CN" href="index.html">中文</a><a href="https://github.com/coolplayagent/workflow-cli">GitHub ↗</a></nav></header>
+<main>
+<section class="hero">
+<div><div class="eyebrow">Skill over CLI / v__VERSION__</div><h1>One skill.<br>Durable workflows.</h1><p class="lead">Turn business SOPs into processes you can inspect, execute and recover. The agent understands the goal; the CLI manages state, execution contracts and evidence.</p><div class="buttons"><a class="button primary" href="https://github.com/coolplayagent/workflow-cli/releases/download/v__VERSION__/workflow-cli-skill-v__VERSION__-linux-x86_64.tar.gz">Download skill ↓</a><a class="button" href="docs/en/skill-distribution.html">Get started →</a></div><div class="meta"><span class="pill">Linux x86_64</span><span class="pill">glibc ≥ 2.39</span><span class="pill">MIT License</span></div></div>
+<div class="terminal" aria-label="Command examples"><div class="terminal-title">workflow / local execution · examples</div><pre><span class="comment"># Validate a definition</span>
+$ workflow validate review.yaml
+<span class="ok">{"valid": true, "digest": "sha256:…"}</span>
+
+<span class="comment"># Drive an existing durable run</span>
+$ workflow run drive runs.db review-1 local 10
+
+<span class="comment"># Inspect business state and verify recovery</span>
+$ workflow run status runs.db review-1
+$ workflow run verify runs.db review-1</pre></div>
+</section>
+<div class="eyebrow">Clear responsibilities, retained evidence</div>
+<section class="grid" aria-label="Architecture layers">
+<article class="card"><span class="number">01 / SKILL</span><h3>Read guidance as needed</h3><p>One entrypoint covers definitions, runs, artifacts, gates and recovery. The matching CLI, manuals and examples travel together.</p><a href="skill/index.html">Browse the skill →</a></article>
+<article class="card"><span class="number">02 / CLI</span><h3>Enforce the process contract</h3><p>The runtime checks types, pinned versions, task leases and transactional commits. Model output must satisfy the actual contract.</p><a href="docs/en/local-execution.html">Understand execution →</a></article>
+<article class="card"><span class="number">03 / EVIDENCE</span><h3>Inspect recorded results</h3><p>Artifact digests, history, gate decisions and effect receipts support audit and recovery. Check both command and business outcomes.</p><a href="docs/en/evidence-gates.html">Understand evidence gates →</a></article>
+</section>
+<section class="install" id="install"><div><div class="eyebrow">Start locally</div><h2>Install once.<br>Run a verifiable example.</h2><p>Download the archive and checksum file, then extract into your agent's skills directory. Built-in validation needs no compiler, cloud model or remote database.</p><p>Configure model providers, business adapters and PostgreSQL only when the workflow needs them.</p><a href="https://github.com/coolplayagent/workflow-cli/releases/tag/v__VERSION__">Release notes and SHA256SUMS →</a></div><div><pre>sha256sum --check SHA256SUMS
+mkdir -p ~/.codex/skills
+tar -xzf workflow-cli-skill-v__VERSION__-linux-x86_64.tar.gz \
+  -C ~/.codex/skills
+
+~/.codex/skills/workflow-cli/scripts/workflow.sh --version</pre><p>Run actual validation, an explicit demo decision and recovery checks:</p><pre>python3 ~/.codex/skills/workflow-cli/assets/examples/execution/offline-demo.py \
+  --workflow ~/.codex/skills/workflow-cli/scripts/workflow.sh \
+  --decision approve</pre></div></section>
+<section><h2>From definition to delivery</h2><div class="grid"><article class="card"><h3>Definitions and templates</h3><p>Declare nodes, branches, inputs and success conditions. Publish immutable definitions and reuse reviewed SOP templates.</p><a href="docs/en/reviewed-templates.html">Templates and review →</a></article><article class="card"><h3>Local and shared execution</h3><p>Begin with local SQLite persistence. Add authenticated HTTPS, schedulers and workers when shared execution is needed.</p><a href="docs/en/remote-service.html">Shared execution →</a></article><article class="card"><h3>Recovery and upgrades</h3><p>Retain history and evidence, upgrade storage explicitly, and reconcile uncertain external writes before deciding what to do next.</p><a href="docs/en/backup-recovery.html">Backup and recovery →</a></article></div></section>
+</main><footer><span>Workflow CLI · Skill over CLI · MIT</span><span>v__VERSION__ · source __REVISION__</span></footer>
+</body></html>

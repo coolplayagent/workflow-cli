@@ -1,4 +1,4 @@
-module(name = "workflow_cli", version = "0.1.0")
+module(name = "workflow_cli", version = "0.1.1")
 
 bazel_dep(name = "rules_rust", version = "0.74.0")
 

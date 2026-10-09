@@ -6,7 +6,8 @@ flow without I/O; the store commits its state, accepted events and command inten
 This port supplies persistent progress and an inspectable outbox. The separate
 [local executor](local-execution.md) adds read-only dispatch through durable leases
 and attempts. The [effect host](durable-effects.md) separately executes managed
-writes and [declared compensation](ordered-compensation.md). There is no background daemon.
+writes and [declared compensation](ordered-compensation.md). The storage port itself starts no background daemon; unattended execution uses
+the separately configured [local daemon](local-daemon.md).
 
 ## Local CLI example
 
@@ -124,7 +125,7 @@ run lease, preserves execute/cancel order, persists attempts and validates resul
 through the execution port. Remote authentication and write-effect identities
 remain host work. A delivery receipt is neither a task
 result nor proof of an external effect. The local executor supports read-only work and persisted timer registration;
-write-capability declarations remain unsupported for execution.
+write capabilities use the separate durable effect driver.
 
 `run list` uses a lexical run-ID cursor; history uses exclusive revision cursors;
 outbox uses exclusive sequence cursors, with `all` or `pending`. Limits are 1–100.
@@ -150,10 +151,10 @@ network-disk multiwriter safety or disk-loss recovery. No RPO/RTO is claimed.
 Run leases, fenced result commits and bounded read-only retries are covered by
 the local execution guide, including durable pause/resume controls. Managed write retries and the effect ledger are covered by the effect guide.
 [Backup/recovery](backup-recovery.md) now covers verified local snapshots,
-relocation and new ownership generations. Autonomous timer service, remote
-artifact dependencies and archive retention remain
-open in R04/R05/R06/R07/R08. The issue stays open until those acceptance criteria
-have direct evidence.
+relocation and new ownership generations. [Local daemon](local-daemon.md), [shared artifacts](shared-artifacts.md) and
+[shared recovery](shared-recovery.md) document the later timer, dependency and
+archive acceptance evidence. Retention and environment limits remain explicit in
+those chapters.
 
 Schema 3 adds required artifact dependency verification for execution results.
 Supply `run --artifacts <store>` for runs with evidence; unconfigured or corrupt
@@ -173,3 +174,9 @@ retained artifact content; copying live files does not implement that protocol.
 Schema 11 adds protected definition migrations and retained storage-upgrade
 records. [Version migration](version-migration.md) describes reviewable plans,
 fresh result/approval policy, historical snapshots and verified storage rollback.
+
+<!-- book-navigation -->
+
+[Contents](README.md) · [中文](zh/run-store.md) · [Previous: Reviewed SOP templates](reviewed-templates.md) · [Next: Local execution](local-execution.md)
+
+<!-- /book-navigation -->

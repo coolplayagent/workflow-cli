@@ -121,3 +121,9 @@ HTTPS `validate_definition` use `validate_source` and `ValidationReport`; a real
 HTTPS/PostgreSQL matrix compares complete reports, including field paths and IDs.
 Reports cap diagnostic count and encoded bytes without accepting invalid input.
 See [validation bounds and reproducible evidence](definition-acceptance.md).
+
+<!-- book-navigation -->
+
+[Contents](README.md) · [中文](zh/definition-semantics.md) · [Previous: Your first durable workflow](getting-started.md) · [Next: Author and publish](definition-registry.md)
+
+<!-- /book-navigation -->

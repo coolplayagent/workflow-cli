@@ -40,7 +40,7 @@ workflow service migrate-access server-binding.json
 ```
 
 Migration is transactional and repeatable. New installations create access
-schema 2. Old bundles without policies remain readable and locally operable by
+schema 2; activating cluster scheduling upgrades it to schema 3. Old bundles without policies remain readable and locally operable by
 the trusted host, but authenticated responses require a protected bundle.
 Published versions and in-flight run definitions are never rewritten.
 
@@ -122,3 +122,9 @@ database; the required PostgreSQL CI job supplies it. Each competing transaction
 uses an independent connection; HTTPS restart tests use actual OS processes.
 These are correctness fixtures, not production throughput or human-turnaround
 benchmarks. No provider billing reduction is inferred from fixture timing.
+
+<!-- book-navigation -->
+
+[Contents](README.md) · [中文](zh/approval-acceptance.md) · [Previous: Model boundary acceptance](model-boundaries-acceptance.md) · [Next: Artifact and workspace acceptance](artifact-acceptance.md)
+
+<!-- /book-navigation -->

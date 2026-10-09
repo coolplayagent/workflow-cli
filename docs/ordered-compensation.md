@@ -90,7 +90,14 @@ history and a prepared effect intent remain byte-equivalent at the CLI boundary;
 v8 refuses the upgraded database. The migration fixture does not dispatch that
 prepared intent. Migration is not backup/restore.
 
-This is explicit branch compensation with local trusted host admission and bounded
-sandbox evidence. Arbitrary task-failure rollback routes, authenticated remote
-approval/action policy, distributed execution and production provider guarantees
-remain separate acceptance work. R05 remains open pending its complete matrix.
+This chapter describes explicit branch compensation with local trusted host
+admission and bounded sandbox evidence. [Remote effect acceptance](remote-effects.md)
+adds authenticated shared dispatch and the complete R05 matrix; [approval acceptance](approval-acceptance.md)
+covers human authority. Arbitrary task-failure rollback and production provider
+guarantees remain outside these fixture claims.
+
+<!-- book-navigation -->
+
+[Contents](README.md) · [中文](zh/ordered-compensation.md) · [Previous: Durable external effects](durable-effects.md) · [Next: Local backup and recovery](backup-recovery.md)
+
+<!-- /book-navigation -->

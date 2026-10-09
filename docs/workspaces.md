@@ -169,7 +169,7 @@ or a corrupt catalog stop cleanup. It is not a retention deletion API.
 
 The local adapter requires Linux, `/proc`, Git and a filesystem supporting the
 used descriptor, sync and rename operations. Workspace catalog schema 1 is
-separate from run storage schema 4 and artifact catalog schema 1. Opening a missing
+separate from run storage schema 11 and artifact catalog schema 1. Opening a missing
 store does not initialize it; foreign schemas/directories are refused. Failure is
 reported without claiming an allocation or capture.
 
@@ -180,4 +180,11 @@ kinds, captured lineage and upstream corruption, SQLite capacity exhaustion,
 independent process races, concurrent catalog snapshots, and termination
 before/after publication and commit.
 This establishes the tested deterministic and process-crash behavior, not power-loss
-recovery, production throughput or business benefit. The [R07 acceptance guide](artifact-acceptance.md) describes automatic executor binding, reviewed merge/revalidation, current evidence invalidation and shared object storage. Arbitrary process sandboxing and secret/tool policy are tracked in R14.
+recovery, production throughput or business benefit. The [R07 acceptance guide](artifact-acceptance.md) describes automatic executor binding, reviewed merge/revalidation, current evidence invalidation and shared object storage. The [R14 security chapter](security-acceptance.md) states supported secret/tool
+controls and the boundary around arbitrary process sandboxing.
+
+<!-- book-navigation -->
+
+[Contents](README.md) · [中文](zh/workspaces.md) · [Previous: Artifacts and provenance](artifacts.md) · [Next: Evidence gates](evidence-gates.md)
+
+<!-- /book-navigation -->

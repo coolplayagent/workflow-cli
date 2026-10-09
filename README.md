@@ -1,182 +1,94 @@
-# workflow-cli
+# Workflow CLI
 
-Workflow makes business SOPs explicit, reviewable and portable. It provides the
-process contract around an agent: declared steps, typed handoffs, legal decisions
-and evidence requirements. An LLM supplies node decisions; Skills explain how to
-use capabilities; CLI/API adapters implement them. Provider and deployment choices
-belong in bindings rather than in the business graph.
+English · [中文](README.zh-CN.md)
 
-**Current implementation:** a Rust definition compiler, static validator,
-transactional definition registry, checked read-only capability invocation, a
-deterministic workflow kernel, and a transactional RunStore with event history,
-checkpoints, a command outbox and a durable callback Inbox. Managed write tasks use
-a durable effect ledger with stable keys, query recovery, bounded retries and explicit ordered compensation. A local driver executes read-only tasks with
-durable leases, attempts and fenced result commits. Typed artifact manifests bind
-content and provenance; result acceptance verifies their durable dependencies.
-A portable evidence checker produces PASS/FAIL/UNKNOWN from settled execution records
-and exact targets. Frozen task and terminal postconditions require PASS before
-advancing; UNKNOWN waits for explicit retry and FAIL follows declared repair bounds.
-A separate CLI supports read-only evaluation/revalidation. Attempt workspace
-contracts and a local Linux/Git adapter allocate independent files, observe changes
-and capture typed outputs with exact provenance. Bounded model policies invoke allowed
-read-only tools through OpenAI Responses or Anthropic Messages host bindings, with
-explicit records checked during settlement and recovery. Verified local backups retain
-run and artifact history; restored runs use fresh lease generations and require
-external-effect reconciliation before admitting writes. Authenticated HTTPS
-execution connects separate schedulers and workers to PostgreSQL, with scoped
-credentials, fenced task results and opt-in authenticated write-effect recovery.
-[Reviewed SDLC templates](docs/reviewed-templates.md) add pure parameter/binding
-plans, immutable shared subflows and independently reviewed publications with
-local and TLS regression evidence. Remaining acceptance work follows the
-[issue roadmap](docs/roadmap.md). `validate` is a
-static check, not permission to execute a capability or proof of a successful run.
+Workflow CLI turns business SOPs into reviewable, durable processes. A definition
+declares steps, typed handoffs, legal decisions and evidence requirements. An agent
+uses one skill to operate the CLI; models propose bounded node decisions, adapters
+perform work, and the runtime retains state, ownership and verified results.
 
-## Use
+Read [The Workflow CLI Book](docs/README.md) from installation to shared deployment,
+or open the [documentation site](https://coolplayagent.github.io/workflow-cli/).
+The [Chinese edition](docs/zh/README.md) follows the same chapters and examples.
+
+## Install one skill
+
+Download `workflow-cli-skill-v0.1.1-linux-x86_64.tar.gz` and `SHA256SUMS` from
+[release v0.1.1](https://github.com/coolplayagent/workflow-cli/releases/tag/v0.1.1),
+then run in the download directory:
+
+```sh
+sha256sum --check SHA256SUMS
+mkdir -p ~/.codex/skills
+tar -xzf workflow-cli-skill-v0.1.1-linux-x86_64.tar.gz -C ~/.codex/skills
+~/.codex/skills/workflow-cli/scripts/workflow.sh version --format json
+```
+
+Use your agent host's configured skill directory if it differs. The archive
+contains the matching CLI, [task references](skills/workflow-cli/SKILL.md), complete
+English/Chinese manuals, examples, schemas and file digests. Progressive reading
+stays inside the extracted package. The release supports Linux x86_64 with
+Ubuntu 24.04 / glibc 2.39 or newer; it does not provide macOS, Windows or ARM
+binaries. See [installation and upgrade](docs/skill-distribution.md).
+
+## Execute a real local example
+
+Python 3 is needed for this demonstration; no compiler, model account or remote
+service is required:
+
+```sh
+python3 ~/.codex/skills/workflow-cli/assets/examples/execution/offline-demo.py \
+  --workflow ~/.codex/skills/workflow-cli/scripts/workflow.sh --decision approve
+```
+
+The example runs two actual built-in validation tasks, supplies the explicit demo
+operator decision, checks history and backup, and stops its daemon. Repeat with
+`--decision reject` to observe cancellation. Follow the
+[first workflow chapter](docs/getting-started.md) to inspect durable progress and
+prove a second drive does not repeat committed tasks.
+
+CLI exit success and business success are separate: inspect
+`result.snapshot.status` after a mutation and `result.status` after a status read.
+Static `validate` reports `valid` and diagnostics; it neither executes a process
+nor authorizes a capability.
+
+## What is implemented
+
+- Typed JSON/YAML definitions, static validation, revisioned drafts and immutable publication.
+- Deterministic control flow, checkpoint replay, transactional state/event/outbox/Inbox storage, leases and fenced results.
+- Typed artifacts, isolated attempt workspaces, exact provenance, mandatory evidence gates and bounded repair.
+- Bounded model policies, explicit host bindings and recorded decisions; durable external effects, reconciliation and ordered compensation.
+- Local daemon, verified backup and explicit migration; authenticated HTTPS workers, PostgreSQL authority and shared scheduling.
+- Reviewed SOP templates with local and TLS acceptance experiments.
+
+Start with the [book's reading paths](docs/preface.md). Acceptance chapters explain
+tested environments and limits; the [delivery map](docs/roadmap.md) retains the
+remaining work, including business-value benchmarks. Models, business adapters
+and shared services require their own bindings only when a workflow uses them.
+
+## Develop and verify
+
+Cargo and Bazel compile the same Rust sources with pinned toolchains. From a source
+checkout:
 
 ```sh
 cargo run --locked -- validate examples/review.yaml
-cargo run --locked -- export examples/parallel-tests.json yaml
-cargo run --locked -- schema
-```
-
-Bazel builds the same sources with a pinned Rust toolchain. Every module has its
-own explicit `rust_library`; Cargo provides editor and dependency-lock support.
-
-```sh
-bazel test //...
-bazel run //:workflow -- validate "$PWD/examples/review.yaml"
-bazel query 'kind(rust_library, //...)'
-```
-
-Builds reject stale module locks. After changing Cargo manifests or `Cargo.lock`,
-run `bazel mod deps --lockfile_mode=update`, review `MODULE.bazel.lock`, and commit
-it before running the checks. Verification does not silently rewrite the lock.
-
-The first build downloads the pinned toolchain and dependencies. Bazel runs a
-binary in its execution directory: pass an absolute filename when using
-`bazel run`. A directly installed `workflow` binary resolves paths against the
-caller's working directory. See [rules_rust's Cargo workspace integration](https://bazelbuild.github.io/rules_rust/crate_universe_bzlmod.html)
-for the build integration used here.
-
-## LLM and Skill over CLI
-
-Install the single [workflow-cli skill](skills/workflow-cli/SKILL.md) from a
-[GitHub Release](https://github.com/coolplayagent/workflow-cli/releases). It bundles
-the matching Linux x86_64 CLI, task references, manuals and examples. See
-[installation and release verification](docs/skill-distribution.md) and the
-[documentation site](https://coolplayagent.github.io/workflow-cli/).
-
-
-The bundled [definition guide](skills/workflow-cli/references/definition.md) instructs an agent to write a draft definition, run `workflow validate
-<file>`, inspect JSON diagnostics, fix the indicated field and validate again.
-`workflow schema` exposes the complete input shape without sending the model any
-provider credentials. Exit status is `0` for success, `1` for invalid definitions,
-and `2` for usage or I/O errors. A valid report has a SHA-256 definition digest;
-an invalid report never has one. `workflow remote validate <client-binding> <file>`
-uses the same report over authenticated HTTPS, with server-side revalidation.
-The [R01 acceptance guide](docs/definition-acceptance.md) maps requirements to
-checks and gives reproducible definition-error, edit-latency and replay-step baselines.
-
-```json
-{"valid":false,"digest":null,"diagnostics":[{"code":"dangling_edge","file":"draft.json","path":"edges[0].to","node":null,"edge":"finish","message":"unknown node missing"}]}
-```
-
-Definitions are data: reading or validating one does not invoke its capabilities.
-The registry supports incremental draft edits, historical queries and publication.
-Read the [authoring guide](docs/definition-registry.md) for the full CLI loop and
-concurrency semantics. The [capability guide](skills/workflow-cli/references/capability.md)
-covers typed invocation of the compiler capabilities and worker request/result
-checks. Read the [worker protocol guide](docs/worker-protocol.md) for standalone
-and node invocation examples. The [replay guide](skills/workflow-cli/references/replay.md)
-and [kernel guide](docs/kernel-semantics.md) cover bundle checks, simulated transitions
-and checkpoint restore. The [run guide](skills/workflow-cli/references/run.md) and
-[run storage guide](docs/run-store.md) cover `run start/status/event/cancel`, history
-and pending delivery. The [local execution guide](docs/local-execution.md) covers
-`run drive`, which calls built-in adapters and commits real results. No background
-timer service remains after the command exits. The [artifact guide](skills/workflow-cli/references/artifact.md)
-and [artifact guide](docs/artifacts.md) cover typed reports, provenance, integrity
-checks and their connection to fenced result submission. The [gate guide](skills/workflow-cli/references/gate.md)
-and [evidence checker guide](docs/evidence-gates.md) cover exact policy/target checks
-and decision revalidation. The [runtime postcondition guide](docs/runtime-postconditions.md)
-covers frozen mandatory gates, durable UNKNOWN waits and bounded repair.
-The [workspace guide](skills/workflow-cli/references/workspace.md) and [workspace guide](docs/workspaces.md)
-cover host-managed attempt directories and typed output capture.
-The [model guide](skills/workflow-cli/references/model.md) and [model execution guide](docs/model-execution.md)
-cover frozen policies, provider replacement and explicit decision replay.
-The [R02 acceptance guide](docs/model-boundaries-acceptance.md) covers the component
-interfaces and shared local/remote model contracts.
-
-```sh
-cargo run --locked -- kernel replay examples/kernel/review-approved.json
-cargo run --locked -- kernel replay examples/kernel/repair-third-round.json
-```
-
-These examples contain simulation contracts and supplied task results. Replay
-calculates commands without invoking adapters; inspect `snapshot.status` even when
-the CLI exits 0.
-
-## Contracts and development
-
-- [R01 acceptance and reproducible definition baselines](docs/definition-acceptance.md)
-- [Draft editing, semantic diff and immutable publication](docs/definition-registry.md)
-- [Capability contracts, worker protocol and host authority](docs/worker-protocol.md)
-- [Typed artifacts, provenance, atomic publication and evidence](docs/artifacts.md)
-- [Evidence checker, policy/target binding and revalidation](docs/evidence-gates.md)
-- [Attempt workspaces, source objects and captured outputs](docs/workspaces.md)
-- [Mandatory task/terminal gates and bounded repair](docs/runtime-postconditions.md)
-- [Local execution, leases, attempts and migration](docs/local-execution.md)
-- [Version locking, reviewed definition migration and verified storage upgrades](docs/version-migration.md)
-- [Local daemon, live status, stopping and offline example](docs/local-daemon.md)
-- [R08 local acceptance and supported environments](docs/local-acceptance.md)
-- [Authenticated HTTPS service, remote schedulers and workers](docs/remote-service.md)
-- [Durable event Inbox and callback matching](docs/event-inbox.md)
-- [Authenticated approvals, external events and R06 acceptance](docs/approval-acceptance.md)
-- [Durable write effects and gateway protocol](docs/durable-effects.md)
-- [Authenticated remote effects and R05 acceptance](docs/remote-effects.md)
-- [Ordered compensation and manual takeover](docs/ordered-compensation.md)
-- [Consistent local backup and fenced recovery](docs/backup-recovery.md)
-- [Durable run state, events, checkpoints and outbox](docs/run-store.md)
-- [Deterministic kernel, bundle checks and replay](docs/kernel-semantics.md)
-- [IR and decision semantics](docs/definition-semantics.md)
-- [Generated JSON Schema](schemas/workflow-v1.schema.json)
-- [Requirement review](examples/review.yaml), [parallel tests](examples/parallel-tests.json),
-  [bounded repair](examples/bounded-repair.json) and its [body](examples/repair-round.json)
-- [Architecture and issue delivery map](docs/roadmap.md)
-
-```sh
 cargo fmt --all --check
 cargo clippy --workspace --all-targets --locked -- -D warnings
 cargo test --workspace --locked
 bazel test //...
+bazel run //:workflow -- validate "$PWD/examples/review.yaml"
+python3 -m pip install -r website/requirements.txt
+python3 scripts/check_docs.py
+python3 -m unittest discover -s scripts/tests -v
 ```
 
-The tests run under Cargo and Bazel, cover malformed definitions and decisions,
-and check the CLI, examples and committed schemas. Registry tests also race
-independent processes and recover an interrupted SQLite transaction. Worker tests
-reject protocol drift, changed authority, expired requests and malformed outputs
-before accepting observations. Kernel tests cover branch arbitration, cancellation
-and reconciliation, bounded iterations, logical deadlines, event conflicts and
-checkpoint replay. RunStore tests force process termination around commit, race
-independent writers, inject SQLite disk-full/read-only failures and verify complete
-journal/checkpoint/outbox recovery. Execution tests race process ownership, fence
-expired attempts, kill result writers around commit and execute actual compiler
-capabilities through business decisions. Artifact tests interrupt uploads, reject
-corrupt/missing/type-conflicting evidence and preserve references across local
-export/import. `qualitygate.yaml` runs these
-four commands against its captured delivery snapshot. No business benefit or
-recovery SLA is claimed before the R15 benchmarks have been collected.
+Bazel resolves relative inputs in its execution directory, so pass absolute input
+paths. After changing Cargo manifests or `Cargo.lock`, update and review the
+Bazel lock with `bazel mod deps --lockfile_mode=update`. Verification rejects stale
+locks. The existing Qualitygate policy runs formatting, Clippy, Cargo and Bazel;
+CI additionally checks documentation, the extracted skill and real shared-mode
+acceptance. See [contributing and diagnostics](docs/troubleshooting.md) and
+[release verification](docs/skill-distribution.md).
 
-Shared storage: [PostgreSQL authority library and contract boundary](docs/postgres-authority.md).
-
-共享存储的认证应用接口、角色、任务签发、撤销和审计边界见 [认证权威服务](docs/authenticated-authority.md)。
-
-Authenticated shared artifact uploads/downloads and artifact-backed remote result
-recovery are documented in [shared artifacts](docs/shared-artifacts.md). Transfers
-use PostgreSQL storage, scoped credentials and current assignments.
-
-Shared database recovery and the R04 evidence matrix are documented in
-[shared recovery](docs/shared-recovery.md).
-
-Artifact/workspace execution, reviewed merges, stale-evidence policy and S3 interoperability are covered by the [R07 acceptance guide](docs/artifact-acceptance.md).
-
-Shared execution security, broker credential leases, audit export and admission evidence: [R14 security](docs/security-acceptance.md).
+Licensed under [MIT](LICENSE).

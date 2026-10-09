@@ -156,3 +156,9 @@ failure tests do not establish power-loss durability, network-filesystem safety,
 hardware disaster recovery, or a multi-machine SQLite deployment.
 
 See the [R08 acceptance matrix](local-acceptance.md) for exact checkers and platform limits.
+
+<!-- book-navigation -->
+
+[Contents](README.md) · [中文](zh/local-daemon.md) · [Previous: Local execution](local-execution.md) · [Next: Bounded model execution](model-execution.md)
+
+<!-- /book-navigation -->

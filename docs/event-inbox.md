@@ -109,8 +109,9 @@ signature verification and an upstream durable queue belong to that gateway.
 See [R06 acceptance](approval-acceptance.md) for the complete policy, migration,
 local/HTTPS examples and fault evidence.
 
-The current run storage schema is 10. Use explicit
-`run [--artifacts store] migrate db` for earlier schemas; existing seeds, events and
+The current run storage schema is 11. Use explicit
+`run [--artifacts store] migrate db new-backup-file` for earlier schemas
+following [version migration](version-migration.md); existing seeds, events and
 empty-Inbox snapshots retain their exact digests. A lost acknowledgement is retried
 with the original submission; normal recovery never calls a webhook or model.
 
@@ -119,3 +120,9 @@ paused expiry, input/definition/event/output mismatches, changed duplicate conte
 terminal/late delivery, independent-process duplicate and cancellation races,
 five killed-writer phases, expiry/clock reversal before commit, early-callback
 expiry during task settlement, corrupted Inbox heads and CLI receipt/query behavior.
+
+<!-- book-navigation -->
+
+[Contents](README.md) · [中文](zh/event-inbox.md) · [Previous: Protected delivery](release-acceptance.md) · [Next: Durable external effects](durable-effects.md)
+
+<!-- /book-navigation -->

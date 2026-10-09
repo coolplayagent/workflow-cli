@@ -1,10 +1,9 @@
 # Capability invocation and worker protocols
 
 This R02 increment provides a working read-only capability boundary and the JSON
-contract a future local/remote worker host can reuse. It includes two actual
-compiler capabilities. A worker produces checked observations; committing a run,
-arbitrating transitions and fencing concurrent owners require the forthcoming
-RunStore and runtime. Worker commands do not start a run; the separate
+contract shared by local and remote worker hosts. It includes two actual
+compiler capabilities. A worker produces checked observations; the RunStore and
+runtime commit runs, arbitrate transitions and fence concurrent owners. Worker commands do not start a run; the separate
 [run storage CLI](run-store.md) persists state and command intents.
 
 ## Independent components
@@ -19,9 +18,9 @@ RunStore and runtime. Worker commands do not start a run; the separate
 - `workflow-cli` composes the host and adapters. CLI file transport invokes the
   same `dispatch_json` path available to a remote transport implementation.
 
-Each crate has its own Bazel `rust_library` and `rust_test`. This release has a
-JSON protocol boundary and file transport, not an HTTP server, queue consumer,
-remote authentication service or deployed cluster.
+Each crate has its own Bazel `rust_library` and `rust_test`. This chapter describes the JSON
+protocol boundary and local file transport. [Shared HTTPS execution](remote-service.md)
+adds authenticated transport, scheduling and result admission.
 
 ## Discover and invoke
 
@@ -194,3 +193,9 @@ invalid evidence, forged request identity and attempted transition fields fail
 result validation. Durable leases and artifact verification are implemented by
 the separate host adapters linked above. See [R02 acceptance](model-boundaries-acceptance.md)
 for model adapters, provider binding and the shared local/remote transport contract.
+
+<!-- book-navigation -->
+
+[Contents](README.md) · [中文](zh/worker-protocol.md) · [Previous: Author and publish](definition-registry.md) · [Next: Control flow and replay](kernel-semantics.md)
+
+<!-- /book-navigation -->

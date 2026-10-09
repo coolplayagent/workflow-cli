@@ -27,7 +27,7 @@ roles. Administrative issuance always inherits the administrator's scope.
 
 | Role | Operations |
 | --- | --- |
-| Administrator | Issue, rotate and revoke credentials; read audit and unresolved assignments; clean expired artifact transfers |
+| Administrator | Issue, rotate and revoke credentials; read audit and unresolved assignments; clean expired artifact transfers; preview/apply definition and storage migrations |
 | Definition maintainer | Validate definitions; publish an immutable bundle; read runs |
 | Runner | Validate definitions; start only a published bundle; read runs; pause/resume/cancel with CAS |
 | Viewer | Read run state, history, inbox and waits |
@@ -113,8 +113,8 @@ result with local execution.
 [R14 acceptance](security-acceptance.md) now defines the authenticated execution
 boundary, broker credential leases, private audit export and retention/archive
 policy. Shared definition migration and full scoped database restoration are
-implemented separately. R09 still owns scheduling quotas/fairness, routing/drain
-and performance/fault evidence. Enterprise identity provisioning and arbitrary
+implemented separately. [R09 cluster acceptance](cluster-scheduling.md) records
+scheduling quotas/fairness, routing/drain and performance/fault evidence. Enterprise identity provisioning and arbitrary
 third-party executable isolation remain privileged deployment integrations.
 
 The mandatory PostgreSQL CI job runs the ignored integration tests in this crate.
@@ -144,3 +144,9 @@ semantics remain supported. Access schema 1 installations explicitly run
 `workflow service migrate-access server-binding.json` before issuing a
 `signal_source` credential; new installations create schema 2. See
 [durable approval acceptance](approval-acceptance.md).
+
+<!-- book-navigation -->
+
+[Contents](README.md) · [中文](zh/authenticated-authority.md) · [Previous: PostgreSQL authority](postgres-authority.md) · [Next: HTTPS service and workers](remote-service.md)
+
+<!-- /book-navigation -->

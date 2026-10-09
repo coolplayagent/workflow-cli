@@ -112,3 +112,9 @@ temporary certificates/credentials, compares JSON/YAML valid and invalid reports
 for both allowed roles, and checks unauthorized, missing-file and stopped-server
 failures. It creates a unique tenant in the disposable database. Mandatory CI runs
 the Rust matrix and both Python scripts; retain raw output with the checked commit.
+
+<!-- book-navigation -->
+
+[Contents](README.md) · [中文](zh/definition-acceptance.md) · [Previous: Shared backup and recovery](shared-recovery.md) · [Next: Model boundary acceptance](model-boundaries-acceptance.md)
+
+<!-- /book-navigation -->

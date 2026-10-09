@@ -182,3 +182,9 @@ canonical hashes remain stable. Generated v1 schema families include the new
 typed fields. Old binaries with closed schemas reject new protected contracts;
 they must not be used to execute those runs. R11's explicit backup/upgrade and
 retained-compatible-binary recovery procedure continues to apply.
+
+<!-- book-navigation -->
+
+[Contents](README.md) · [中文](zh/release-acceptance.md) · [Previous: Runtime postconditions](runtime-postconditions.md) · [Next: Events and human decisions](event-inbox.md)
+
+<!-- /book-navigation -->

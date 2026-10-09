@@ -156,3 +156,9 @@ attempt files and current observations. Their example supplies actual captured
 report evidence to these gates. Protected HTTP effect bindings can additionally
 verify a host-owned Git checkout immediately before write dispatch, with the
 remaining non-atomic race explicitly declared.
+
+<!-- book-navigation -->
+
+[Contents](README.md) · [中文](zh/runtime-postconditions.md) · [Previous: Evidence gates](evidence-gates.md) · [Next: Protected delivery](release-acceptance.md)
+
+<!-- /book-navigation -->

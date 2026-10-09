@@ -1,7 +1,7 @@
 # Workflow model
 
 Resolve `workflow`, read `workflow model --help` or `workflow help`, then consult
-[manual](manuals/model-execution.md) for the binding example and protocol/recovery limits.
+[manual](../../../docs/model-execution.md) for the binding example and protocol/recovery limits.
 
 1. Validate the policy with `model check-policy <policy.json>` and the bundle
    with `kernel check <bundle.json>`. Use the CLI's exact policy digest in host

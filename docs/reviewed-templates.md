@@ -176,3 +176,9 @@ This fixture measures executed cases, actual repair attempts and artifact/effect
 counts. It does not establish organization-wide configuration time, reuse rate,
 cross-project adaptation effort or productivity improvement; those comparisons
 belong in the R15 acceptance baseline.
+
+<!-- book-navigation -->
+
+[Contents](README.md) · [中文](zh/reviewed-templates.md) · [Previous: Control flow and replay](kernel-semantics.md) · [Next: Durable state](run-store.md)
+
+<!-- /book-navigation -->

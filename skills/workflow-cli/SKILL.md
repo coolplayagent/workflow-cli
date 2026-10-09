@@ -2,7 +2,7 @@
 name: workflow-cli
 description: Author, validate and execute durable workflow SOPs through the workflow CLI, including evidence gates, model bindings, recovery and reviewed templates. Use for workflow-cli process definitions and run administration.
 metadata:
-  version: "0.1.0"
+  version: "0.1.1"
 ---
 
 # Workflow CLI
@@ -19,7 +19,8 @@ version is rejected. Release archives contain the binary, manuals and examples;
 source installations require a matching published CLI on PATH. Do not compile an
 unrelated checkout to repair a missing runtime. See [installation](references/install.md).
 
-Read only the reference needed for the task:
+For a guided introduction, read the [English book](../../docs/README.md) or
+[中文书籍](../../docs/zh/README.md). Read only the reference needed for the task:
 
 | Task | Reference | CLI entry |
 | --- | --- | --- |

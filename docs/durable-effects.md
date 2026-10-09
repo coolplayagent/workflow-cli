@@ -156,9 +156,10 @@ No effect receipt, approval or authenticated actor may be fabricated.
 
 ## Storage and verified boundaries
 
-Storage schema 10 protects effect journal, compensation and recovery-import semantics
-from older executors. `run migrate` explicitly upgrades schemas 1–9 and revalidates existing runs.
-Ordinary open refuses a different version. Migration itself is not a backup.
+Current storage schema 11 protects effect journal, compensation, recovery-import
+and migration semantics from older executors. The [explicit migration](version-migration.md)
+requires a verified backup, upgrades schemas 1–10 and revalidates retained runs.
+Ordinary open refuses a different version.
 
 Tests cover an actual loopback HTTP gateway with a separate durable provider
 SQLite database: kill after provider commit but before run receipt, then query
@@ -173,7 +174,14 @@ For declared reverse dependencies, original receipt binding, irreversible effect
 and manual takeover after a failed undo, see [ordered compensation](ordered-compensation.md).
 [Authenticated remote effects](remote-effects.md) now connects the shared
 PostgreSQL ledger, HTTPS scheduler/worker protocol and audited recovery. Mandatory
-action-specific approval/current-workspace checks, effect-bound remote artifact
-access and source-to-target ownership migration remain separate roadmap work.
+action-specific approval and current-workspace checks are described in
+[protected delivery](release-acceptance.md). Effect-bound remote artifacts and
+source-to-target ownership retain their separate host/transport boundaries.
 [Local recovery](backup-recovery.md) preserves known intents and supports audited
 import of actual post-backup provider receipts under a durable recovery barrier. The remote effect guide maps the complete R05 acceptance evidence.
+
+<!-- book-navigation -->
+
+[Contents](README.md) · [中文](zh/durable-effects.md) · [Previous: Events and human decisions](event-inbox.md) · [Next: Ordered compensation](ordered-compensation.md)
+
+<!-- /book-navigation -->

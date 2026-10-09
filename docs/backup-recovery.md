@@ -148,9 +148,9 @@ with an explicit reconciliation hold, not permission to activate two copies.
 
 ## Storage, evidence and recovery objectives
 
-Storage schema 10 protects restore generations, barriers and imported receipts.
-`run migrate` explicitly upgrades versions 1–9 after full verification; v9 readers
-refuse v10. An actual v9 binary migration test retains paused Inbox data and a
+Schema 10 introduced restore generations, barriers and imported receipts.
+Current schema 11 uses the explicit backed-up [migration](version-migration.md)
+for versions 1–10; older readers refuse newer storage. An actual v9 binary migration test retains paused Inbox data and a
 prepared effect's lease/history exactly. Restore generation fields are absent
 from old records, preserving their digests.
 
@@ -186,3 +186,9 @@ Shared PostgreSQL restoration is covered by the [shared recovery and R04
 acceptance guide](shared-recovery.md). Encrypted/signed archive distribution,
 deployment archive retention and source-to-target ownership transfer remain
 separate deployment and roadmap work.
+
+<!-- book-navigation -->
+
+[Contents](README.md) · [中文](zh/backup-recovery.md) · [Previous: Ordered compensation](ordered-compensation.md) · [Next: Version and storage migration](version-migration.md)
+
+<!-- /book-navigation -->

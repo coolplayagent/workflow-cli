@@ -36,7 +36,7 @@ flowchart TD
     REC --> STORE
 ```
 
-The complete crate dependency graph is in [the architecture guide](roadmap.md).
+The core crate dependency graph is in [the architecture guide](roadmap.md).
 Provider implementations are absent from the kernel's dependencies. The kernel
 uses portable model record validation, without invoking a provider during replay.
 
@@ -123,3 +123,9 @@ These are deterministic protocol and authority measurements. They do not measure
 live provider availability, model quality, provider billing or human integration
 time. Those operational evaluations can use the same binding interfaces without
 changing the workflow definition.
+
+<!-- book-navigation -->
+
+[Contents](README.md) · [中文](zh/model-boundaries-acceptance.md) · [Previous: Definition acceptance](definition-acceptance.md) · [Next: Approval acceptance](approval-acceptance.md)
+
+<!-- /book-navigation -->

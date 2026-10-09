@@ -3,6 +3,8 @@
 This matrix records the supported local Linux product boundary. It does not stand
 in for R09 cluster tests, R10 live ownership handoff or R15 model value evaluation.
 
+## Acceptance matrix
+
 | R08 acceptance | Result checker / observed evidence |
 | --- | --- |
 | Fresh environment, no remote service, deterministic branch/loop/parallel/human wait | `examples/execution/offline-demo.py` checks two real builtin results, explicit operator choice, exact business terminal, replay and service stop. Passed approval/rejection on the host and approval in a fresh Ubuntu 24.04 container with `--network none`. |
@@ -32,3 +34,9 @@ review/CI evidence are retained in `.qualitygate/mr-33/` and `.qualitygate/mr-34
 (the former is in the backup worktree). The small example's elapsed measurement
 starts after initialization and binary preparation; it is not installation time,
 production throughput, end-to-end business RTO or a model-benefit estimate.
+
+<!-- book-navigation -->
+
+[Contents](README.md) · [中文](zh/local-acceptance.md) · [Previous: Artifact and workspace acceptance](artifact-acceptance.md) · [Next: Security acceptance](security-acceptance.md)
+
+<!-- /book-navigation -->

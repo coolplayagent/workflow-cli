@@ -57,8 +57,8 @@ The `TaskExecutor` runtime port supports host execution wrappers without moving
 claim, lease or result authority out of storage. This supplied wrapper runs read-only
 builtins over exact inline inputs. It does not invoke shell commands, model-selected
 programs or shared external writes. Stateless inline-only tasks can still use the
-ordinary `drive` command. Process sandboxing and arbitrary command tools belong to
-R14; existing effect adapters retain separate declared targets and effect authority.
+ordinary `drive` command. Process sandboxing and command-tool boundaries are documented in
+[R14](security-acceptance.md); existing effect adapters retain separate declared targets and effect authority.
 Directory separation is not an OS security boundary.
 
 ## Seal, review and merge proposals
@@ -220,3 +220,9 @@ runs process-fault and permission tests, migrates actual accepted task evidence,
 then stops it and removes its temporary files. PostgreSQL is explicitly supplied.
 The fixture release is for reproducibility, not a recommended production service.
 Both this drill and the automatic workspace example are mandatory CI steps.
+
+<!-- book-navigation -->
+
+[Contents](README.md) · [中文](zh/artifact-acceptance.md) · [Previous: Approval acceptance](approval-acceptance.md) · [Next: Local platform acceptance](local-acceptance.md)
+
+<!-- /book-navigation -->

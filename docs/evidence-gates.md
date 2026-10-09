@@ -6,7 +6,8 @@ the port using recovered RunStore execution records and verified artifacts.
 It returns **PASS**, **FAIL** or **UNKNOWN** for an exact proposed action and target.
 The standalone CLI produces read-only observations.
 [Mandatory runtime postconditions](runtime-postconditions.md) consume the checker
-inside fenced run transitions; external effect authorization remains open.
+inside fenced run transitions; [protected delivery](release-acceptance.md)
+adds authorization at the external-effect boundary.
 
 ## Evaluate actual work
 
@@ -145,3 +146,9 @@ through the [runtime integration](runtime-postconditions.md). The
 authorization, current-workspace verification, independent approval/exception
 authority, final manifests and the local/shared acceptance matrix. R06 provides
 the authenticated human responses and durable event waits used by this contract.
+
+<!-- book-navigation -->
+
+[Contents](README.md) · [中文](zh/evidence-gates.md) · [Previous: Attempt workspaces](workspaces.md) · [Next: Runtime postconditions](runtime-postconditions.md)
+
+<!-- /book-navigation -->

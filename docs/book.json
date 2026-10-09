@@ -1,0 +1,315 @@
+{
+  "title": {
+    "en": "The Workflow CLI Book",
+    "zh": "Workflow CLI 实践指南"
+  },
+  "parts": [
+    {
+      "title": {
+        "en": "Getting started",
+        "zh": "起步"
+      },
+      "chapters": [
+        {
+          "file": "preface.md",
+          "title": {
+            "en": "How to read this book",
+            "zh": "如何阅读本书"
+          }
+        },
+        {
+          "file": "skill-distribution.md",
+          "title": {
+            "en": "Install the skill",
+            "zh": "安装与发布 skill"
+          }
+        },
+        {
+          "file": "getting-started.md",
+          "title": {
+            "en": "Your first durable workflow",
+            "zh": "第一个持久化工作流"
+          }
+        }
+      ]
+    },
+    {
+      "title": {
+        "en": "Define the process",
+        "zh": "定义流程"
+      },
+      "chapters": [
+        {
+          "file": "definition-semantics.md",
+          "title": {
+            "en": "Definitions and types",
+            "zh": "流程定义与类型"
+          }
+        },
+        {
+          "file": "definition-registry.md",
+          "title": {
+            "en": "Author and publish",
+            "zh": "编写与发布流程"
+          }
+        },
+        {
+          "file": "worker-protocol.md",
+          "title": {
+            "en": "Capabilities and workers",
+            "zh": "能力与 worker 协议"
+          }
+        },
+        {
+          "file": "kernel-semantics.md",
+          "title": {
+            "en": "Control flow and replay",
+            "zh": "控制流与回放"
+          }
+        },
+        {
+          "file": "reviewed-templates.md",
+          "title": {
+            "en": "Reviewed SOP templates",
+            "zh": "可评审的 SOP 模板"
+          }
+        }
+      ]
+    },
+    {
+      "title": {
+        "en": "Execute and verify",
+        "zh": "执行与验证"
+      },
+      "chapters": [
+        {
+          "file": "run-store.md",
+          "title": {
+            "en": "Durable state",
+            "zh": "持久化运行状态"
+          }
+        },
+        {
+          "file": "local-execution.md",
+          "title": {
+            "en": "Local execution",
+            "zh": "本地执行"
+          }
+        },
+        {
+          "file": "local-daemon.md",
+          "title": {
+            "en": "Local daemon",
+            "zh": "本地守护进程"
+          }
+        },
+        {
+          "file": "model-execution.md",
+          "title": {
+            "en": "Bounded model execution",
+            "zh": "有界模型执行"
+          }
+        },
+        {
+          "file": "artifacts.md",
+          "title": {
+            "en": "Artifacts and provenance",
+            "zh": "产物与来源"
+          }
+        },
+        {
+          "file": "workspaces.md",
+          "title": {
+            "en": "Attempt workspaces",
+            "zh": "尝试级工作区"
+          }
+        },
+        {
+          "file": "evidence-gates.md",
+          "title": {
+            "en": "Evidence gates",
+            "zh": "证据门禁"
+          }
+        },
+        {
+          "file": "runtime-postconditions.md",
+          "title": {
+            "en": "Runtime postconditions",
+            "zh": "运行时后置条件"
+          }
+        },
+        {
+          "file": "release-acceptance.md",
+          "title": {
+            "en": "Protected delivery",
+            "zh": "受保护的交付"
+          }
+        }
+      ]
+    },
+    {
+      "title": {
+        "en": "Effects and recovery",
+        "zh": "外部操作与恢复"
+      },
+      "chapters": [
+        {
+          "file": "event-inbox.md",
+          "title": {
+            "en": "Events and human decisions",
+            "zh": "事件与人工决策"
+          }
+        },
+        {
+          "file": "durable-effects.md",
+          "title": {
+            "en": "Durable external effects",
+            "zh": "持久化外部操作"
+          }
+        },
+        {
+          "file": "ordered-compensation.md",
+          "title": {
+            "en": "Ordered compensation",
+            "zh": "有序补偿"
+          }
+        },
+        {
+          "file": "backup-recovery.md",
+          "title": {
+            "en": "Local backup and recovery",
+            "zh": "本地备份与恢复"
+          }
+        },
+        {
+          "file": "version-migration.md",
+          "title": {
+            "en": "Version and storage migration",
+            "zh": "版本与存储迁移"
+          }
+        }
+      ]
+    },
+    {
+      "title": {
+        "en": "Shared execution",
+        "zh": "共享执行"
+      },
+      "chapters": [
+        {
+          "file": "postgres-authority.md",
+          "title": {
+            "en": "PostgreSQL authority",
+            "zh": "PostgreSQL 权威存储"
+          }
+        },
+        {
+          "file": "authenticated-authority.md",
+          "title": {
+            "en": "Authentication and roles",
+            "zh": "认证与角色"
+          }
+        },
+        {
+          "file": "remote-service.md",
+          "title": {
+            "en": "HTTPS service and workers",
+            "zh": "HTTPS 服务与 worker"
+          }
+        },
+        {
+          "file": "shared-artifacts.md",
+          "title": {
+            "en": "Shared artifacts",
+            "zh": "共享产物"
+          }
+        },
+        {
+          "file": "remote-effects.md",
+          "title": {
+            "en": "Remote external effects",
+            "zh": "远程外部操作"
+          }
+        },
+        {
+          "file": "cluster-scheduling.md",
+          "title": {
+            "en": "Cluster scheduling",
+            "zh": "集群调度"
+          }
+        },
+        {
+          "file": "shared-recovery.md",
+          "title": {
+            "en": "Shared backup and recovery",
+            "zh": "共享备份与恢复"
+          }
+        }
+      ]
+    },
+    {
+      "title": {
+        "en": "Acceptance and maintenance",
+        "zh": "验收与维护"
+      },
+      "chapters": [
+        {
+          "file": "definition-acceptance.md",
+          "title": {
+            "en": "Definition acceptance",
+            "zh": "流程定义验收"
+          }
+        },
+        {
+          "file": "model-boundaries-acceptance.md",
+          "title": {
+            "en": "Model boundary acceptance",
+            "zh": "模型边界验收"
+          }
+        },
+        {
+          "file": "approval-acceptance.md",
+          "title": {
+            "en": "Approval acceptance",
+            "zh": "审批验收"
+          }
+        },
+        {
+          "file": "artifact-acceptance.md",
+          "title": {
+            "en": "Artifact and workspace acceptance",
+            "zh": "产物与工作区验收"
+          }
+        },
+        {
+          "file": "local-acceptance.md",
+          "title": {
+            "en": "Local platform acceptance",
+            "zh": "本地平台验收"
+          }
+        },
+        {
+          "file": "security-acceptance.md",
+          "title": {
+            "en": "Security acceptance",
+            "zh": "安全验收"
+          }
+        },
+        {
+          "file": "troubleshooting.md",
+          "title": {
+            "en": "Troubleshooting and contributing",
+            "zh": "故障排查与贡献"
+          }
+        },
+        {
+          "file": "roadmap.md",
+          "title": {
+            "en": "Architecture and delivery map",
+            "zh": "架构与交付路线图"
+          }
+        }
+      ]
+    }
+  ]
+}

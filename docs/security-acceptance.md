@@ -212,3 +212,9 @@ These are reproducible contract observations, not a claim of penetration-testing
 coverage, protection from a compromised trusted host, arbitrary-code isolation,
 production throughput or availability. R09 still owns scheduling/quotas/drain and
 R12 owns its operational visibility requirements.
+
+<!-- book-navigation -->
+
+[Contents](README.md) · [中文](zh/security-acceptance.md) · [Previous: Local platform acceptance](local-acceptance.md) · [Next: Troubleshooting and contributing](troubleshooting.md)
+
+<!-- /book-navigation -->

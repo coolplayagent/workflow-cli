@@ -69,9 +69,10 @@ database recovery must retire the old authority and apply recovery fences before
 admitting writes; [R04 recovery](shared-recovery.md) provides that operator protocol.
 
 The [authenticated HTTPS service](remote-service.md) adds task transport and a
-two-scheduler/three-worker owner-loss fixture above this storage boundary. R09
-remains open for fairness/quotas/backpressure, worker drain, rolling upgrades,
-broader queue/network failure, database outage and disaster recovery measurements.
+two-scheduler/three-worker owner-loss fixture above this storage boundary.
+[R09 cluster acceptance](cluster-scheduling.md) adds shared quotas/backpressure,
+worker drain, renewal and bounded fault/load measurements. Production capacity
+and disaster recovery objectives still require deployment-specific evidence.
 [R14 security acceptance](security-acceptance.md) defines the authenticated admission
 boundary above this raw trusted port. Local SQLite and
 PostgreSQL storage contracts alone do not prove those deployment properties.
@@ -87,3 +88,9 @@ same transaction as run changes. The raw `PostgresRunStore` API remains trusted.
 Previous schema-10 images require a source-bound, administrator-authorized
 `plan_storage_upgrade` / `upgrade_storage` operation. Definition migration is a
 separate paused-run CAS operation; see [R11 migration](version-migration.md).
+
+<!-- book-navigation -->
+
+[Contents](README.md) · [中文](zh/postgres-authority.md) · [Previous: Version and storage migration](version-migration.md) · [Next: Authentication and roles](authenticated-authority.md)
+
+<!-- /book-navigation -->

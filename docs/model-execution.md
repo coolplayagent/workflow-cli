@@ -170,8 +170,9 @@ Raw successful task events are refused in model-policy runs. Digests establish
 content binding, not signatures; local adapters and database integrity are trusted
 host boundaries. A restarted completed run does not sample the model again.
 
-Storage schema 5 protects these semantics from older readers. Use explicit
-`run migrate` for schemas 1–4, supplying `--artifacts` when existing runs need it.
+Storage schema 5 introduced protection against older readers; current storage
+is schema 11. Use the explicit backed-up [migration](version-migration.md) for
+older schemas, supplying `--artifacts` when existing runs need it.
 Old protocol 1 bytes, request/bundle digests and completed run history are preserved.
 
 ## HTTP and budget boundaries
@@ -180,7 +181,7 @@ The adapters send a non-streaming JSON proposal instruction, with no provider
 built-in tools or function execution. OpenAI uses `instructions`, textual `input`,
 `max_output_tokens` and `store: false`; Anthropic uses `system`, a user message and
 `max_tokens`. These fields follow the official [Responses API](https://developers.openai.com/api/reference/cli/resources/responses/methods/create)
-and [Messages API](https://platform.claude.com/docs/en/api/messages/create).
+and [Messages API](https://github.com/anthropics/anthropic-sdk-python/blob/main/api.md#messages).
 Provider output is untrusted: only completed assistant text containing the exact
 proposal JSON is accepted. Hidden reasoning blocks are discarded. Refusals,
 truncation, malformed/duplicate-key JSON and unexpected tool blocks fail closed.
@@ -222,3 +223,9 @@ example. Dynamic model tools remain read-only; declared write nodes use the
 durable effect executor and separate effect permissions. Run-wide cost accounting,
 model quality evaluation, isolated tools, workspace/gate binding and automatic
 artifact publication remain separate roadmap work.
+
+<!-- book-navigation -->
+
+[Contents](README.md) · [中文](zh/model-execution.md) · [Previous: Local daemon](local-daemon.md) · [Next: Artifacts and provenance](artifacts.md)
+
+<!-- /book-navigation -->

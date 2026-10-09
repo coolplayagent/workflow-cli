@@ -5,18 +5,53 @@ import gzip
 import hashlib
 import json
 from pathlib import Path
-import re
 import shutil
 import subprocess
 import tarfile
 import tempfile
 import tomllib
 
+from doc_links import check_links, rewrite_links
+
 ROOT = Path(__file__).resolve().parents[1]
 
 
 def sha256(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def copy_resources(root, package):
+    """Copy the complete local reading closure, then rewrite all Markdown links."""
+    sources = [
+        (root / 'skills/workflow-cli', package),
+        (root / 'docs', package / 'references/manuals'),
+        (root / 'examples', package / 'assets/examples'),
+        (root / 'schemas', package / 'assets/schemas'),
+    ]
+    mapping = {}
+    for source, destination in sources:
+        for path in [source, *sorted(source.rglob('*'))]:
+            if '__pycache__' in path.parts or path.suffix == '.pyc':
+                continue
+            if path.is_symlink():
+                raise ValueError(f'Symlink cannot be packaged as a local resource: {path}')
+            target = destination / path.relative_to(source)
+            mapping[path.resolve()] = target
+            if path.is_dir():
+                target.mkdir(parents=True, exist_ok=True)
+            elif path.is_file():
+                shutil.copy2(path, target)
+    for name, target in [('README.md', 'references/manuals/overview.md'),
+                         ('README.zh-CN.md', 'references/manuals/overview.zh-CN.md'),
+                         ('LICENSE', 'LICENSE')]:
+        source, destination = root / name, package / target
+        mapping[source.resolve()] = destination
+        shutil.copy2(source, destination)
+    for source, destination in mapping.items():
+        if source.suffix == '.md' and source.is_file():
+            destination.write_text(rewrite_links(source.read_text(), source, destination, mapping, root))
+    check_links(list(package.rglob('*.md')), package)
+    return mapping
 
 
 def main():
@@ -44,35 +79,12 @@ def main():
         raise SystemExit(f'Refusing to replace {archive}')
     with tempfile.TemporaryDirectory(prefix='workflow-package-') as temp:
         package = Path(temp) / 'workflow-cli'
-        shutil.copytree(skill, package)
-        manuals = package / 'references/manuals'
-        shutil.copytree(ROOT / 'docs', manuals)
-        shutil.copytree(ROOT / 'examples', package / 'assets/examples',
-                        ignore=shutil.ignore_patterns('__pycache__', '*.pyc'))
-        shutil.copytree(ROOT / 'schemas', package / 'assets/schemas')
-        shutil.copy2(ROOT / 'LICENSE', package / 'LICENSE')
+        copy_resources(ROOT, package)
         destination = package / 'assets/linux-x86_64/workflow'
         destination.parent.mkdir(parents=True)
         shutil.copy2(binary, destination)
         destination.chmod(0o755)
         (package / 'scripts/workflow.sh').chmod(0o755)
-        # Keep manual links portable; source-only references point to the exact commit.
-        for doc in manuals.glob('*.md'):
-            def rewrite(match):
-                label, target = match.groups()
-                if re.match(r'^[a-z]+:|^#', target):
-                    return match.group(0)
-                path, _, fragment = target.partition('#')
-                source = (ROOT / 'docs' / path).resolve()
-                suffix = '#' + fragment if fragment else ''
-                for folder, prefix in [('docs', ''), ('examples', '../../assets/examples/'),
-                                       ('schemas', '../../assets/schemas/')]:
-                    if source.is_relative_to(ROOT / folder):
-                        return f'[{label}]({prefix}{source.relative_to(ROOT / folder)}{suffix})'
-                if source.is_relative_to(ROOT):
-                    return f'[{label}](https://github.com/coolplayagent/workflow-cli/blob/{revision}/{source.relative_to(ROOT)}{suffix})'
-                raise ValueError(f'Manual link escapes repository: {target}')
-            doc.write_text(re.sub(r'\[([^\]]+)\]\(([^)]+)\)', rewrite, doc.read_text()))
         manifest = {
             'schema_version': 1, 'name': 'workflow-cli', 'version': version,
             'source_revision': revision, 'target': 'x86_64-unknown-linux-gnu',

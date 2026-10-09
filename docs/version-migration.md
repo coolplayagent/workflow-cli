@@ -81,6 +81,11 @@ commit admission rolls back the operation. A replayed migration event without
 exactly one matching execution proof is corrupt. Raw `run event` cannot submit a
 definition migration.
 
+A run started with, or migrated into, a protected release contract or quality-gated
+human approval flow cannot migrate its definition again. A changed policy or graph
+requires a new run and new evidence/approvals. See [protected delivery](release-acceptance.md)
+for this additional admission boundary.
+
 ## Local commands
 
 Pause the run using its current revision, then write a request matching
@@ -205,3 +210,9 @@ run in the workspace/Bazel suites. These are bounded fixture measurements, not
 production upgrade reliability or business benefit estimates. Migration events,
 execution proofs and shared audits provide durable outcome/actor counts; record
 host elapsed time separately when measuring operational migration latency.
+
+<!-- book-navigation -->
+
+[Contents](README.md) · [中文](zh/version-migration.md) · [Previous: Local backup and recovery](backup-recovery.md) · [Next: PostgreSQL authority](postgres-authority.md)
+
+<!-- /book-navigation -->

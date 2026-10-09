@@ -130,7 +130,7 @@ CLI worker. The HTTPS integration test supplies that adapter explicitly.
 - `artifact_cleanup` is available to administrator/recovery roles, scoped to their
   tenant/project, with a bounded limit. It removes expired transfer metadata and
   staged chunks, including expired completed-upload receipts. Retained manifests
-  and content remain intact. Full archive/deletion retention policy is pending.
+  and content remain intact. Full archive/deletion retention policy is defined in [R14](security-acceptance.md).
 
 The reducer loads a bounded, verified catalog while holding the run lock. It reads
 one bounded content object at a time, retaining manifests, and rejects corrupt
@@ -146,3 +146,9 @@ The HTTPS fixture kills a separate uploader after its first committed chunk,
 resumes through the client, submits artifact-backed work, and checks another
 server's recovered state and content. Cargo/Bazel also check TLS/protocol/file
 boundaries. R07 and R14 combine these fixtures with their additional acceptance evidence.
+
+<!-- book-navigation -->
+
+[Contents](README.md) · [中文](zh/shared-artifacts.md) · [Previous: HTTPS service and workers](remote-service.md) · [Next: Remote external effects](remote-effects.md)
+
+<!-- /book-navigation -->

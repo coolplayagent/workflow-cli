@@ -100,11 +100,11 @@ completion of the workflow runtime.
 | [R05 #6](https://github.com/coolplayagent/workflow-cli/issues/6) | Delivered: local and authenticated shared effect execution, stable keys, durable intent/receipt commits, query-first recovery, bounded retries, ordered compensation and audited manual takeover. The [remote effect acceptance guide](remote-effects.md) maps every R05 criterion to local and real PostgreSQL/HTTPS fault evidence. Provider guarantees remain explicit; no global exactly-once claim. |
 | [R07 #7](https://github.com/coolplayagent/workflow-cli/issues/7) | Delivered: typed/provenance-bound artifacts, atomic local and S3 publication, shared PostgreSQL object catalog, scoped expiring downloads, retained lineage and crash-safe orphan cleanup. Actual task execution allocates independent workspaces, records executable/tool identity and captures typed evidence before settlement. Sealed proposals support reviewed conflict selection, a new verified Git revision and fresh gate evidence; replacement plans reject stale transitive evidence while retaining history. See [R07 acceptance](artifact-acceptance.md). |
 | [R11 #8](https://github.com/coolplayagent/workflow-cli/issues/8) | Delivered: immutable version routing; explicit paused-run migration with reviewed impact, fresh instances/evidence/approvals, timer conversion and fenced atomic commits; historical replay under retained versions; verified local backup/storage upgrade and scoped shared-image conversion. Real process crashes, PostgreSQL/HTTPS, CLI and retained-binary recovery are covered by [R11 acceptance](version-migration.md). |
-| [R03 #10](https://github.com/coolplayagent/workflow-cli/issues/10) | Delivered: portable PASS/FAIL/UNKNOWN checker with exact policy/target/tool/input bindings, settled execution provenance and read-only CLI revalidation. Also delivered: frozen mandatory task/terminal postconditions, fenced decision commits and replay, durable UNKNOWN retry and declared bounded repair. Also delivered: durable callback Inbox, early/pause buffering, exact target/input matching and transactional deduplication. Next: action-specific gate consumption and current-workspace verification. |
+| [R03 #10](https://github.com/coolplayagent/workflow-cli/issues/10) | Delivered: portable PASS/FAIL/UNKNOWN checker with exact policy/target/tool/input bindings, settled execution provenance and read-only CLI revalidation. Also delivered: frozen mandatory task/terminal postconditions, fenced decision commits and replay, durable UNKNOWN retry and declared bounded repair. Also delivered: durable callback Inbox, early/pause buffering, exact target/input matching and transactional deduplication. Also delivered: action-specific gate consumption, current-workspace verification, scoped human exceptions and final acceptance manifests. See [R03 acceptance](release-acceptance.md). |
 | [R06 #11](https://github.com/coolplayagent/workflow-cli/issues/11) | Frozen responder/subject/validity and exception policies, distinct authenticated human/event roles, durable Inbox and timers, rework invalidation, replay and local/PostgreSQL/HTTPS fault coverage. See [R06 acceptance](approval-acceptance.md). |
 | [R08 #12](https://github.com/coolplayagent/workflow-cli/issues/12) | Delivered: explicit local read-only drive with real built-in capability results and durable pause/resume controls. Also delivered: verified local backup/restore, moved paths, old-lease fencing and explicit external-effect recovery holds. Also delivered: optional queryable/stoppable local daemon, restart/suspend recovery, concurrent CLI ownership tests and a full offline branch/loop/parallel/approval example. Independent environment verification is retained with the daemon MR. |
 | [R14 #9](https://github.com/coolplayagent/workflow-cli/issues/9) | Delivered for registered builtin/model/effect execution: authenticated tenant/project/actor and role boundaries, exact worker grants, assignment-bound short-lived provider credentials with live rotation, known-credential reflection rejection, scoped private audit export, protected artifact downloads, isolated workspaces and explicit retention/archive/deletion policy. Real PostgreSQL/HTTPS and provider acceptance includes cross-scope and malicious-output negatives. See [R14 acceptance](security-acceptance.md). |
-| [R09 #13](https://github.com/coolplayagent/workflow-cli/issues/13) | Delivered: PostgreSQL authority, primary database time, immutable bindings, scoped identities/roles, revocation/audit and task assignment. Authenticated HTTPS and host secret references connect separate schedulers/workers; a two-scheduler/three-worker fault test proves higher-epoch takeover, stale-result rejection and local/remote business-state parity. Next: lease renewal, fairness/quotas/backpressure, worker routing/drain, broader fault/performance evidence. R14 security boundaries are documented separately. Authenticated effect dispatch/reconciliation and typed pause/resume/cancel are implemented. |
+| [R09 #13](https://github.com/coolplayagent/workflow-cli/issues/13) | Delivered: PostgreSQL authority, primary database time, immutable bindings, scoped identities/roles, revocation/audit and task assignment. Authenticated HTTPS and host secret references connect separate schedulers/workers; a two-scheduler/three-worker fault test proves higher-epoch takeover, stale-result rejection and local/remote business-state parity. Also delivered: bounded lease renewal, shared quotas/backpressure, worker routing/drain and fault takeover. See [R09 acceptance](cluster-scheduling.md) for the complete tested scheduling boundary; production performance remains a separate measurement. R14 security boundaries are documented separately. Authenticated effect dispatch/reconciliation and typed pause/resume/cancel are implemented. |
 | [R13 #14](https://github.com/coolplayagent/workflow-cli/issues/14) | [Reviewed SDLC templates](reviewed-templates.md): portable definitions, independent owner publication, pure plans and local/TLS regression artifacts. |
 | [R10 #15](https://github.com/coolplayagent/workflow-cli/issues/15), [R12 #16](https://github.com/coolplayagent/workflow-cli/issues/16) | Hybrid deployment and cost/observability. |
 | [R16 #17](https://github.com/coolplayagent/workflow-cli/issues/17) | Offline candidate learning with held-out evaluation and mandatory-gate preservation. |
@@ -126,7 +126,13 @@ coverage and measurement limits.
 | Control-flow runtime | `workflow-kernel` tests sequence, decisions, all/any, waits, subworkflow values and bounded loops; checkpoint restore preserves deadlines and instance identity. SQLite run storage persists those transitions; local read-only dispatch is covered by real built-in execution tests. |
 | Value baseline | `examples/validation/baseline.py` records seeded invalid-graph detection, 10 CLI edit samples and 29 expected replay steps; the HTTPS matrix adds remote detection/parity counts. These are bounded fixture baselines, not measured human productivity or production business benefit. |
 
-## R04 first increment evidence
+## Historical increment evidence
+
+The following sections retain the order in which contracts were introduced.
+Statements about work remaining describe that increment, not the current release.
+Use the delivery table above and its linked acceptance chapters for current scope.
+
+### R04 first increment evidence
 
 The [run storage guide](run-store.md) specifies the RunStore port, SQLite contract
 and tested crash model. Atomic start/apply/receipt transactions, immutable binding
@@ -145,7 +151,7 @@ and held ownership recovery now have [executable acceptance](shared-recovery.md)
 Process recovery evidence does not establish whole-disk disaster recovery or RPO/RTO.
 
 
-## R07 artifact increment evidence
+### R07 artifact increment evidence
 
 The [artifact guide](artifacts.md) defines portable manifest identity, typed content,
 exact producer provenance and retained input dependencies. Local publication syncs
@@ -158,7 +164,7 @@ input provenance reject. Lineage/impact queries identify affected downstream
 producers without rewriting history. This does not complete isolated workspaces,
 remote object storage/authentication or controlled recomputation acceptance.
 
-## R03 evidence checker increment
+### R03 evidence checker increment
 
 The [evidence checker guide](evidence-gates.md) defines exact requirements, target
 bindings, source obligations and exclusive freshness windows. Core and real CLI
@@ -175,7 +181,7 @@ precommit expiry rollback, process races/crashes and migration. R03 remains open
 for workspace verification, atomic external action consumption, human exceptions
 and final acceptance manifests.
 
-## R07 attempt workspace increment
+### R07 attempt workspace increment
 
 The [workspace guide](workspaces.md) defines attempt identity, fixed Git object
 verification, independent writable files, deterministic observations and typed
@@ -186,7 +192,7 @@ capacity tests exercise the failure boundary. Directory isolation is not an OS
 sandbox; automatic run/gate binding, shared-resource coordination, merging and
 remote authorization remain open.
 
-## R02 model policy increment evidence
+### R02 model policy increment evidence
 
 [Model execution](model-execution.md) defines the policy, provider binding, protocol 2
 and explicit replay boundary. The portable executor constrains tools and outputs;
@@ -199,7 +205,7 @@ history and verified rejection by the old reader. No live provider, model-qualit
 exactly-once billing or run-wide monetary budget claim is made. The [R02 acceptance
 guide](model-boundaries-acceptance.md) records the completed component and transport contracts.
 
-### Effect ledger increment
+#### Effect ledger increment
 
 `workflow-effects` owns the provider-independent ledger; `workflow-effect-http`
 implements explicit gateway dispatch, with both crates exported as Rust libraries
@@ -220,7 +226,7 @@ A snapshot can predate external writes; restored runs query known intents or
 import original audited receipts before an explicit operator reconciliation.
 The measured small-fixture restore time excludes human/provider recovery time.
 
-## Authenticated shared artifact increment
+### Authenticated shared artifact increment
 
 The [shared artifact guide](shared-artifacts.md) documents PostgreSQL content storage,
 bounded resumable transfers, scoped authorization and verified result/recovery
@@ -228,3 +234,9 @@ integration. Real PostgreSQL and HTTPS fixtures cover uploader process loss,
 credential/lease fencing, input lineage, corruption and retained-content cleanup.
 This does not provide S3 transfer, independent workspace measurement, full shared
 retention/backup policy, sandboxing or secret grants by itself. [R14 acceptance](security-acceptance.md) now specifies the supported execution boundary, broker leases, retention policy and audit export; arbitrary command execution is not an offered capability.
+
+<!-- book-navigation -->
+
+[Contents](README.md) · [中文](zh/roadmap.md) · [Previous: Troubleshooting and contributing](troubleshooting.md)
+
+<!-- /book-navigation -->

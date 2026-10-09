@@ -141,7 +141,13 @@ fencing, authenticated event ingress and recoverable timer delivery. Replay must
 not dispatch historical commands. The [SQLite RunStore](run-store.md) implements
 atomic state/event/outbox commits and verified recovery; the [local executor](local-execution.md)
 adds run leases, fenced attempts and bounded read-only retries. Model adapters
-produce explicit records checked by the durable host. Effect execution/compensation
-remains subsequent work. Kernel
-replay itself remains a pure calculation; neither layer claims exactly-once
+produce explicit records checked by the durable host. [Durable effects](durable-effects.md)
+and [ordered compensation](ordered-compensation.md) use separate host adapters.
+Kernel replay itself remains a pure calculation; neither layer claims exactly-once
 effects, business benefits or recovery SLAs.
+
+<!-- book-navigation -->
+
+[Contents](README.md) · [中文](zh/kernel-semantics.md) · [Previous: Capabilities and workers](worker-protocol.md) · [Next: Reviewed SOP templates](reviewed-templates.md)
+
+<!-- /book-navigation -->

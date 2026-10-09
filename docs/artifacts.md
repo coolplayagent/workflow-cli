@@ -1,5 +1,3 @@
-See [R07 acceptance and object/workspace operations](artifact-acceptance.md) for the completed cross-adapter workflow.
-
 # Typed artifacts and verified run evidence
 
 Workflow treats a report or file as a versioned handoff. `workflow-artifacts`
@@ -8,6 +6,7 @@ implements durable local files with a transactional SQLite manifest catalog.
 Neither depends on the worker, kernel or run database. The RunStore adapter takes
 an `ArtifactReader` and validates references before accepting a worker result and
 during recovery. Each module has an explicit Bazel `rust_library`.
+See [R07 acceptance and object/workspace operations](artifact-acceptance.md) for the completed cross-adapter workflow.
 
 ## A real report through the CLI
 
@@ -148,13 +147,15 @@ it must not be exposed to untrusted workers. Runs containing postconditions reje
 raw successful task events, and all raw gate decisions are refused.
 Artifact integrity is not proof that the reported business assertions are true:
 [Evidence policies](evidence-gates.md) and [mandatory postconditions](runtime-postconditions.md)
-check accepted worker outputs. Authenticated producers remain open.
+check accepted worker outputs. [Shared artifact access](shared-artifacts.md)
+adds authenticated upload and producer admission.
 
-Run storage now uses schema **4** so older binaries cannot accept protected gate
-transitions. `run --artifacts <store> migrate <db>` explicitly upgrades schema 1,
-2 or 3 transactionally, verifies dependencies and preserves leases/attempts;
-foreign/future stores are refused. Artifact catalog schema is separately versioned
-at 1. Existing definition/worker wire formats remain unchanged.
+Run storage uses schema **11**. `run --artifacts <store> migrate <db>
+<new-backup-file>` explicitly upgrades schemas 1–10 after a verified backup,
+checks dependencies and preserves retained execution records; foreign/future
+stores are refused. See [version migration](version-migration.md). Artifact
+catalog schema is separately versioned at 1. Existing definition/worker wire
+formats remain unchanged.
 
 ## Portability and verified boundary
 
@@ -164,7 +165,8 @@ then use `artifact import <destination-store> <reference.json> <payload>`. Impor
 checks the expected reference before publication. For graphs, export/import in
 `lineage` order so exact upstream references are present first. Two local stores
 produce identical references. An object-store implementation can use the same
-port; no cloud object-store adapter or temporary download authority ships here.
+port; [R07 acceptance](artifact-acceptance.md) describes the S3-compatible
+adapter and its scoped transfer authority.
 
 Tests terminate uploading processes halfway through the payload, after file sync,
 after object publication, after manifest writes and after commit. Recovery finds
@@ -177,9 +179,10 @@ corrupt relocated content reject. SQLite schema 2 migration preserves lease fenc
 The evidence covers Linux local process failures and injected SQLite faults.
 It does not establish arbitrary power-loss/filesystem durability, disk-loss
 recovery, hostile shared-directory safety, remote authentication or business
-benefit. R07 stays open for isolated attempt workspaces, resource/merge policies,
-authenticated remote storage and controlled recomputation; R04/R08 still require
-backup/restore and broader lifecycle management.
+benefit. [R07 acceptance](artifact-acceptance.md) documents isolated workspaces,
+reviewed merges, shared storage and current evidence after input replacement.
+[Backup/recovery](backup-recovery.md) and [shared recovery](shared-recovery.md)
+document the separate archive and lifecycle boundaries.
 
 ## Outputs from attempt workspaces
 
@@ -190,3 +193,9 @@ and records the changed tree digest separately. Host-managed execution must bind
 actual inputs to that directory and settle its real result before the captured
 reports can be eligible evidence. Workspace observation does not authorize effects
 or automatically inspect the current target during gate consumption.
+
+<!-- book-navigation -->
+
+[Contents](README.md) · [中文](zh/artifacts.md) · [Previous: Bounded model execution](model-execution.md) · [Next: Attempt workspaces](workspaces.md)
+
+<!-- /book-navigation -->

@@ -31,6 +31,9 @@ jobs:
           test -n "$ci_run" || { echo 'The exact commit requires a successful CI push run on main.'; exit 1; }
           echo "Verified CI run: $ci_run"
       - run: cargo build --release --locked -p workflow-cli
+      - run: python3 -m pip install -r website/requirements.txt
+      - run: python3 scripts/check_docs.py
+      - run: python3 -m unittest discover -s scripts/tests -v
       - name: Package and verify outside the checkout
         run: |
           python3 scripts/package_skill.py --binary target/release/workflow --output dist --tag "$GITHUB_REF_NAME"
@@ -41,7 +44,6 @@ jobs:
           path: dist/*
           if-no-files-found: error
       - uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5
-      - run: python3 -m pip install -r website/requirements.txt
       - run: python3 scripts/build_site.py
       - uses: actions/upload-pages-artifact@7b1f4a764d45c48632c6b24a0339c27f5614fb0b # v4
         with:
@@ -61,13 +63,19 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           cat > release-notes.md <<'NOTES'
-          One workflow-cli skill with its matching Linux x86_64 executable, task references, manuals, examples and schemas.
+          One workflow-cli skill with its matching Linux x86_64 executable, task references, complete English/Chinese books, examples and schemas.
+
+          This release adds bilingual READMEs and a 37-chapter book with a shared reading order, chapter navigation and language switching. Source skill links now resolve in the checkout; the archive rewrites their complete local reading dependencies into the package. Missing resources and heading anchors fail validation. Regression tests cover missing translations, encoded/Unicode links, transitive offline reading and rendered page integrity.
 
           Requires Ubuntu 24.04 / glibc 2.39 or newer. Verify SHA256SUMS before extracting into your agent's skills directory. Run workflow-cli/scripts/workflow.sh --version to check the installation.
 
-          The extracted archive is verified in an unrelated directory: manifest integrity, resource links, schema/validation, successful and failed real workflows, recovery without repeated tasks, daemon approval/rejection, backup and runtime resolution.
+          The extracted archive is verified in an unrelated directory: manifest integrity, recursive local resource links and heading anchors, schema/validation, successful and failed real workflows, recovery without repeated tasks, daemon approval/rejection, backup and runtime resolution.
 
           Documentation: https://coolplayagent.github.io/workflow-cli/
+
+          本版提供中英文 README 与 37 章书籍式文档，统一目录、前后章导航和语言切换。Skill 源码链接可直接访问，发布包递归收录本地阅读资源；缺失文件、标题锚点或翻译会阻止验证通过。新增回归测试覆盖中文/编码链接、离线资源完整性与页面导航。
+
+          支持 Linux x86_64、Ubuntu 24.04 / glibc 2.39 及更新版本。解压前验证 SHA256SUMS；运行 workflow-cli/scripts/workflow.sh --version 检查安装。数据库迁移仍使用独立的显式备份与升级流程。
           NOTES
           gh release create "$GITHUB_REF_NAME" dist/* --repo "$GITHUB_REPOSITORY" \
             --verify-tag --title "Workflow CLI skill $GITHUB_REF_NAME" --notes-file release-notes.md

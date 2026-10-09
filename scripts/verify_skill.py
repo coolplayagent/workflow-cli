@@ -5,10 +5,11 @@ import hashlib
 import json
 import os
 from pathlib import Path
-import re
 import subprocess
 import tarfile
 import tempfile
+
+from doc_links import check_links
 
 
 def main():
@@ -26,12 +27,12 @@ def main():
         assert actual == set(manifest['files']) | {'manifest.json'}
         for name, digest in manifest['files'].items():
             assert hashlib.sha256((skill / name).read_bytes()).hexdigest() == digest, name
-        for md in skill.rglob('*.md'):
-            for target in re.findall(r'\[[^\]]+\]\(([^)]+)\)', md.read_text()):
-                if re.match(r'^[a-z]+:|^#', target):
-                    continue
-                path = (md.parent / target.split('#')[0]).resolve()
-                assert path.is_relative_to(skill) and path.exists(), (md, target)
+        links = check_links(list(skill.rglob('*.md')), skill)
+        book = json.loads((skill / 'references/manuals/book.json').read_text())
+        for part in book['parts']:
+            for chapter in part['chapters']:
+                for language in ['', 'zh/']:
+                    assert (skill / 'references/manuals' / (language + chapter['file'])).is_file()
         cwd = root / 'unrelated project'
         cwd.mkdir()
         wrapper = str(skill / 'scripts/workflow.sh')
@@ -86,7 +87,7 @@ def main():
         assert output.strip() == f"workflow {manifest['version']}"
         print(json.dumps({'verified': True, 'version': manifest['version'],
                           'source_revision': manifest['source_revision'],
-                          'manifest_files': len(manifest['files']), 'demos': demos}, indent=2))
+                          'manifest_files': len(manifest['files']), 'local_links': links, 'demos': demos}, indent=2))
 
 
 if __name__ == '__main__':

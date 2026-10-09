@@ -150,3 +150,9 @@ backup and capacity planning. This is a local registry, not a shared cluster DB.
 
 SQLite transaction behavior follows [SQLite's transaction contract](https://www.sqlite.org/lang_transaction.html)
 and the [rusqlite transaction API](https://docs.rs/rusqlite/0.40.2/rusqlite/struct.Transaction.html).
+
+<!-- book-navigation -->
+
+[Contents](README.md) · [中文](zh/definition-registry.md) · [Previous: Definitions and types](definition-semantics.md) · [Next: Capabilities and workers](worker-protocol.md)
+
+<!-- /book-navigation -->

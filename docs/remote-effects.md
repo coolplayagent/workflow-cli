@@ -139,6 +139,12 @@ failure model is process loss and a late stale worker, not whole-database loss
 or a partitioned provider. Provider key retention and authoritative query semantics
 remain required; state fencing cannot physically prevent an already-running
 old worker from contacting an external system. No global exactly-once guarantee
-is made. Action-specific gate/approval consumption and workspace measurements
-remain R03 work. [R14 acceptance](security-acceptance.md) defines provider lease
+is made. [R03](release-acceptance.md) defines action-specific gate/approval consumption
+and workspace measurements. [R14 acceptance](security-acceptance.md) defines provider lease
 references, principal-bound delivery, the registered executor boundary and retention.
+
+<!-- book-navigation -->
+
+[Contents](README.md) · [中文](zh/remote-effects.md) · [Previous: Shared artifacts](shared-artifacts.md) · [Next: Cluster scheduling](cluster-scheduling.md)
+
+<!-- /book-navigation -->

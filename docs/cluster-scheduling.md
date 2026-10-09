@@ -192,3 +192,9 @@ concurrent quota races, all admission scopes, renewal/deadline preservation, exp
 heartbeat, read-only rollback, reviewed dead-letter retry, and effect query after
 worker replacement. Existing multi-process and database recovery fixtures continue
 to cover dispatcher loss, disconnected durable scans, timers and restored effects.
+
+<!-- book-navigation -->
+
+[Contents](README.md) · [中文](zh/cluster-scheduling.md) · [Previous: Remote external effects](remote-effects.md) · [Next: Shared backup and recovery](shared-recovery.md)
+
+<!-- /book-navigation -->

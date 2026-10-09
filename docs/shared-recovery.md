@@ -175,3 +175,9 @@ Committed artifacts and active recovery dependencies are retained. Existing
 cleanup removes only eligible incomplete transfers, never committed artifacts or
 run history. Object-storage lifecycle policy and controlled live migration are
 separate R07/R10/R14 concerns.
+
+<!-- book-navigation -->
+
+[Contents](README.md) · [中文](zh/shared-recovery.md) · [Previous: Cluster scheduling](cluster-scheduling.md) · [Next: Definition acceptance](definition-acceptance.md)
+
+<!-- /book-navigation -->

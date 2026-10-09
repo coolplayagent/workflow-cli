@@ -20,8 +20,10 @@ It does not download software or rewrite environment configuration automatically
 The source skill contains the operating references and wrapper; published archives
 add `references/manuals/`, `assets/examples/`, `assets/schemas/`, `manifest.json`,
 and the compiled executable. Build those archives with the repository's
-`scripts/package_skill.py`. In a source checkout, the corresponding manuals and
-examples live in `docs/` and `examples/`.
+`scripts/package_skill.py`. Source-checkout links resolve directly to `docs/`; packaging rewrites every local
+link into the archive, including both book editions, examples and schemas. Read
+the [English contents](../../../docs/README.md) or
+[中文目录](../../../docs/zh/README.md). Source-checkout examples live in `examples/`.
 
 For a deterministic isolated demo after extracting a release:
 
@@ -38,5 +40,5 @@ project-specific adapters or test services as documented in their manuals.
 Keep databases, artifacts, workspaces, credentials and daemon control directories
 outside the skill installation. To upgrade, retain the old CLI while verifying
 new store compatibility. Storage schema upgrades require the explicit backed-up
-procedure in [version migration](manuals/version-migration.md); replacing a skill
+procedure in [version migration](../../../docs/version-migration.md); replacing a skill
 directory does not migrate a run database or alter a frozen run definition.

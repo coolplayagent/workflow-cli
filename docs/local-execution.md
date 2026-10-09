@@ -158,7 +158,7 @@ A final task result may leave a run `running` with a pause until resume reduces 
 remaining control flow. Cancellation remains available while paused, clears the
 pause and performs the usual cancellation/reconciliation flow. Raw signal, gate,
 retry-gate and time events are refused while paused. The [durable Inbox](event-inbox.md) buffers trusted callbacks during pauses;
-authenticated approval ingestion remains a separate increment.
+authenticated approval ingestion is described in [R06 acceptance](approval-acceptance.md).
 
 These controls use the trusted administrative host boundary described above;
 caller-supplied reasons are audit context, not authenticated actor identities.
@@ -194,11 +194,11 @@ event/state/execution writes, and before/after commit. Reopening recovers the en
 transaction and retries only an orphan. Migration preserves v1 runs and rolls back
 on corruption. Cargo and Bazel run the same tests.
 
-R02/R04/R08/R09 remain open for authenticated remote adapters, automatic
-workspace binding and sandboxing, remote artifact adapters, node parallelism, scheduling/fairness,
-cluster ownership, authenticated tenants and archive retention policy. These
-Linux process-crash checks establish no production throughput, power-loss, shared
-network filesystem, business-benefit or RPO/RTO claim.
+The [remote service](remote-service.md), [workspace acceptance](artifact-acceptance.md),
+[cluster scheduling](cluster-scheduling.md) and [security acceptance](security-acceptance.md)
+chapters document the separate shared, workspace and authority contracts. These
+local Linux process-crash checks establish no production throughput, power-loss,
+shared network filesystem, business-benefit or RPO/RTO claim.
 
 For a host-managed worker/report flow use `run acquire/claim/finish/release`. Runs
 with evidence require `run --artifacts <store>` on subsequent reads and mutations.
@@ -224,3 +224,9 @@ retry, manual reconciliation and provider fencing limits. Storage schema 8 adds
 these policies and journal records; schema 9 adds [ordered compensation](ordered-compensation.md).
 Explicit migration to schema 11 accepts schemas 1–10; restored stores use the
 [recovery barrier](backup-recovery.md) before further write admission.
+
+<!-- book-navigation -->
+
+[Contents](README.md) · [中文](zh/local-execution.md) · [Previous: Durable state](run-store.md) · [Next: Local daemon](local-daemon.md)
+
+<!-- /book-navigation -->

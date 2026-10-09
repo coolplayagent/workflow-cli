@@ -195,3 +195,9 @@ role, publication, source CAS and lease constraints.
 scope audit for administrators/recovery. Production `work-models` / `work-effects`
 require broker lease references and use principal-bound assignment delivery. See
 [security acceptance](security-acceptance.md) for formats, limits and executable evidence.
+
+<!-- book-navigation -->
+
+[Contents](README.md) · [中文](zh/remote-service.md) · [Previous: Authentication and roles](authenticated-authority.md) · [Next: Shared artifacts](shared-artifacts.md)
+
+<!-- /book-navigation -->

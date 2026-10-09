@@ -24,5 +24,5 @@ plan does not grant execution credentials. Existing runs retain their old versio
 
 Shared owner configuration uses `service configure-template-owners`; authenticated
 publication and review use scoped remote operations. See the complete
-[template manual](manuals/reviewed-templates.md) for candidate evidence, owner roles,
+[template manual](../../../docs/reviewed-templates.md) for candidate evidence, owner roles,
 local/remote publication and fixture limitations.
