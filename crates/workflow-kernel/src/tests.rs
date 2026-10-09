@@ -1091,3 +1091,109 @@ mod inbox;
 mod lifecycle;
 mod migration;
 mod postconditions;
+
+#[test]
+fn loop_feedback_carries_the_actual_failed_diagnostic_into_the_next_repair() {
+    let mut outer = fixture("bounded-repair");
+    let mut body = fixture("repair-round");
+    let field = Field {
+        required: true,
+        value_type: ValueType::String,
+    };
+    body.inputs.insert("diagnostic".into(), field.clone());
+    let fix = body.nodes.iter_mut().find(|n| n.id == "fix").unwrap();
+    fix.inputs.insert("diagnostic".into(), field.clone());
+    fix.bindings.insert(
+        "diagnostic".into(),
+        Binding::WorkflowInput {
+            field: "diagnostic".into(),
+        },
+    );
+    body.nodes
+        .iter_mut()
+        .find(|n| n.id == "test")
+        .unwrap()
+        .outputs
+        .insert("diagnostic".into(), field.clone());
+    let failed = body.nodes.iter_mut().find(|n| n.id == "retry").unwrap();
+    failed.inputs.insert("diagnostic".into(), field.clone());
+    failed.bindings.insert(
+        "diagnostic".into(),
+        Binding::NodeOutput {
+            node: "test".into(),
+            field: "diagnostic".into(),
+        },
+    );
+    let repair = outer.nodes.iter_mut().find(|n| n.id == "repair").unwrap();
+    repair.inputs = body.inputs.clone();
+    repair.bindings.insert(
+        "diagnostic".into(),
+        Binding::Literal {
+            value: serde_json::json!("first inspection"),
+        },
+    );
+    let NodeKind::Loop { feedback, .. } = &mut repair.kind else {
+        panic!()
+    };
+    feedback.insert("diagnostic".into(), "diagnostic".into());
+    let specification = spec(vec![outer, body]);
+    let bundle = CompiledBundle::compile(specification.clone()).unwrap();
+    let (mut engine, _) = Engine::start(
+        bundle.clone(),
+        "feedback",
+        Values::new(),
+        100,
+        Limits::default(),
+    )
+    .unwrap();
+    assert_eq!(
+        engine.snapshot().frames[&2].nodes["fix"].inputs["diagnostic"],
+        "first inspection"
+    );
+    complete(&mut engine, 2, "fix", success());
+    let transition = complete(
+        &mut engine,
+        2,
+        "test",
+        TaskResult::Succeeded {
+            outputs: Values::from([
+                ("passed".into(), serde_json::json!(false)),
+                (
+                    "diagnostic".into(),
+                    serde_json::json!("parser rejects escaped quote at line 7"),
+                ),
+            ]),
+        },
+    );
+    assert!(transition.commands.iter().any(|c| matches!(c, Command::ExecuteTask { inputs, .. }
+        if inputs.get("diagnostic") == Some(&serde_json::json!("parser rejects escaped quote at line 7")))));
+    engine = Engine::restore(bundle, engine.checkpoint().unwrap()).unwrap();
+    assert_eq!(
+        engine.snapshot().frames[&3].nodes["fix"].inputs["diagnostic"],
+        "parser rejects escaped quote at line 7"
+    );
+    complete(&mut engine, 3, "fix", success());
+    complete(
+        &mut engine,
+        3,
+        "test",
+        TaskResult::Succeeded {
+            outputs: Values::from([
+                ("passed".into(), serde_json::json!(true)),
+                ("diagnostic".into(), serde_json::json!("regression passed")),
+            ]),
+        },
+    );
+    assert_eq!(engine.snapshot().status, RunStatus::Succeeded);
+    let mut mismatched = specification;
+    mismatched.workflows[1]
+        .nodes
+        .iter_mut()
+        .find(|n| n.id == "retry")
+        .unwrap()
+        .inputs
+        .get_mut("diagnostic")
+        .unwrap()
+        .value_type = ValueType::Integer;
+    assert!(CompiledBundle::compile(mismatched).is_err());
+}

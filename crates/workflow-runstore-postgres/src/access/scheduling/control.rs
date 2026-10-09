@@ -124,7 +124,9 @@ impl AuthenticatedService {
             tx.query("SELECT id FROM workflow_effect_dispatch.assignments WHERE tenant=$1 AND project=$2 AND run_id=$3 AND lease::jsonb=$4::text::jsonb ORDER BY id FOR UPDATE", &[&who.tenant,&who.project,&lease.run_id,&old]).map_err(storage)?;
             let renewed=who.change(tx,&lease.run_id,false,|s,c|s.renew(lease,ttl_ms,c))?;
             let new=serde_json::to_string(&renewed).map_err(|_|invalid_policy())?;
-            tx.execute("UPDATE workflow_access.assignments SET lease=$5 WHERE tenant=$1 AND project=$2 AND run_id=$3 AND lease::jsonb=$4::text::jsonb", &[&who.tenant,&who.project,&lease.run_id,&old,&new]).map_err(storage)?;
+            let at = now(tx)?;
+            tx.execute("UPDATE workflow_access.assignments a SET lease=$5, expires_at=CASE WHEN COALESCE((task::jsonb->>'renewable')::boolean,false) AND NOT settled AND a.expires_at>$6 THEN LEAST(($5::text::jsonb->>'expires_at_unix_ms')::bigint,(task::jsonb->'request'->>'deadline_unix_ms')::bigint,c.expires_at) ELSE a.expires_at END FROM workflow_access.credentials c WHERE a.tenant=$1 AND a.project=$2 AND a.run_id=$3 AND a.lease::jsonb=$4::text::jsonb AND c.id=a.worker_id", &[&who.tenant,&who.project,&lease.run_id,&old,&new,&at]).map_err(storage)?;
+            tx.execute("UPDATE workflow_scheduling.admissions q SET expires_at=a.expires_at FROM workflow_access.assignments a WHERE q.id=a.id AND a.tenant=$1 AND a.project=$2 AND a.run_id=$3 AND NOT q.finished", &[&who.tenant,&who.project,&lease.run_id]).map_err(storage)?;
             tx.execute("UPDATE workflow_effect_dispatch.assignments SET lease=$5 WHERE tenant=$1 AND project=$2 AND run_id=$3 AND lease::jsonb=$4::text::jsonb", &[&who.tenant,&who.project,&lease.run_id,&old,&new]).map_err(storage)?;
             Ok(renewed)
         })

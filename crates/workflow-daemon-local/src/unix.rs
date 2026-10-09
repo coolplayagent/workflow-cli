@@ -175,6 +175,7 @@ impl Server {
             info,
             phase: Phase::Polling,
             active_run: None,
+            active_runs: vec![],
             last_scan_unix_ms: None,
             last_completed_run: None,
             completed_drives: 0,

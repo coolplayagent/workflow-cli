@@ -156,9 +156,9 @@ No effect receipt, approval or authenticated actor may be fabricated.
 
 ## Storage and verified boundaries
 
-Current storage schema 11 protects effect journal, compensation, recovery-import
+Current storage schema 12 protects effect journal, compensation, recovery-import
 and migration semantics from older executors. The [explicit migration](05-version-migration.md)
-requires a verified backup, upgrades schemas 1–10 and revalidates retained runs.
+requires a verified backup, upgrades schemas 1–11 and revalidates retained runs.
 Ordinary open refuses a different version.
 
 Tests cover an actual loopback HTTP gateway with a separate durable provider

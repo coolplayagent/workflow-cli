@@ -6,14 +6,14 @@ the matching executable. Internal Rust crates remain implementation modules.
 
 ## Install
 
-Download `workflow-cli-skill-v0.1.1-linux-x86_64.tar.gz` and `SHA256SUMS` from the
+Download `workflow-cli-skill-v0.2.0-linux-x86_64.tar.gz` and `SHA256SUMS` from the
 [release page](https://github.com/coolplayagent/workflow-cli/releases/latest).
 In the download directory:
 
 ```sh
 sha256sum --check SHA256SUMS
 mkdir -p ~/.codex/skills
-tar -xzf workflow-cli-skill-v0.1.1-linux-x86_64.tar.gz -C ~/.codex/skills
+tar -xzf workflow-cli-skill-v0.2.0-linux-x86_64.tar.gz -C ~/.codex/skills
 ~/.codex/skills/workflow-cli/scripts/workflow.sh version --format json
 ```
 
@@ -53,8 +53,8 @@ python3 -m pip install -r website/requirements.txt
 python3 scripts/check_docs.py
 python3 -m unittest discover -s scripts/tests -v
 cargo build --release --locked -p workflow-cli
-python3 scripts/package_skill.py --binary target/release/workflow --output dist --tag v0.1.1
-python3 scripts/verify_skill.py dist/workflow-cli-skill-v0.1.1-linux-x86_64.tar.gz
+python3 scripts/package_skill.py --binary target/release/workflow --output dist --tag v0.2.0
+python3 scripts/verify_skill.py dist/workflow-cli-skill-v0.2.0-linux-x86_64.tar.gz
 ```
 
 The verifier extracts into a temporary path containing spaces, checks all manifest

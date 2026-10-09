@@ -34,7 +34,7 @@ WORKFLOW_TEST_POSTGRES='<disposable connection string>' \
 合成回执只验证存储，不证明真实发布提供方行为。镜像测试检查日志往返、删除执行记录、运行身份不匹配、
 列格式错误、大小限制及拒绝多运行镜像。
 
-每运行镜像最多 64 MiB，在 PostgreSQL schema 1 内使用 SQLite application schema 11。每次修改重写并
+每运行镜像最多 64 MiB，在 PostgreSQL schema 1 内使用 SQLite application schema 12。每次修改重写并
 验证整个聚合，有明确内存/CPU/写放大成本，不声称吞吐量。大历史需要另行验证存储演进。库约束 SQL
 语句、锁和空闲事务等待并使用 synchronous commit，建连超时由调用方负责。
 

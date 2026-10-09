@@ -2,9 +2,9 @@
 
 [English book](en/README.md) · [中文实践指南](zh/README.md)
 
-Both editions contain the same 6 numbered volumes and 37 chapters. Start with volume 01, then follow the chapter navigation.
+Both editions contain the same 6 numbered volumes and 38 chapters. Start with volume 01, then follow the chapter navigation.
 
-中英文版采用相同的 6 卷、37 章结构。从第 01 卷开始，按每章的前后导航阅读。
+中英文版采用相同的 6 卷、38 章结构。从第 01 卷开始，按每章的前后导航阅读。
 
 | Volume / 分卷 | English | 中文 |
 | --- | --- | --- |

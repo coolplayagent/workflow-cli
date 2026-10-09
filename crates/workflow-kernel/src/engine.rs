@@ -285,6 +285,99 @@ impl Engine {
         checkpoint.checksum = checkpoint_checksum(&checkpoint)?;
         Ok(checkpoint)
     }
+    /// Restore a state already verified by an authoritative transactional store.
+    /// This is deliberately separate from `restore`: a checksum is not authority
+    /// to inject arbitrary state. Untrusted checkpoints must use replay instead.
+    pub fn restore_verified_state(
+        bundle: CompiledBundle,
+        checkpoint: Checkpoint,
+        state: Snapshot,
+    ) -> Result<Self> {
+        Self::check_checkpoint(&bundle, &checkpoint)?;
+        let (mut engine, _) = Self::start(
+            bundle,
+            &checkpoint.run_id,
+            checkpoint.inputs,
+            checkpoint.started_at_unix_ms,
+            checkpoint.limits,
+        )?;
+        if state.run_id != engine.state.run_id
+            || state.run_digest != engine.state.run_digest
+            || state.revision != checkpoint.events.len() as u64 + 1
+            || workflow_worker::digest(&state)? != checkpoint.state_digest
+        {
+            return Err(Error::new(
+                ErrorCode::CorruptCheckpoint,
+                "verified state identity mismatch",
+            ));
+        }
+        for event in &checkpoint.events {
+            if event.run_id != state.run_id
+                || event.run_digest != state.run_digest
+                || event.expected_revision != engine.events.len() as u64 + 1
+                || engine
+                    .seen
+                    .insert(event.event_id.clone(), workflow_worker::digest(event)?)
+                    .is_some()
+            {
+                return Err(Error::new(
+                    ErrorCode::CorruptCheckpoint,
+                    "verified journal identity mismatch",
+                ));
+            }
+            if let EventKind::MigrateDefinition { plan } = &event.kind {
+                engine.bundle =
+                    Arc::new(CompiledBundle::compile(plan.request.target_bundle.clone())?);
+            }
+            engine.events.push(event.clone());
+        }
+        if state.bundle_digest != engine.bundle.digest() {
+            return Err(Error::new(
+                ErrorCode::CorruptCheckpoint,
+                "verified state bundle mismatch",
+            ));
+        }
+        engine.state = state;
+        engine.bound()?;
+        Ok(engine)
+    }
+    pub fn check_checkpoint(bundle: &CompiledBundle, checkpoint: &Checkpoint) -> Result<()> {
+        workflow_worker::to_message(checkpoint)?;
+        if checkpoint.schema_version != 1
+            || checkpoint.bundle_digest != bundle.digest()
+            || checkpoint.checksum != checkpoint_checksum(checkpoint)?
+        {
+            return Err(Error::new(
+                ErrorCode::CorruptCheckpoint,
+                "checkpoint identity/checksum mismatch",
+            ));
+        }
+        Ok(())
+    }
+    /// Construct the journal envelope for a verified store snapshot without replay.
+    pub fn bind_verified_state(
+        bundle: &CompiledBundle,
+        run_id: String,
+        inputs: Values,
+        started_at_unix_ms: u64,
+        limits: Limits,
+        events: Vec<Event>,
+        state: &Snapshot,
+    ) -> Result<Checkpoint> {
+        let mut checkpoint = Checkpoint {
+            schema_version: 1,
+            bundle_digest: bundle.digest().into(),
+            run_id,
+            inputs,
+            started_at_unix_ms,
+            limits,
+            events,
+            state_digest: workflow_worker::digest(state)?,
+            checksum: String::new(),
+        };
+        checkpoint.checksum = checkpoint_checksum(&checkpoint)?;
+        Ok(checkpoint)
+    }
     pub fn restore(bundle: CompiledBundle, checkpoint: Checkpoint) -> Result<Self> {
         let invalid = |m| Error::new(ErrorCode::CorruptCheckpoint, m);
         workflow_worker::to_message(&checkpoint).map_err(|e| invalid(e.message))?;
@@ -1166,6 +1259,7 @@ impl Engine {
         if let NodeKind::Loop {
             body,
             max_iterations,
+            feedback,
             ..
         } = &node.kind
         {
@@ -1184,7 +1278,44 @@ impl Engine {
                 );
             }
             if completed.status == FrameStatus::Failed {
-                let next = self.add_frame(body, record.inputs)?;
+                let mut next_inputs = completed.inputs.clone();
+                if !feedback.is_empty() {
+                    let diagnostics: Vec<_> = self
+                        .workflow(child)
+                        .nodes
+                        .iter()
+                        .filter(|n| {
+                            matches!(
+                                n.kind,
+                                NodeKind::Terminal {
+                                    outcome: TerminalOutcome::Failed
+                                }
+                            ) && completed.nodes[&n.id].state == NodeState::Failed
+                        })
+                        .map(|n| &completed.nodes[&n.id].inputs)
+                        .collect();
+                    for (target, source) in feedback {
+                        let observed = diagnostics.first().and_then(|v| v.get(source));
+                        if observed.is_none()
+                            || diagnostics.iter().any(|v| v.get(source) != observed)
+                        {
+                            commands.push(Command::CancelTimer {
+                                instance_id: record.instance_id,
+                            });
+                            return self.finish(
+                                frame,
+                                &node.id,
+                                NodeState::Failed,
+                                None,
+                                Some("loop_feedback_missing_or_conflicting".into()),
+                            );
+                        }
+                        next_inputs.insert(target.clone(), observed.unwrap().clone());
+                    }
+                    workflow_validator::validate_values(&node.inputs, &next_inputs)
+                        .map_err(|e| Error::new(ErrorCode::ContractMismatch, e.message))?;
+                }
+                let next = self.add_frame(body, next_inputs)?;
                 self.touch()?;
                 self.record_mut(frame, &node.id).state = NodeState::Child {
                     frame_id: next,

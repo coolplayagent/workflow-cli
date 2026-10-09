@@ -106,14 +106,14 @@ pub fn work_effects_once_bound(
 /// same Worker contract as local runtime, while result authority remains remote.
 pub fn work_once(
     client: &(impl TaskTransport + ?Sized),
-    worker: &workflow_worker::Worker,
+    worker: &impl workflow_runtime::TaskExecutor,
     limit: u32,
 ) -> Result<WorkerReport> {
     work_once_bound(client, worker, limit, None)
 }
 pub fn work_once_bound(
     client: &(impl TaskTransport + ?Sized),
-    worker: &workflow_worker::Worker,
+    worker: &impl workflow_runtime::TaskExecutor,
     limit: u32,
     principal: Option<&workflow_credentials::Principal>,
 ) -> Result<WorkerReport> {
@@ -155,10 +155,10 @@ pub fn work_once_bound(
             Err(e) => return Err(e),
             _ => return Err(invalid()),
         };
-        let submission = match worker.execute(&task.request, &task.grant) {
+        let submission = match execute_assignment(client, worker, &assignment_id, &task) {
             Ok(result) => Operation::Finish {
                 assignment_id,
-                result: Box::new(result.into_result()),
+                result: Box::new(result),
             },
             Err(e) => Operation::Fail {
                 assignment_id,
@@ -184,6 +184,59 @@ pub fn work_once_bound(
         }
     }
     Ok(report)
+}
+
+fn execute_assignment(
+    client: &(impl TaskTransport + ?Sized),
+    worker: &impl workflow_runtime::TaskExecutor,
+    assignment_id: &str,
+    task: &workflow_runstore::PreparedTask,
+) -> workflow_worker::Result<workflow_worker::WorkResult> {
+    use workflow_worker::Clock;
+    let Some(mut running) =
+        worker.start_assigned_task(assignment_id, &task.request, &task.grant)?
+    else {
+        return worker.execute_task(&task.request, &task.grant, &workflow_worker::SystemClock);
+    };
+    let mut last_probe = None;
+    let mut last_progress = None;
+    loop {
+        let now = workflow_worker::SystemClock.now_unix_ms()?;
+        if now >= task.request.deadline_unix_ms {
+            running.cancel()?;
+            return Err(workflow_worker::Error::new(
+                workflow_worker::ErrorCode::DeadlineExceeded,
+                "shared activity deadline elapsed",
+            ));
+        }
+        if last_probe.is_none_or(|at| now.saturating_sub(at) >= 1000) {
+            let record = last_progress.is_none_or(|at| now.saturating_sub(at) >= 30000);
+            match call(
+                client,
+                Operation::TaskProgress {
+                    assignment_id: assignment_id.into(),
+                    record,
+                },
+            ) {
+                Ok(Response::TaskProgress { cancelled: false }) => {}
+                _ => {
+                    running.cancel()?;
+                    return Err(workflow_worker::Error::new(
+                        workflow_worker::ErrorCode::Expired,
+                        "shared activity cancelled or ownership probe failed",
+                    ));
+                }
+            }
+            last_probe = Some(now);
+            if record {
+                last_progress = Some(now);
+            }
+        }
+        if let Some(result) = running.poll()? {
+            return Ok(result);
+        }
+        std::thread::sleep(std::time::Duration::from_millis(20));
+    }
 }
 
 #[derive(Default, Debug, Serialize, Deserialize)]

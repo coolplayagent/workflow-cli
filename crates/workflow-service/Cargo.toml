@@ -6,6 +6,8 @@ license.workspace = true
 rust-version.workspace = true
 
 [dependencies]
+workflow-models = { path = "../workflow-models" }
+workflow-runtime = { path = "../workflow-runtime" }
 workflow-templates = { path = "../workflow-templates" }
 workflow-credentials = { path = "../workflow-credentials" }
 workflow-effects = { path = "../workflow-effects" }
@@ -32,10 +34,8 @@ libc = "0.2"
 getrandom = "0.4.3"
 
 [dev-dependencies]
-workflow-models = { path = "../workflow-models" }
 workflow-model-http = { path = "../workflow-model-http" }
 workflow-effect-http = { path = "../workflow-effect-http" }
 workflow-runstore-sqlite = { path = "../workflow-runstore-sqlite" }
-workflow-runtime = { path = "../workflow-runtime" }
 workflow-builtin-capabilities = { path = "../workflow-builtin-capabilities" }
 rcgen = { version = "0.14", default-features = false, features = ["ring", "pem", "crypto"] }

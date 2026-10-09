@@ -101,10 +101,10 @@ impl SqliteRunStore {
         .map_err(storage)?;
         crate::execution::init_head(&tx, &r.run_id)?;
         hook("state_written");
-        write_checkpoint(&tx, &engine)?;
         let mut commands = vec![];
         append_commands(&mut commands, &engine, &transition)?;
         write_commands(&tx, &commands)?;
+        write_checkpoint(&tx, &engine)?;
         hook("before_commit");
         tx.commit().map_err(storage)?;
         hook("after_commit");
@@ -250,12 +250,12 @@ pub(crate) fn persist_event(
         ));
     }
     hook("state_written");
-    if transition.revision % 16 == 0 {
-        write_checkpoint(c, &current.engine)?;
-    }
     let previous = current.outbox.len();
     append_commands(&mut current.outbox, &current.engine, &transition)?;
     write_commands(c, &current.outbox[previous..])?;
+    if transition.revision % 16 == 0 {
+        write_checkpoint(c, &current.engine)?;
+    }
     Ok(Committed {
         snapshot: current.engine.snapshot().clone(),
         transition,

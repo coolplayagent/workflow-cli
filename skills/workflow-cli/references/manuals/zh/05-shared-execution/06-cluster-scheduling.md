@@ -51,13 +51,13 @@ tenant、project、精确能力 ID/版本、model pool 和 worker 各有显式�
 
 托管 worker 注册固定 runtime 版本，心跳独立于同步能力执行。每个 assignment 仍由精确能力、模型策略和 effect 契约授权。runtime 版本是主机声明，不是二进制证明。心跳缺失/过期、身份正在排空、或版本已移出 allowlist 时，新工作会延后。心跳失败会停止托管 worker 接受更多工作。成功心跳不能复活过期执行 grant。
 
-集群 scheduler 在有效租约剩余时间小于配置寿命的一半时续租。续租保留 epoch，并原子更新存储的 assignment 租约身份。冻结的 task/call 截止时间和准入到期时间绝不增加。过期 node attempt 在更晚的 attempt/lease epoch 下回收，迟到完成不能改变 run。每次持有租约的调度扫描仍处理持久 timer 和 Inbox 对账，包括进程重启后。
+集群 scheduler 在有效租约剩余时间小于配置寿命的一半时续租。续租保留 epoch，并原子更新存储的 assignment 租约身份。新可续租任务的 assignment 和并发准入到期时间一起延长，上限为原任务 deadline 与 worker 凭据到期时间。原任务 deadline、旧任务与 effect call 截止时间保持不变。过期 node attempt 在更晚的 attempt/lease epoch 下回收，迟到完成不能改变 run。每次持有租约的调度扫描仍处理持久 timer 和 Inbox 对账，包括进程重启后。
 
 `managed-work` 组合内置只读工作、可选 `models`（bundle 和主机绑定路径）以及可选 `effects`（主机绑定路径）。所有共享提供方绑定必须使用相同的认证执行主体。绑定格式见模型和 effect CLI 示例。
 
 收到 SIGINT/SIGTERM 后，独立监控器会请求服务端持久排空，同时允许当前调用完成。管理员 `control_worker` 也可排空身份。数据库确认排空后拒绝新 assignment；已接受的 assignment 继续结算，直到有效 grant 为零或报告排空错误。只有这时 CLI 才返回 `drained: true`。重启或普通心跳不能清除排空；必须由管理员显式恢复。新版本使用新 worker 身份安装，加入 scheduler 路由，再在排空后停用旧版本。尝试其他兼容 worker 时，精确契约不匹配不会留下推测性 attempt。
 
-排空超时从当前同步适配器返回之后开始计算。此库不能强行抢占 Rust 回调。内置/model/HTTP 绑定执行自身已有截止时间；不配合的主机适配器需要进程隔离和服务管理器终止。进程被杀后仍需等待租约过期，不确定写入还需 effect 对账。scheduler 退出后，其持久 grant 可在到期后恢复，不会被报告为已排空。
+CLI 的内置、workspace 和模型活动使用隔离子进程，执行期间探测 assignment 权限，失去权限或取消时回收子进程。排空先停止接纳，再等待已接纳活动结算。自定义同步 Rust 回调仍需配合 deadline；此库不能强行抢占这些回调，其排空超时从回调返回之后开始计算。进程被杀后仍需等待租约过期，不确定写入还需 effect 对账。scheduler 退出后，其持久 grant 可在到期后恢复，不会被报告为已排空。
 
 ## 死信与恢复
 

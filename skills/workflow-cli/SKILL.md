@@ -2,7 +2,7 @@
 name: workflow-cli
 description: Author, validate and execute durable workflow SOPs through the workflow CLI, including evidence gates, model bindings, recovery and reviewed templates. Use for workflow-cli process definitions and run administration.
 metadata:
-  version: "0.1.1"
+  version: "0.2.0"
 ---
 
 # Workflow CLI

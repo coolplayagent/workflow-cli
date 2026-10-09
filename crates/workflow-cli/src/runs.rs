@@ -5,7 +5,7 @@ use std::io::{Read, Write};
 use workflow_runstore::*;
 use workflow_runstore_sqlite::SqliteRunStore;
 
-pub const HELP: &str = "DURABLE RUN STORAGE\n  workflow run init <db>\n  workflow run storage-plan <db>\n  workflow run migrate <db> <new-backup-file>\n  workflow run storage-history <db>\n  workflow run storage-restore <backup-file> <new-db> <storage-plan.json>\n  workflow run migration-plan <db> <run-id> <request.json>\n  workflow run migration-apply <db> <lease.json> <reviewed-plan.json> <actor>\n  workflow run history-at <db> <run-id> <revision>\n  workflow run export <db> <new-directory>\n  workflow run start <db> <start.json>\n  workflow run drive <db> <run-id> <owner> <max-commands>\n  workflow run drive-workspaces <db> <run-id> <owner> <max-commands> <workspace-binding.json>\n  workflow run drive-models <db> <run-id> <owner> <max-commands> <bindings.json>\n  workflow run drive-effects <db> <run-id> <owner> <max-commands> <bindings.json> [model-bindings.json]\n  workflow run recovery <db> <run-id>\n  workflow run recovery-acknowledge <db> <run-id> <audit.json>\n  workflow run effect-import <db> <lease.json> <import.json>\n  workflow run effects <db> <run-id> <after-instance> <limit>\n  workflow run effect-claim <db> <lease.json>\n  workflow run effect-observe <db> <lease.json> <attempt-id> <observation.json>\n  workflow run effect-resolve <db> <lease.json> <operation-key> <resolution.json>\n  workflow run execution-history <db> <run-id> <after-sequence> <limit>\n  workflow run status <db> <run-id>\n  workflow run receive <db> <signal.json>\n  workflow run inbox <db> <run-id> <after-revision> <limit>\n  workflow run waits <db> <run-id> <after-instance> <limit>\n  workflow run event <db> <event.json>\n  workflow run cancel <db> <run-id> <event-id> <expected-revision> <at-unix-ms>\n  workflow run <pause|resume> <db> <run-id> <event-id> <expected-revision> <at-unix-ms> <reason>\n  workflow run list <db> <after-id|-> <limit>\n  workflow run history <db> <run-id> <after-revision> <limit>\n  workflow run outbox <db> <run-id> <after-sequence> <limit> <all|pending>\n  workflow run acknowledge <db> <receipt.json>\n  workflow run verify <db> <run-id>\n  workflow run acceptance <db> <run-id>\n  workflow run acquire <db> <lease-request.json>\n  workflow run renew <db> <lease.json> <ttl-ms>\n  workflow run release <db> <lease.json>\n  workflow run claim <db> <lease.json>\n  workflow run tick-due <db> <lease.json>\n  workflow run retry-gate <db> <run-id> <instance-id> <event-id> <expected-revision>\n  workflow run finish <db> <lease.json> <attempt-id> <result.json>\n  workflow run attempt-failed <db> <lease.json> <attempt-id> <worker-error.json>\n  workflow run --artifacts <store> <operation> ...\n  workflow run --object-artifacts <binding.json> <operation> ...\n  workflow run --revalidated-artifacts <store> <plan-artifact-id> <operation> ...\n  workflow run --revalidated-object-artifacts <binding.json> <plan-artifact-id> <operation> ...\n  workflow schema <run-start|run-receipt|run-lease|run-execution-record|run-signal|run-migration-request|run-migration-plan|run-storage-upgrade>\n\nOnly init creates a database. Mutations acknowledge after SQLite commit.\ndrive executes local read-only builtins with a durable run lease; max-commands is 1..100.\nPause persists admission state; in-flight results may commit; resume preserves original deadlines.\nTimers advance on drive or optional daemon serve; use daemon status to query live scheduling. migrate explicitly upgrades v1..v10 storage to v11 after a verified consistent backup and source CAS.\nRuns with artifact evidence require --artifacts on reads and mutations; this location is not persisted.\nclaim/drive checks frozen postconditions; UNKNOWN waits for explicit retry-gate.\nRaw gate events/manual gate receipts and raw successes in gated runs are refused.\nInbox ingress is trusted host input; inspect entry.status: committed receipt does not mean applied approval.\nOther events and delivery receipts are trusted host facts; delivery is not task success.\nExit 0 means committed/read successfully; inspect result.snapshot.status (mutations) or result.status (status).\nExit 1 means rejected request/transition/storage/execution; 2 means usage/input I/O/output failure.\n";
+pub const HELP: &str = "DURABLE RUN STORAGE\n  workflow run init <db>\n  workflow run storage-plan <db>\n  workflow run migrate <db> <new-backup-file>\n  workflow run storage-history <db>\n  workflow run storage-restore <backup-file> <new-db> <storage-plan.json>\n  workflow run migration-plan <db> <run-id> <request.json>\n  workflow run migration-apply <db> <lease.json> <reviewed-plan.json> <actor>\n  workflow run history-at <db> <run-id> <revision>\n  workflow run export <db> <new-directory>\n  workflow run start <db> <start.json>\n  workflow run continue <db> <lease.json> <continuation-plan.json>\n  workflow run continuation <db> <run-id>\n  workflow run history-usage <db> <run-id>\n  workflow run drive <db> <run-id> <owner> <max-commands>\n  workflow run drive-workspaces <db> <run-id> <owner> <max-commands> <workspace-binding.json>\n  workflow run drive-models <db> <run-id> <owner> <max-commands> <bindings.json>\n  workflow run drive-effects <db> <run-id> <owner> <max-commands> <bindings.json> [model-bindings.json]\n  workflow run recovery <db> <run-id>\n  workflow run recovery-acknowledge <db> <run-id> <audit.json>\n  workflow run effect-import <db> <lease.json> <import.json>\n  workflow run effects <db> <run-id> <after-instance> <limit>\n  workflow run effect-claim <db> <lease.json>\n  workflow run effect-observe <db> <lease.json> <attempt-id> <observation.json>\n  workflow run effect-resolve <db> <lease.json> <operation-key> <resolution.json>\n  workflow run execution-history <db> <run-id> <after-sequence> <limit>\n  workflow run status <db> <run-id>\n  workflow run receive <db> <signal.json>\n  workflow run inbox <db> <run-id> <after-revision> <limit>\n  workflow run waits <db> <run-id> <after-instance> <limit>\n  workflow run event <db> <event.json>\n  workflow run cancel <db> <run-id> <event-id> <expected-revision> <at-unix-ms>\n  workflow run <pause|resume> <db> <run-id> <event-id> <expected-revision> <at-unix-ms> <reason>\n  workflow run list <db> <after-id|-> <limit>\n  workflow run history <db> <run-id> <after-revision> <limit>\n  workflow run outbox <db> <run-id> <after-sequence> <limit> <all|pending>\n  workflow run acknowledge <db> <receipt.json>\n  workflow run verify <db> <run-id>\n  workflow run acceptance <db> <run-id>\n  workflow run acquire <db> <lease-request.json>\n  workflow run renew <db> <lease.json> <ttl-ms>\n  workflow run release <db> <lease.json>\n  workflow run claim <db> <lease.json>\n  workflow run tick-due <db> <lease.json>\n  workflow run retry-gate <db> <run-id> <instance-id> <event-id> <expected-revision>\n  workflow run finish <db> <lease.json> <attempt-id> <result.json>\n  workflow run attempt-failed <db> <lease.json> <attempt-id> <worker-error.json>\n  workflow run --artifacts <store> <operation> ...\n  workflow run --object-artifacts <binding.json> <operation> ...\n  workflow run --revalidated-artifacts <store> <plan-artifact-id> <operation> ...\n  workflow run --revalidated-object-artifacts <binding.json> <plan-artifact-id> <operation> ...\n  workflow schema <run-start|run-handoff|run-continuation|run-receipt|run-lease|run-execution-record|run-signal|run-migration-request|run-migration-plan|run-storage-upgrade>\n\nOnly init creates a database. Mutations acknowledge after SQLite commit.\ndrive executes local read-only builtins with a durable run lease; max-commands is 1..100.\nPause persists admission state; in-flight results may commit; resume preserves original deadlines.\nTimers advance on drive or optional daemon serve; use daemon status to query live scheduling. migrate explicitly upgrades v1..v11 storage to v12 after a verified consistent backup and source CAS.\nRuns with artifact evidence require --artifacts on reads and mutations; this location is not persisted.\nclaim/drive checks frozen postconditions; UNKNOWN waits for explicit retry-gate.\nRaw gate events/manual gate receipts and raw successes in gated runs are refused.\nInbox ingress is trusted host input; inspect entry.status: committed receipt does not mean applied approval.\nOther events and delivery receipts are trusted host facts; delivery is not task success.\nExit 0 means committed/read successfully; inspect result.snapshot.status (mutations) or result.status (status).\nExit 1 means rejected request/transition/storage/execution; 2 means usage/input I/O/output failure.\n";
 fn read<T: DeserializeOwned>(p: &str) -> Result<T> {
     let mut bytes = vec![];
     std::fs::File::open(p)
@@ -57,7 +57,10 @@ fn reader(location: ArtifactLocation<'_>) -> Result<Box<dyn workflow_artifacts::
 pub(crate) fn open(db: &str, artifacts: Option<&str>) -> Result<SqliteRunStore> {
     open_with(db, artifacts.map(ArtifactLocation::Local))
 }
-fn open_with(db: &str, artifacts: Option<ArtifactLocation<'_>>) -> Result<SqliteRunStore> {
+pub(crate) fn open_with(
+    db: &str,
+    artifacts: Option<ArtifactLocation<'_>>,
+) -> Result<SqliteRunStore> {
     let store = SqliteRunStore::open(db)?;
     Ok(if let Some(location) = artifacts {
         store.with_artifacts(reader(location)?)
@@ -67,6 +70,16 @@ fn open_with(db: &str, artifacts: Option<ArtifactLocation<'_>>) -> Result<Sqlite
 }
 fn execute(args: &[&str], artifacts: Option<ArtifactLocation<'_>>) -> Result<Value> {
     match args {
+        ["run", "continuation", db, id] => report(open_with(db, artifacts)?.continuation(id)?),
+        ["run", "continue", db, lease, file] => {
+            let mut store = open_with(db, artifacts)?;
+            let plan = store.prepare_continuation(
+                &read(lease)?,
+                &read(file)?,
+                &workflow_worker::SystemClock,
+            )?;
+            report(store.start(&plan.successor)?)
+        }
         ["run", "acceptance", db, id] => report(open_with(db, artifacts)?.acceptance(id)?),
         ["schema", "run-effect-http-binding"] => report(schemars::schema_for!(
             Vec<workflow_effect_http::HttpEffectBinding>
@@ -74,6 +87,8 @@ fn execute(args: &[&str], artifacts: Option<ArtifactLocation<'_>>) -> Result<Val
         [
             "schema",
             kind @ ("run-start"
+            | "run-continuation"
+            | "run-handoff"
             | "run-receipt"
             | "run-lease"
             | "run-execution-record"
@@ -350,6 +365,7 @@ fn execute(args: &[&str], artifacts: Option<ArtifactLocation<'_>>) -> Result<Val
         ["run", "history", db, id, after, limit] => {
             report(open_with(db, artifacts)?.history(id, number(after)?, number(limit)?)?)
         }
+        ["run", "history-usage", db, id] => report(open_with(db, artifacts)?.history_usage(id)?),
         [
             "run",
             "outbox",
@@ -393,10 +409,22 @@ pub(crate) fn drive(
         max_commands,
     };
     let mut store = open_with(db, artifacts)?;
-    let worker = if let Some(path) = models {
-        crate::models::worker(&store.bundle(id)?, path)?
-    } else {
-        workflow_builtin_capabilities::worker()?
+    let bundle = store.bundle(id)?;
+    let bindings = models
+        .map(crate::models::bindings)
+        .transpose()?
+        .unwrap_or_default();
+    // Validate bindings before acquiring a lease or launching a process.
+    crate::models::bound_worker(&bundle, &bindings, false)?;
+    let worker = crate::activity::Config {
+        bundle: Some(bundle),
+        models: bindings,
+        allow_unused: false,
+        remote: None,
+        workspace: None,
+        journal: Some(crate::activity::JournalBinding::Local {
+            journal: crate::activity::LocalJournal::new(db, artifacts),
+        }),
     };
     let result = if let Some(file) = effects {
         let adapters = workflow_effect_http::HttpEffects::new(read(file)?)?;
@@ -520,22 +548,7 @@ fn drive_workspaces(
     location: Option<ArtifactLocation<'_>>,
     binding: &str,
 ) -> std::result::Result<Value, workflow_runtime::Error> {
-    let backing: Box<dyn workflow_artifacts::ArtifactStore> = match location {
-        Some(ArtifactLocation::Local(root) | ArtifactLocation::InvalidatedLocal(root, _)) => {
-            Box::new(workflow_artifact_local::LocalArtifactStore::open(root).map_err(Error::from)?)
-        }
-        Some(ArtifactLocation::S3(file) | ArtifactLocation::InvalidatedS3(file, _)) => {
-            Box::new(crate::artifact_objects::open(file, false).map_err(Error::from)?)
-        }
-        None => {
-            return Err(Error::new(
-                ErrorCode::InvalidRequest,
-                "workspace execution requires an artifact store binding",
-            )
-            .into());
-        }
-    };
-    let executor = crate::workspace_execution::Executor::new(read(binding)?, backing)?;
+    let executor = crate::activity::Config::workspace(read(binding)?, location)?;
     let mut store = open_with(db, location)?;
     let nonce = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)

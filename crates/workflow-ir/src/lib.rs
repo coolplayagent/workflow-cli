@@ -122,6 +122,9 @@ pub enum NodeKind {
     },
     Loop {
         body: VersionRef,
+        /// Next-iteration input field -> failed body terminal input field.
+        #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+        feedback: BTreeMap<String, String>,
         max_iterations: u32,
         deadline_ms: u64,
     },

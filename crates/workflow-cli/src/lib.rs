@@ -3,6 +3,7 @@ use std::io::{Read, Write};
 use workflow_ir::{Diagnostic, Format, MAX_DOCUMENT_BYTES, Workflow};
 use workflow_validator::ValidationReport as Report;
 
+mod activity;
 mod artifact_objects;
 mod artifacts;
 mod backups;
@@ -164,7 +165,8 @@ pub fn run(
         args @ ["model", ..]
         | args @ [
             "schema",
-            "model-policy" | "model-proposal" | "model-record" | "model-http-binding",
+            "model-policy" | "model-proposal" | "model-record" | "model-checkpoint"
+            | "model-http-binding",
         ] => models::run(args, stdout, stderr),
         args @ ["workspace", ..]
         | args @ [
@@ -188,6 +190,8 @@ pub fn run(
         | args @ [
             "schema",
             "run-start"
+            | "run-continuation"
+            | "run-handoff"
             | "run-receipt"
             | "run-lease"
             | "run-execution-record"

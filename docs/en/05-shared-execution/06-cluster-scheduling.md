@@ -105,7 +105,7 @@ execution grant.
 
 Cluster schedulers renew a live lease when less than half its configured lifetime
 remains. Renewal preserves its epoch and atomically updates stored assignment lease
-identities. Frozen task/call deadlines and admission expiry never increase. Expired
+identities. Renewable read-only assignments and capacity reservations extend to the minimum of the renewed lease, original task deadline and worker credential expiry. Frozen task and effect-call deadlines never increase. Expired
 node attempts are reclaimed under a later attempt/lease epoch; late completions
 cannot alter the run. Persistent timers and Inbox reconciliation remain on every
 leased scheduler scan, including after process restart.
@@ -125,10 +125,7 @@ Install the new version under a new worker identity, include it in scheduler rou
 then retire the old version after drain. Exact-contract mismatches leave no
 speculative attempt when another compatible worker is tried.
 
-The drain timeout starts after the current synchronous adapter returns. Rust
-callbacks cannot be forcibly preempted by this library. Builtin/model/HTTP bindings
-enforce their existing deadlines; noncooperative host adapters require process
-isolation and service-manager termination. Killing a process still requires lease
+The drain timeout starts after the current admitted operation returns. CLI builtin/model tasks use cancellable subprocesses with assignment authority probes; synchronous effect calls retain their deadlines and reconciliation rules. Custom Rust callbacks cannot be forcibly preempted by this library. Killing a process still requires lease
 expiry and, for uncertain writes, effect reconciliation. Scheduler termination
 leaves its durable grants recoverable after expiry rather than reporting them
 drained.

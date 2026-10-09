@@ -169,7 +169,7 @@ or a corrupt catalog stop cleanup. It is not a retention deletion API.
 
 The local adapter requires Linux, `/proc`, Git and a filesystem supporting the
 used descriptor, sync and rename operations. Workspace catalog schema 1 is
-separate from run storage schema 11 and artifact catalog schema 1. Opening a missing
+separate from run storage schema 12 and artifact catalog schema 1. Opening a missing
 store does not initialize it; foreign schemas/directories are refused. Failure is
 reported without claiming an allocation or capture.
 

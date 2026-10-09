@@ -171,7 +171,7 @@ content binding, not signatures; local adapters and database integrity are trust
 host boundaries. A restarted completed run does not sample the model again.
 
 Storage schema 5 introduced protection against older readers; current storage
-is schema 11. Use the explicit backed-up [migration](../04-effects-and-recovery/05-version-migration.md) for
+is schema 12. Use the explicit backed-up [migration](../04-effects-and-recovery/05-version-migration.md) for
 older schemas, supplying `--artifacts` when existing runs need it.
 Old protocol 1 bytes, request/bundle digests and completed run history are preserved.
 
@@ -200,12 +200,7 @@ records fit. Declared failures include `model_unavailable`, `model_invalid_respo
 `model_refused`, `model_budget` and `model_deadline`, all permanent. Driver exit 0
 means a durable operation succeeded; inspect the business snapshot status.
 
-Bounds are per attempt. A timeout or process crash can leave provider billing
-unknown; a later attempt may incur another charge. No atomic run-wide monetary
-budget, streaming, mid-session resume or exactly-once model billing is claimed.
-Synchronous custom adapters must cooperate with deadlines; lease fencing rejects
-late results but cannot terminate arbitrary Rust code. Committed records replay;
-uncommitted in-flight sessions may be reattempted under the existing retry bound.
+CLI model execution durably checkpoints admissions and observations. Restart preserves the original session deadline, call budget, inputs, policy and provider binding; acknowledged tools are reused. Unknown in-flight calls remain explicit and may have unknown billing. Optional frozen retry policy distinguishes temporary failures, rate limits and authentication errors, including bounded Retry-After handling. See [long-running sessions](10-long-running-agents.md) for configuration and schema-2 resumed records. Policies without retry retain their previous behavior. Custom synchronous Rust adapters remain cooperative; CLI activity subprocesses support cancellation. No atomic monetary budget, streaming or exactly-once model billing is claimed.
 
 ## Verification and remaining scope
 

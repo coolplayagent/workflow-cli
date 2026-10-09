@@ -184,6 +184,8 @@ fn generated_run_schemas_and_shipped_requests_match_the_contract() {
         "receipt",
         "lease",
         "execution-record",
+        "continuation",
+        "handoff",
         "signal",
         "migration-request",
         "migration-plan",

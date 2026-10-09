@@ -24,7 +24,7 @@ fn source_version(c: &Connection) -> Result<i64> {
     if app != APPLICATION_ID || !(1..=STORAGE_VERSION).contains(&version) {
         return Err(Error::new(
             ErrorCode::UnsupportedStorage,
-            "only run store schemas 1 through 11 can migrate",
+            "only run store schemas 1 through 12 can migrate",
         ));
     }
     Ok(version)
@@ -103,14 +103,15 @@ pub(crate) fn record(
     for id in ids(c)? {
         let r = crate::recovery::recover(c, &id, artifacts)?;
         let (_, records) = crate::execution::read(c, &r, artifacts)?;
-        if r.events.iter().any(|e| {
-            matches!(
-                e.event.kind,
-                workflow_kernel::EventKind::MigrateDefinition { .. }
-            )
-        }) || records
-            .iter()
-            .any(|r| matches!(r.action, ExecutionAction::Migrated { .. }))
+        if source_version < 11
+            && (r.events.iter().any(|e| {
+                matches!(
+                    e.event.kind,
+                    workflow_kernel::EventKind::MigrateDefinition { .. }
+                )
+            }) || records
+                .iter()
+                .any(|r| matches!(r.action, ExecutionAction::Migrated { .. })))
         {
             return Err(Error::new(
                 ErrorCode::UnsupportedStorage,
@@ -171,10 +172,25 @@ pub(crate) fn upgrade_connection(
         }
     }
     tx.execute_batch(SCHEMA).map_err(storage)?;
+    tx.execute_batch(STATE_SCHEMA).map_err(storage)?;
     hook("schema_written");
     tx.pragma_update(None, "user_version", STORAGE_VERSION)
         .map_err(storage)?;
     let report = record(&tx, version, source, artifacts)?;
+    for id in ids(&tx)? {
+        let r = crate::recovery::audit(&tx, &id, artifacts)?;
+        if tx
+            .query_row(
+                "SELECT count(*) FROM state_checkpoints WHERE run_id=?1 AND revision=?2",
+                rusqlite::params![id, number(r.engine.snapshot().revision)?],
+                |r| r.get::<_, i64>(0),
+            )
+            .map_err(storage)?
+            == 0
+        {
+            crate::recovery::write_state_checkpoint(&tx, &r.engine)?;
+        }
+    }
     if expected.is_some_and(|p| p != &report) {
         return Err(corrupt("storage conversion differs from verified plan"));
     }
@@ -231,7 +247,7 @@ impl SqliteRunStore {
             let report: StorageUpgrade = decode(&value, &hash)?;
             if sequence != result.len() as i64 + 1
                 || !(1..STORAGE_VERSION).contains(&report.source_version)
-                || report.target_version != STORAGE_VERSION
+                || !(report.source_version + 1..=STORAGE_VERSION).contains(&report.target_version)
             {
                 return Err(corrupt("invalid storage migration history"));
             }

@@ -13,14 +13,14 @@ The [Chinese edition](docs/zh/README.md) follows the same chapters and examples.
 
 ## Install one skill
 
-Download `workflow-cli-skill-v0.1.1-linux-x86_64.tar.gz` and `SHA256SUMS` from
-[release v0.1.1](https://github.com/coolplayagent/workflow-cli/releases/tag/v0.1.1),
+Download `workflow-cli-skill-v0.2.0-linux-x86_64.tar.gz` and `SHA256SUMS` from
+[release v0.2.0](https://github.com/coolplayagent/workflow-cli/releases/tag/v0.2.0),
 then run in the download directory:
 
 ```sh
 sha256sum --check SHA256SUMS
 mkdir -p ~/.codex/skills
-tar -xzf workflow-cli-skill-v0.1.1-linux-x86_64.tar.gz -C ~/.codex/skills
+tar -xzf workflow-cli-skill-v0.2.0-linux-x86_64.tar.gz -C ~/.codex/skills
 ~/.codex/skills/workflow-cli/scripts/workflow.sh version --format json
 ```
 

@@ -2,8 +2,8 @@
 """R11 real CLI sessions: locked versions, reviewed migration, storage recovery.
 
 --https additionally requires disposable WORKFLOW_TEST_POSTGRES and OpenSSL.
---legacy-binary tests an actual retained v10 CLI for backup recovery; otherwise
-the storage fixture removes only the new storage journal and version marker.
+--legacy-binary tests an actual retained schema-10/11 CLI for backup recovery; otherwise
+the storage fixture reconstructs a legacy replay checkpoint and removes newer journals.
 """
 import argparse
 import hashlib
@@ -115,10 +115,17 @@ def main():
         storage = temp / "old-storage.sqlite"
         executable = legacy or binary
         local("init", storage, executable=executable)
-        stored = local("start", storage, save("storage-start.json", fixture(1, "storage")), executable=executable)["snapshot"]
+        storage_start = fixture(1, "storage")
+        stored = local("start", storage, save("storage-start.json", storage_start), executable=executable)["snapshot"]
         if legacy is None:
             with sqlite3.connect(storage) as c:
-                c.executescript("DROP TABLE storage_migrations; PRAGMA user_version=10;")
+                checkpoint = run("kernel", "replay", save("legacy-scenario.json", dict({k: v for k, v in storage_start.items() if k != "schema_version"}, events=[])))["checkpoint"]
+                document = json.dumps(checkpoint, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+                digest = "sha256:" + hashlib.sha256(document.encode()).hexdigest()
+                c.execute("INSERT INTO checkpoints VALUES (?,1,?,?)", ("storage", document, digest))
+                c.executescript("DROP TABLE state_checkpoints; DROP TABLE storage_migrations; PRAGMA user_version=10;")
+        with sqlite3.connect(storage) as c:
+            source_version = c.execute("PRAGMA user_version").fetchone()[0]
         preview = local("storage-plan", storage)
         backup = temp / "pre-upgrade.sqlite"
         receipt = local("migrate", storage, backup)
@@ -126,7 +133,7 @@ def main():
         restored = temp / "restored.sqlite"
         local("storage-restore", backup, restored, save("storage-plan.json", preview))
         with sqlite3.connect(restored) as c:
-            assert c.execute("PRAGMA user_version").fetchone()[0] == 10
+            assert c.execute("PRAGMA user_version").fetchone()[0] == source_version
         if legacy:
             assert local("status", restored, "storage", executable=legacy) == stored
             local("verify", restored, "storage", executable=legacy)
@@ -136,7 +143,7 @@ def main():
             c.execute("UPDATE heads SET revision=revision+1")
         run("run", "migrate", restored, temp / "invalid-backup.sqlite", code=1)
         with sqlite3.connect(restored) as c:
-            assert c.execute("PRAGMA user_version").fetchone()[0] == 10
+            assert c.execute("PRAGMA user_version").fetchone()[0] == source_version
         recovered = temp / "recovered.sqlite"
         local("storage-restore", backup, recovered, save("storage-plan.json", preview))
         if legacy:

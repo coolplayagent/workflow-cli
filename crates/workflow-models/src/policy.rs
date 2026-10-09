@@ -8,7 +8,11 @@ pub struct Policy {
 }
 pub fn failure_outcome(failure: &ModelFailure) -> workflow_worker::AdapterOutcome {
     let code = match failure {
-        ModelFailure::Unavailable => "model_unavailable",
+        ModelFailure::Uncertain | ModelFailure::Temporary { .. } | ModelFailure::Unavailable => {
+            "model_unavailable"
+        }
+        ModelFailure::RateLimited { .. } => "model_rate_limited",
+        ModelFailure::Authentication => "model_authentication",
         ModelFailure::InvalidResponse => "model_invalid_response",
         ModelFailure::Refused => "model_refused",
         ModelFailure::Budget => "model_budget",
@@ -46,6 +50,25 @@ impl Policy {
             || to_message(&spec)?.len() > 131_072
         {
             return Err(invalid("model policy/budget exceeds supported bounds"));
+        }
+        if let Some(retry) = &spec.retry {
+            if retry.max_retries == 0
+                || retry.max_retries >= b.model_calls
+                || retry.initial_backoff_ms == 0
+                || retry.initial_backoff_ms > retry.max_backoff_ms
+                || retry.max_backoff_ms > 300000
+            {
+                return Err(invalid(
+                    "retry policy must fit the admitted model-call and backoff budgets",
+                ));
+            }
+            for code in ["model_rate_limited", "model_authentication"] {
+                if spec.task.error_codes.get(code) != Some(&FailureClass::Permanent) {
+                    return Err(invalid(
+                        "retry-enabled task must declare rate-limit and authentication outcomes",
+                    ));
+                }
+            }
         }
         let task = Capability::new(spec.task.clone())?;
         if task.descriptor().effects != EffectContract::ReadOnly {

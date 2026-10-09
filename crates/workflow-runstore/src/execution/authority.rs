@@ -13,6 +13,8 @@ pub struct Authority {
     pub recovery: Option<RecoveryBarrier>,
     pub effects: BTreeMap<String, workflow_effects::EffectState>,
     pub attempts: BTreeMap<String, AttemptState>,
+    pub continuation: Option<ContinuationPlan>,
+    pub model_checkpoints: BTreeMap<String, workflow_models::ModelCheckpoint>,
     acquisitions: BTreeSet<String>,
     generations: BTreeSet<String>,
 }
@@ -27,6 +29,8 @@ impl Authority {
             generation: None,
             recovery: None,
             attempts: BTreeMap::new(),
+            continuation: None,
+            model_checkpoints: BTreeMap::new(),
             effects: BTreeMap::new(),
             acquisitions: BTreeSet::new(),
             generations: BTreeSet::new(),
@@ -298,8 +302,9 @@ impl Authority {
                     || self.attempts.contains_key(&attempt.attempt_id)
                     || attempt.prepared_revision == 0
                     || attempt.command_sequence == 0
-                    || attempt.request.deadline_unix_ms
-                        > self.lease.as_ref().unwrap().expires_at_unix_ms
+                    || (!attempt.renewable
+                        && attempt.request.deadline_unix_ms
+                            > self.lease.as_ref().unwrap().expires_at_unix_ms)
                     || workflow_worker::ExecutionGrant::bind(&attempt.request)? != attempt.grant
                 {
                     return Err(Error::new(
@@ -360,6 +365,86 @@ impl Authority {
                         event_id: event_id.clone(),
                         revision: *event_revision,
                     });
+                *at_unix_ms
+            }
+            ExecutionAction::Continued {
+                epoch,
+                plan,
+                at_unix_ms,
+            } => {
+                self.current(*epoch, *at_unix_ms)?;
+                plan.validate()?;
+                if self.continuation.is_some()
+                    || plan.handoff.source_run_id != self.run_id
+                    || self.recovery.is_some()
+                {
+                    return Err(Error::new(
+                        ErrorCode::ReceiptConflict,
+                        "continuation is already reserved, foreign or recovery-blocked",
+                    ));
+                }
+                self.continuation = Some((**plan).clone());
+                *at_unix_ms
+            }
+            ExecutionAction::ModelCheckpoint {
+                epoch,
+                attempt_id,
+                previous_digest,
+                checkpoint,
+                at_unix_ms,
+            } => {
+                self.current(*epoch, *at_unix_ms)?;
+                let attempt = self
+                    .attempts
+                    .get(attempt_id)
+                    .ok_or_else(|| Error::new(ErrorCode::NotFound, "attempt missing"))?;
+                if attempt.prepared.epoch != *epoch
+                    || attempt.outcome.is_some()
+                    || *at_unix_ms >= attempt.prepared.request.deadline_unix_ms
+                {
+                    return Err(Error::new(
+                        ErrorCode::LeaseConflict,
+                        "model checkpoint belongs to a settled or expired attempt",
+                    ));
+                }
+                workflow_models::verify_resume(&checkpoint.request, &attempt.prepared.request)?;
+                let previous = self.model_checkpoints.get(&attempt.prepared.command_id);
+                if previous.map(workflow_worker::digest).transpose()? != *previous_digest {
+                    return Err(Error::new(
+                        ErrorCode::ReceiptConflict,
+                        "model checkpoint compare-and-swap failed",
+                    ));
+                }
+                if previous.is_none() && checkpoint.request != attempt.prepared.request {
+                    return Err(Error::new(
+                        ErrorCode::BindingConflict,
+                        "first checkpoint must belong to this attempt",
+                    ));
+                }
+                workflow_models::verify_checkpoint_update(previous, checkpoint, *at_unix_ms)?;
+                self.model_checkpoints
+                    .insert(attempt.prepared.command_id.clone(), (**checkpoint).clone());
+                *at_unix_ms
+            }
+            ExecutionAction::Progress {
+                epoch,
+                attempt_id,
+                at_unix_ms,
+            } => {
+                self.current(*epoch, *at_unix_ms)?;
+                let attempt = self
+                    .attempts
+                    .get(attempt_id)
+                    .ok_or_else(|| Error::new(ErrorCode::NotFound, "attempt missing"))?;
+                if attempt.prepared.epoch != *epoch
+                    || attempt.outcome.is_some()
+                    || *at_unix_ms >= attempt.prepared.request.deadline_unix_ms
+                {
+                    return Err(Error::new(
+                        ErrorCode::LeaseConflict,
+                        "progress belongs to an expired or settled attempt",
+                    ));
+                }
                 *at_unix_ms
             }
             ExecutionAction::Failed {

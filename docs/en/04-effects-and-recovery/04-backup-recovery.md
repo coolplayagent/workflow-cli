@@ -149,8 +149,8 @@ with an explicit reconciliation hold, not permission to activate two copies.
 ## Storage, evidence and recovery objectives
 
 Schema 10 introduced restore generations, barriers and imported receipts.
-Current schema 11 uses the explicit backed-up [migration](05-version-migration.md)
-for versions 1–10; older readers refuse newer storage. An actual v9 binary migration test retains paused Inbox data and a
+Current schema 12 uses the explicit backed-up [migration](05-version-migration.md)
+for versions 1–11; older readers refuse newer storage. An actual v9 binary migration test retains paused Inbox data and a
 prepared effect's lease/history exactly. Restore generation fields are absent
 from old records, preserving their digests.
 

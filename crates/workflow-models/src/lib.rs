@@ -10,6 +10,7 @@ pub use workflow_worker::{Error, ErrorCode, Result, digest, parse_message, to_me
 mod tests;
 pub fn schema(kind: &str) -> Result<String> {
     let s = match kind {
+        "checkpoint" => schemars::schema_for!(ModelCheckpoint),
         "policy" => schemars::schema_for!(PolicySpec),
         "proposal" => schemars::schema_for!(Proposal),
         "record" => schemars::schema_for!(ModelRecord),

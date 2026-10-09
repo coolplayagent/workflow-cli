@@ -16,6 +16,7 @@ pub trait ExecutionStore: RunStore {
     fn release(&mut self, lease: &Lease, clock: &dyn Clock) -> Result<()>;
     fn tick_due(&mut self, lease: &Lease, clock: &dyn Clock) -> Result<Option<Committed>>;
     fn claim_next(&mut self, lease: &Lease, clock: &dyn Clock) -> Result<Claimed>;
+    fn progress(&mut self, lease: &Lease, attempt_id: &str, clock: &dyn Clock) -> Result<()>;
     fn finish_task(
         &mut self,
         lease: &Lease,
@@ -28,6 +29,18 @@ pub trait ExecutionStore: RunStore {
         lease: &Lease,
         attempt_id: &str,
         error: &workflow_worker::Error,
+        clock: &dyn Clock,
+    ) -> Result<()>;
+    fn model_checkpoint(
+        &mut self,
+        request: &workflow_worker::WorkRequest,
+        clock: &dyn Clock,
+    ) -> Result<Option<workflow_models::ModelCheckpoint>>;
+    fn save_model_checkpoint(
+        &mut self,
+        request: &workflow_worker::WorkRequest,
+        previous_digest: Option<&str>,
+        checkpoint: &workflow_models::ModelCheckpoint,
         clock: &dyn Clock,
     ) -> Result<()>;
     fn execution_history(

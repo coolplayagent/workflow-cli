@@ -117,7 +117,7 @@ ID/摘要、基线/观察树摘要、cleanliness、各路径/可执行位与准�
 | 单 Git 命令 / stderr | 60 秒 / 16 KiB |
 
 适配器需要 Linux、`/proc`、Git 及支持所用描述符/sync/rename 的文件系统。工作区目录 schema 1 与运行
-schema 11、产物目录 schema 1 独立。打开缺失 store 不初始化，外来 schema/目录拒绝；失败不会声称分配/
+schema 12、产物目录 schema 1 独立。打开缺失 store 不初始化，外来 schema/目录拒绝；失败不会声称分配/
 捕获成功。
 
 Cargo/Bazel 测试覆盖真实 Git 对象、脏源码、replacement ref/filter、对象损坏、SHA-256 仓库、路径/类型/

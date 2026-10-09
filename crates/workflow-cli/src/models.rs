@@ -8,7 +8,7 @@ use std::{
 use workflow_model_http::{HttpBinding, HttpModel};
 use workflow_models::*;
 use workflow_worker::{ExecutionGrant, WorkRequest, WorkResult, Worker};
-pub const HELP: &str = "MODEL POLICY EXECUTION\n  workflow model check-policy <policy.json>\n  workflow model describe-binding <http-binding.json>\n  workflow model dispatch <policy.json> <http-binding.json> <request.json> <grant.json>\n  workflow model check-record <policy.json> <request.json> <result.json>\n  workflow run drive-models <db> <run-id> <owner> <max-commands> <bindings.json>\n  workflow schema <model-policy|model-proposal|model-record|model-http-binding>\n\nModel policies are frozen in the run bundle; provider/model/endpoints remain host bindings.\nCredentials are resolved on each call from a short-lived private lease; local execution also supports named environment references.\nOnly listed read-only tools can be invoked. Models cannot write run state or skip gates.\ncheck-record replays explicit records without model/network calls; it does not authenticate a provider or grant.\n";
+pub const HELP: &str = "MODEL POLICY EXECUTION\n  workflow model check-policy <policy.json>\n  workflow model describe-binding <http-binding.json>\n  workflow model dispatch <policy.json> <http-binding.json> <request.json> <grant.json>\n  workflow model check-record <policy.json> <request.json> <result.json>\n  workflow run drive-models <db> <run-id> <owner> <max-commands> <bindings.json>\n  workflow schema <model-policy|model-proposal|model-record|model-checkpoint|model-http-binding>\n\nModel policies are frozen in the run bundle; provider/model/endpoints remain host bindings.\nCredentials are resolved on each call from a short-lived private lease; local execution also supports named environment references.\nOnly listed read-only tools can be invoked. Models cannot write run state or skip gates.\ncheck-record replays explicit records without model/network calls; it does not authenticate a provider or grant.\n";
 fn read<T: DeserializeOwned>(path: &str) -> Result<T> {
     let mut bytes = vec![];
     std::fs::File::open(path)
@@ -21,9 +21,6 @@ fn read<T: DeserializeOwned>(path: &str) -> Result<T> {
 pub(crate) struct Binding {
     policy: workflow_worker::ModelPolicyBinding,
     http: HttpBinding,
-}
-pub fn worker(bundle: &workflow_kernel::BundleSpec, path: &str) -> Result<Worker> {
-    bound_worker(bundle, &bindings(path)?, false)
 }
 pub(crate) fn shared_worker(
     bundle: &workflow_kernel::BundleSpec,
@@ -70,6 +67,14 @@ pub(crate) fn bound_worker(
     bindings: &[Binding],
     allow_unused: bool,
 ) -> Result<Worker> {
+    bound_worker_with_journal(bundle, bindings, allow_unused, None)
+}
+pub(crate) fn bound_worker_with_journal(
+    bundle: &workflow_kernel::BundleSpec,
+    bindings: &[Binding],
+    allow_unused: bool,
+    journal: Option<Arc<dyn SessionJournal>>,
+) -> Result<Worker> {
     let mut seen = std::collections::BTreeSet::new();
     let mut worker = workflow_builtin_capabilities::worker()?;
     for b in bindings {
@@ -94,11 +99,15 @@ pub(crate) fn bound_worker(
             ));
         }
         seen.insert(b.policy.digest.clone());
-        worker.register(ModelCapability::new(
+        let mut capability = ModelCapability::new(
             policy,
             Arc::new(HttpModel::new(b.http.clone())?),
             workflow_builtin_capabilities::worker()?,
-        )?)?;
+        )?;
+        if let Some(journal) = &journal {
+            capability = capability.with_journal(journal.clone());
+        }
+        worker.register(capability)?;
     }
     for p in &bundle.model_policies {
         if !seen.contains(&Policy::new(p.clone())?.binding().digest) {
@@ -118,7 +127,7 @@ fn execute(args: &[&str]) -> Result<(serde_json::Value, i32)> {
         }
         [
             "schema",
-            kind @ ("model-policy" | "model-proposal" | "model-record"),
+            kind @ ("model-policy" | "model-proposal" | "model-record" | "model-checkpoint"),
         ] => parse_message(schema(&kind[6..])?.as_bytes())?,
         ["model", "check-policy", file] => {
             let p = Policy::new(read(file)?)?;

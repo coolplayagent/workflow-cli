@@ -6,6 +6,7 @@ license.workspace = true
 rust-version.workspace = true
 
 [dependencies]
+httpdate = "1.0.3"
 workflow-credentials = { path = "../workflow-credentials" }
 workflow-models = { path = "../workflow-models" }
 workflow-ir = { path = "../workflow-ir" }

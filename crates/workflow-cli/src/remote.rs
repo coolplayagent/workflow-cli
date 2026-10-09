@@ -207,7 +207,8 @@ pub fn run(args: &[&str], stdout: &mut impl Write, stderr: &mut impl Write) -> i
                 let client = RemoteClient::new(read(binding)?)?;
                 let bundle: workflow_kernel::BundleSpec = read(bundle)?;
                 workflow_kernel::CompiledBundle::compile(bundle.clone())?;
-                let (worker, principal) = crate::models::shared_worker(&bundle, models)?;
+                let (worker, principal) =
+                    crate::activity::Config::remote(Some(bundle), Some(models), read(binding)?)?;
                 let mut completed = 0;
                 let mut failed = 0;
                 let mut fenced = 0;
@@ -251,7 +252,7 @@ pub fn run(args: &[&str], stdout: &mut impl Write, stderr: &mut impl Write) -> i
                     }
                 }
                 let effects = workflow_effect_http::HttpEffects::new(bindings)?;
-                let worker = workflow_builtin_capabilities::worker()?;
+                let (worker, _) = crate::activity::Config::remote(None, None, read(binding)?)?;
                 let mut observed = 0;
                 let mut failed = 0;
                 let mut completed = 0;
@@ -426,7 +427,7 @@ pub fn run(args: &[&str], stdout: &mut impl Write, stderr: &mut impl Write) -> i
             ["remote", "work", binding, iterations, poll] => {
                 let (iterations, poll) = bounds(iterations, poll)?;
                 let client = RemoteClient::new(read(binding)?)?;
-                let worker = workflow_builtin_capabilities::worker()?;
+                let (worker, _) = crate::activity::Config::remote(None, None, read(binding)?)?;
                 let mut completed = 0;
                 let mut fenced = 0;
                 let mut failed = 0;

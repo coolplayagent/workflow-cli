@@ -349,3 +349,169 @@ fn effect_driver_records_unknown_then_queries_without_repeating_the_write() {
     drop(store);
     std::fs::remove_file(path).unwrap();
 }
+
+struct Advancing(Arc<AtomicU64>);
+impl Clock for Advancing {
+    fn now_unix_ms(&self) -> workflow_worker::Result<u64> {
+        Ok(self.0.load(Ordering::SeqCst))
+    }
+}
+struct PollingExecutor {
+    time: Arc<AtomicU64>,
+    dropped: Arc<AtomicU64>,
+    cancel_database: Option<PathBuf>,
+    takeover_database: Option<PathBuf>,
+}
+struct PollingTask {
+    executor: PollingExecutor,
+    request: workflow_worker::WorkRequest,
+    grant: workflow_worker::ExecutionGrant,
+    polls: u64,
+}
+impl TaskExecutor for PollingExecutor {
+    fn execute_task(
+        &self,
+        _: &workflow_worker::WorkRequest,
+        _: &workflow_worker::ExecutionGrant,
+        _: &dyn Clock,
+    ) -> workflow_worker::Result<workflow_worker::WorkResult> {
+        panic!("must start cancellable work")
+    }
+    fn start_task(
+        &self,
+        r: &workflow_worker::WorkRequest,
+        g: &workflow_worker::ExecutionGrant,
+    ) -> workflow_worker::Result<Option<Box<dyn RunningTask>>> {
+        Ok(Some(Box::new(PollingTask {
+            executor: PollingExecutor {
+                time: self.time.clone(),
+                dropped: self.dropped.clone(),
+                cancel_database: self.cancel_database.clone(),
+                takeover_database: self.takeover_database.clone(),
+            },
+            request: r.clone(),
+            grant: g.clone(),
+            polls: 0,
+        })))
+    }
+}
+impl RunningTask for PollingTask {
+    fn poll(&mut self) -> workflow_worker::Result<Option<workflow_worker::WorkResult>> {
+        self.polls += 1;
+        self.executor.time.fetch_add(200, Ordering::SeqCst);
+        if self.polls == 4 {
+            if let Some(path) = &self.executor.cancel_database {
+                let mut store = SqliteRunStore::open(path).unwrap();
+                let s = store.get("inspect").unwrap();
+                store
+                    .apply(&workflow_kernel::Event {
+                        event_id: "cancel-during-work".into(),
+                        run_id: s.run_id,
+                        run_digest: s.run_digest,
+                        expected_revision: s.revision,
+                        at_unix_ms: self.executor.time.load(Ordering::SeqCst),
+                        kind: workflow_kernel::EventKind::Cancel {},
+                    })
+                    .unwrap();
+            }
+            if let Some(path) = &self.executor.takeover_database {
+                self.executor.time.fetch_add(2000, Ordering::SeqCst);
+                let mut store = SqliteRunStore::open(path).unwrap();
+                store
+                    .acquire(
+                        &LeaseRequest {
+                            run_id: "inspect".into(),
+                            owner: "replacement".into(),
+                            acquisition_id: "replacement".into(),
+                            ttl_ms: 1000,
+                        },
+                        &Advancing(self.executor.time.clone()),
+                    )
+                    .unwrap();
+            }
+        }
+        if self.polls < 12 {
+            return Ok(None);
+        }
+        workflow_builtin_capabilities::worker()?
+            .execute_with_clock(
+                &self.request,
+                &self.grant,
+                &Advancing(self.executor.time.clone()),
+            )
+            .map(|v| Some(v.into_result()))
+    }
+    fn cancel(&mut self) -> workflow_worker::Result<()> {
+        self.executor.dropped.fetch_add(1, Ordering::SeqCst);
+        Ok(())
+    }
+}
+impl Drop for PollingTask {
+    fn drop(&mut self) {
+        self.executor.dropped.fetch_add(1, Ordering::SeqCst);
+    }
+}
+#[test]
+fn activities_renew_beyond_initial_lease_and_stop_on_cancellation_or_takeover() {
+    for mode in ["complete", "cancel", "takeover"] {
+        let path =
+            std::env::temp_dir().join(format!("workflow-renew-{}-{mode}.db", std::process::id()));
+        let mut store = SqliteRunStore::create(&path).unwrap();
+        store.start(&request(true)).unwrap();
+        let time = Arc::new(AtomicU64::new(1001));
+        let dropped = Arc::new(AtomicU64::new(0));
+        let executor = PollingExecutor {
+            time: time.clone(),
+            dropped: dropped.clone(),
+            cancel_database: (mode == "cancel").then_some(path.clone()),
+            takeover_database: (mode == "takeover").then_some(path.clone()),
+        };
+        let result = drive(
+            &mut store,
+            &executor,
+            "inspect",
+            &DriveOptions {
+                owner: "owner".into(),
+                acquisition_id: "original".into(),
+                lease_ms: 1000,
+                max_commands: 10,
+            },
+            &Advancing(time),
+        );
+        match mode {
+            "complete" => {
+                assert_eq!(
+                    result.unwrap().snapshot.status,
+                    workflow_runstore::RunStatus::Succeeded
+                );
+            }
+            "cancel" => {
+                assert_eq!(
+                    result.unwrap().snapshot.status,
+                    workflow_runstore::RunStatus::Cancelled
+                );
+            }
+            _ => {
+                assert_eq!(
+                    result.unwrap_err().storage.unwrap().code,
+                    workflow_runstore::ErrorCode::LeaseConflict
+                );
+            }
+        }
+        assert!(dropped.load(Ordering::SeqCst) >= 1);
+        let records = store.execution_history("inspect", 0, 100).unwrap().items;
+        assert!(records.iter().any(|r| matches!(
+            r.action,
+            workflow_runstore::ExecutionAction::Progress { .. }
+        )));
+        if mode != "complete" {
+            assert!(!records.iter().any(|r| matches!(
+                r.action,
+                workflow_runstore::ExecutionAction::Finished { .. }
+            )));
+        }
+        store.verify("inspect").unwrap();
+        drop(store);
+        std::fs::remove_file(path).unwrap();
+    }
+}

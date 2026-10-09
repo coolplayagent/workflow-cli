@@ -151,7 +151,7 @@ check accepted worker outputs. [Shared artifact access](../05-shared-execution/0
 adds authenticated upload and producer admission.
 
 Run storage uses schema **11**. `run --artifacts <store> migrate <db>
-<new-backup-file>` explicitly upgrades schemas 1–10 after a verified backup,
+<new-backup-file>` explicitly upgrades schemas 1–11 after a verified backup,
 checks dependencies and preserves retained execution records; foreign/future
 stores are refused. See [version migration](../04-effects-and-recovery/05-version-migration.md). Artifact
 catalog schema is separately versioned at 1. Existing definition/worker wire

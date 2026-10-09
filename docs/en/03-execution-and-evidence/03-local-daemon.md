@@ -50,8 +50,8 @@ whether unattended scheduling is available.
 | Observation | Meaning |
 | --- | --- |
 | `responsive`, phase `polling` | The control listener answered. Inspect `last_scan_unix_ms` and diagnostics for scheduler progress. |
-| `responsive`, phase `busy` | One drive was admitted; `active_run` identifies it. Other timers may wait for that synchronous call. |
-| `responsive`, phase `draining` | Stop was accepted; no further drive is admitted. The already admitted drive may finish. |
+| `responsive`, phase `busy` | Up to eight independent drives are admitted; `active_runs` lists them. Other runs continue to receive timer scans. |
+| `responsive`, phase `draining` | Stop was accepted; no further drive is admitted. All already admitted drives may finish. |
 | `unreachable` | The ownership lock is held but control did not answer within its deadline. Scheduling progress is unknown. |
 | `stopped` | No responsive service or held ownership lock was observed. No scheduling guarantee is made. |
 
@@ -63,11 +63,7 @@ not a business delivery metric. `last_completed_run` means that attempt returned
 
 Stop first queries the instance and sends a generation-bound request. A stale
 request cannot stop a replacement service. `stop_requested: true, stopped: false`
-acknowledges draining; poll until `stopped` to confirm termination. One previously
-admitted drive processes at most one command/provider call. Adapters must honor
-their deadlines; a stuck synchronous adapter is not forcibly killed or reported
-drained. An OS supervisor may terminate it, after which leases and effect query
-recovery handle the orphan. Do not signal a PID copied from a stale status file.
+acknowledges draining; poll until `stopped` to confirm termination. Every admitted drive processes at most one command. Read-only activities use cancellable child processes while ownership is renewed. Stop drains all admitted work; it does not cancel the business run. External effects keep their existing bounded calls and reconciliation semantics. Do not signal a PID copied from a stale status file. `lease_ms` defaults to 120000 and accepts 100–300000; leave sufficient margin for database latency.
 
 ## Ownership and scheduling
 
@@ -90,7 +86,7 @@ not acquire leases repeatedly; its persisted deadline is checked on later scans.
 Callbacks enter through the durable trusted Inbox, so their resulting work is
 found without an in-memory notification. Errors and uncertain effects receive a
 bounded retry delay, with changed run revisions reconsidered immediately. This is
-local round-robin scanning, not cluster quota/fairness or parallel worker capacity.
+bounded local round-robin scanning with up to eight active drives, not cluster quota/fairness.
 
 Database unavailability prevents admission/commit and is exposed as an error.
 After process suspension, the next scan observes actual wall time and due timers;

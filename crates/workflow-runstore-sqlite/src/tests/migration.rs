@@ -580,7 +580,7 @@ fn storage_upgrade_preflight_backup_restore_and_crash_rollback_preserve_locked_h
             .unwrap()
             .unwrap();
         assert_eq!(plan.source_version, 10);
-        assert_eq!(plan.target_version, 11);
+        assert_eq!(plan.target_version, STORAGE_VERSION);
         let mut child = process(&db, phase, "upgrade", true);
         wait_file(&db.dir.join("ready-upgrade"), &mut child);
         child.kill().unwrap();
@@ -589,7 +589,14 @@ fn storage_upgrade_preflight_backup_restore_and_crash_rollback_preserve_locked_h
         let version: i64 = c
             .pragma_query_value(None, "user_version", |r| r.get(0))
             .unwrap();
-        assert_eq!(version, if phase == "after_commit" { 11 } else { 10 });
+        assert_eq!(
+            version,
+            if phase == "after_commit" {
+                STORAGE_VERSION
+            } else {
+                10
+            }
+        );
         drop(c);
         let mut migrated = SqliteRunStore::migrate(&db.path).unwrap();
         assert_eq!(migrated.get(&r.run_id).unwrap(), old);

@@ -40,8 +40,8 @@ workflow daemon status /tmp/my-workflow-control
 | 观察 | 含义 |
 | --- | --- |
 | `responsive`，phase 为 `polling` | 控制监听器回复；还需检查 `last_scan_unix_ms` 和诊断确认调度进度 |
-| `responsive`，phase 为 `busy` | 已接纳一次 drive，`active_run` 标识它；其他定时器可能等待该同步调用 |
-| `responsive`，phase 为 `draining` | 停止已接纳，不再接纳新 drive，原 drive 可以完成 |
+| `responsive`，phase 为 `busy` | 最多接纳八个独立 drive，`active_runs` 列出它们；继续扫描其他 run 的定时器 |
+| `responsive`，phase 为 `draining` | 停止已接纳，不再接纳新 drive，所有已接纳 drive 可以完成 |
 | `unreachable` | 所有权锁仍被持有，但控制通道未在 deadline 内回复；调度进度未知 |
 | `stopped` | 未观察到响应服务或持有的锁；不保证调度存在 |
 
@@ -50,9 +50,7 @@ workflow daemon status /tmp/my-workflow-control
 `last_completed_run` 只说明该次尝试已返回。
 
 Stop 先查询实例，再发送绑定代际的请求，旧请求不能停止替代服务。`stop_requested: true, stopped: false`
-表示接受排空；继续查询至 stopped 才确认终止。此前已接纳的 drive 最多处理一个命令/提供方调用。
-适配器必须遵守 deadline；卡住的同步调用不会被强杀或谎称已排空。OS supervisor 可以终止它，随后通过
-租约和外部操作查询恢复遗留任务。不要对旧状态文件中的 PID 发信号。
+表示接受排空；继续查询至 stopped 才确认终止。每个已接纳 drive 最多处理一个命令，只读活动在可取消子进程中执行，主进程保持续租。Stop 等待全部已接纳工作，不会取消业务 run；外部副作用仍使用原有有界调用和对账规则。不要对旧状态文件中的 PID 发信号。配置 `lease_ms` 默认 120000，范围 100–300000 毫秒，应给数据库延迟留足余量。
 
 ## 所有权与调度
 
@@ -66,8 +64,7 @@ Daemon 不会清除恢复核对屏障。
 
 每次扫描最多读 100 个运行，下次扫描续接游标；每个合格运行每次访问最多处理一个命令。空闲等待不会
 反复取得租约，后续扫描检查持久化 deadline。回调经可信持久化 Inbox 接入，无需内存通知就能发现后继
-工作。错误和不确定效果使用有界重试延迟，revision 变化则立即重新考虑。这是本地轮转扫描，不是集群
-配额/公平性或并行 worker 容量。
+工作。错误和不确定效果使用有界重试延迟，revision 变化则立即重新考虑。这是最多八个并发 drive 的有界本地轮转扫描，不是集群配额/公平性。
 
 数据库不可用阻止接纳/提交并暴露错误。进程挂起后，下次扫描观察真实时间及到期定时器，不延长 deadline。
 若挂起时仍持 SQLite 事务锁，其他查询可能返回 Busy；恢复依旧验证状态，不伪装查询成功。

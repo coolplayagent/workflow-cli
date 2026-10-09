@@ -380,7 +380,24 @@ fn shared_image_storage_upgrade_requires_reviewed_source_and_preserves_frozen_hi
     let bytes: Vec<u8> = row.get(0);
     let mut image: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
     image["schema_version"] = 10.into();
-    image["tables"].as_array_mut().unwrap().pop();
+    image["tables"].as_array_mut().unwrap().truncate(11);
+    // Construct the actual v10 journal checkpoint layout, not a truncated v12
+    // state checkpoint image that no released version could have produced.
+    let (engine, _) = workflow_kernel::Engine::start(
+        workflow_kernel::CompiledBundle::compile(r.bundle.clone()).unwrap(),
+        &r.run_id,
+        r.inputs.clone(),
+        old.now_unix_ms,
+        r.limits.clone(),
+    )
+    .unwrap();
+    let checkpoint = engine.checkpoint().unwrap();
+    image["tables"][5] = serde_json::json!([[
+        r.run_id,
+        1,
+        serde_json::to_string(&checkpoint).unwrap(),
+        workflow_worker::digest(&checkpoint).unwrap()
+    ]]);
     let legacy = serde_json::to_vec(&image).unwrap();
     c.execute("UPDATE workflow_authority.runs SET image=$3,image_digest=$4 WHERE tenant=$1 AND project='project' AND run_id=$2",&[&f.tenant,&r.run_id,&legacy,&hash(&legacy)]).unwrap();
     assert_eq!(

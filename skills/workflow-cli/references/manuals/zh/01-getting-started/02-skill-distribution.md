@@ -6,12 +6,12 @@
 ## 安装
 
 从[发布页](https://github.com/coolplayagent/workflow-cli/releases/latest)下载
-`workflow-cli-skill-v0.1.1-linux-x86_64.tar.gz` 和 `SHA256SUMS`，在下载目录执行：
+`workflow-cli-skill-v0.2.0-linux-x86_64.tar.gz` 和 `SHA256SUMS`，在下载目录执行：
 
 ```sh
 sha256sum --check SHA256SUMS
 mkdir -p ~/.codex/skills
-tar -xzf workflow-cli-skill-v0.1.1-linux-x86_64.tar.gz -C ~/.codex/skills
+tar -xzf workflow-cli-skill-v0.2.0-linux-x86_64.tar.gz -C ~/.codex/skills
 ~/.codex/skills/workflow-cli/scripts/workflow.sh version --format json
 ```
 
@@ -46,8 +46,8 @@ python3 -m pip install -r website/requirements.txt
 python3 scripts/check_docs.py
 python3 -m unittest discover -s scripts/tests -v
 cargo build --release --locked -p workflow-cli
-python3 scripts/package_skill.py --binary target/release/workflow --output dist --tag v0.1.1
-python3 scripts/verify_skill.py dist/workflow-cli-skill-v0.1.1-linux-x86_64.tar.gz
+python3 scripts/package_skill.py --binary target/release/workflow --output dist --tag v0.2.0
+python3 scripts/verify_skill.py dist/workflow-cli-skill-v0.2.0-linux-x86_64.tar.gz
 ```
 
 验证器解压到含空格的临时路径，检查全部文件摘要、递归本地 Markdown 链接和标题片段，然后从

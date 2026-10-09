@@ -6,12 +6,35 @@ use workflow_worker::{Clock, Worker};
 /// Host task execution, including any attempt workspace and retained evidence.
 /// Storage still owns claim/lease/result validation and durable completion.
 pub trait TaskExecutor {
+    fn start_assigned_task(
+        &self,
+        _assignment_id: &str,
+        request: &workflow_worker::WorkRequest,
+        grant: &workflow_worker::ExecutionGrant,
+    ) -> workflow_worker::Result<Option<Box<dyn RunningTask>>> {
+        self.start_task(request, grant)
+    }
+
+    /// Return a cancellable operation when the host can run work independently.
+    /// Legacy in-process adapters remain cooperative and synchronous.
+    fn start_task(
+        &self,
+        _request: &workflow_worker::WorkRequest,
+        _grant: &workflow_worker::ExecutionGrant,
+    ) -> workflow_worker::Result<Option<Box<dyn RunningTask>>> {
+        Ok(None)
+    }
     fn execute_task(
         &self,
         request: &workflow_worker::WorkRequest,
         grant: &workflow_worker::ExecutionGrant,
         clock: &dyn Clock,
     ) -> workflow_worker::Result<workflow_worker::WorkResult>;
+}
+/// A host-owned operation. Dropping it must cancel and reap any child processes.
+pub trait RunningTask {
+    fn poll(&mut self) -> workflow_worker::Result<Option<workflow_worker::WorkResult>>;
+    fn cancel(&mut self) -> workflow_worker::Result<()>;
 }
 impl TaskExecutor for Worker {
     fn execute_task(
@@ -198,17 +221,16 @@ fn drive_inner<S: ExecutionStore>(
                     processed += 1;
                 }
                 Claimed::Task { attempt } => {
-                    let result = match worker.execute_task(&attempt.request, &attempt.grant, clock)
-                    {
-                        Ok(accepted) => accepted,
+                    let execution =
+                        execute_owned(store, worker, &attempt, &mut lease, options, clock);
+                    let result = match execution {
+                        Ok(Some(accepted)) => accepted,
+                        Ok(None) => {
+                            processed += 1;
+                            continue;
+                        }
                         Err(e) => {
-                            let mut error = Error::from(e.clone());
-                            if let Err(storage) =
-                                store.fail_task(&lease, &attempt.attempt_id, &e, clock)
-                            {
-                                error.storage = Some(storage);
-                            }
-                            return Err(error);
+                            return Err(e);
                         }
                     };
                     store.finish_task(&lease, &attempt.attempt_id, &result, clock)?;
@@ -243,6 +265,86 @@ fn drive_inner<S: ExecutionStore>(
             e.release_error = release.err();
             Err(e)
         }
+    }
+}
+// Ownership stays on this thread; a running operation never receives a store handle.
+fn execute_owned(
+    store: &mut impl ExecutionStore,
+    worker: &impl TaskExecutor,
+    attempt: &workflow_runstore::PreparedTask,
+    lease: &mut workflow_runstore::Lease,
+    options: &DriveOptions,
+    clock: &impl Clock,
+) -> Result<Option<workflow_worker::WorkResult>, Error> {
+    let outcome = (|| {
+        let Some(mut running) = worker.start_task(&attempt.request, &attempt.grant)? else {
+            return worker
+                .execute_task(&attempt.request, &attempt.grant, clock)
+                .map(Some)
+                .map_err(Error::from);
+        };
+        let mut observed = 0;
+        loop {
+            let now = clock.now_unix_ms()?;
+            if now >= attempt.request.deadline_unix_ms {
+                running.cancel()?;
+                return Err(workflow_worker::Error::new(
+                    workflow_worker::ErrorCode::DeadlineExceeded,
+                    "activity deadline elapsed",
+                )
+                .into());
+            }
+            if now.saturating_add(options.lease_ms / 2) >= lease.expires_at_unix_ms {
+                *lease = store.renew(lease, options.lease_ms, clock)?;
+                store.progress(lease, &attempt.attempt_id, clock)?;
+            }
+            if now.saturating_sub(observed) >= 250 || observed == 0 {
+                store.tick_due(lease, clock)?;
+                let snapshot = store.get(&lease.run_id)?;
+                let cancelled = match &attempt.request.scope {
+                    workflow_worker::InvocationScope::Workflow {
+                        node_instance_id, ..
+                    } => snapshot
+                        .frames
+                        .values()
+                        .flat_map(|f| f.nodes.values())
+                        .any(|n| {
+                            format!("instance-{}", n.instance_id) == *node_instance_id
+                                && n.cancel_requested
+                        }),
+                    _ => false,
+                };
+                if cancelled {
+                    running.cancel()?;
+                    store.fail_task(
+                        lease,
+                        &attempt.attempt_id,
+                        &workflow_worker::Error::new(
+                            workflow_worker::ErrorCode::Expired,
+                            "activity cancelled by workflow",
+                        ),
+                        clock,
+                    )?;
+                    return Ok(None);
+                }
+                observed = now;
+            }
+            if let Some(result) = running.poll()? {
+                return Ok(Some(result));
+            }
+            std::thread::sleep(std::time::Duration::from_millis(20));
+        }
+    })();
+    match outcome {
+        Err(mut error) => {
+            if let Some(e) = &error.worker
+                && let Err(storage) = store.fail_task(lease, &attempt.attempt_id, e, clock)
+            {
+                error.storage = Some(storage);
+            }
+            Err(error)
+        }
+        other => other,
     }
 }
 #[cfg(test)]

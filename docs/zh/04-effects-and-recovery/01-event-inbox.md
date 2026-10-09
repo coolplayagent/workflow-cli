@@ -69,7 +69,7 @@ Pending expiry 在下一次提交事件或 timer drive 被观察。本地 daemon
 上游签名验证和持久化队列属于网关。完整策略、迁移、本地/HTTPS 示例和故障证据见
 [R06 验收](../06-acceptance-and-maintenance/03-approval-acceptance.md)。
 
-当前运行存储为 schema 11，旧版按[版本迁移](05-version-migration.md)使用
+当前运行存储为 schema 12，旧版按[版本迁移](05-version-migration.md)使用
 `run [--artifacts store] migrate db new-backup-file`。既有种子、事件和空 Inbox 快照保留准确摘要。
 确认丢失时使用原提交重试，正常恢复不调用 webhook 或模型。
 
@@ -81,6 +81,6 @@ Pending expiry 在下一次提交事件或 timer drive 被观察。本地 daemon
 
 4.1 事件与人工决策
 
-[全书目录](../README.md) · [4. 外部操作与恢复](README.md) · [English](../../en/04-effects-and-recovery/01-event-inbox.md) · [上一章: 3.9 受保护的交付](../03-execution-and-evidence/09-release-acceptance.md) · [下一章: 4.2 持久化外部操作](02-durable-effects.md)
+[全书目录](../README.md) · [4. 外部操作与恢复](README.md) · [English](../../en/04-effects-and-recovery/01-event-inbox.md) · [上一章: 3.10 长时间运行的 Agent 会话](../03-execution-and-evidence/10-long-running-agents.md) · [下一章: 4.2 持久化外部操作](02-durable-effects.md)
 
 <!-- /book-navigation -->

@@ -11,13 +11,13 @@ Workflow CLI 把业务 SOP 变成可评审、可持久化执行的流程。定�
 
 ## 安装一个 skill
 
-从 [v0.1.1 发布页](https://github.com/coolplayagent/workflow-cli/releases/tag/v0.1.1)下载
-`workflow-cli-skill-v0.1.1-linux-x86_64.tar.gz` 和 `SHA256SUMS`，在下载目录执行：
+从 [v0.2.0 发布页](https://github.com/coolplayagent/workflow-cli/releases/tag/v0.2.0)下载
+`workflow-cli-skill-v0.2.0-linux-x86_64.tar.gz` 和 `SHA256SUMS`，在下载目录执行：
 
 ```sh
 sha256sum --check SHA256SUMS
 mkdir -p ~/.codex/skills
-tar -xzf workflow-cli-skill-v0.1.1-linux-x86_64.tar.gz -C ~/.codex/skills
+tar -xzf workflow-cli-skill-v0.2.0-linux-x86_64.tar.gz -C ~/.codex/skills
 ~/.codex/skills/workflow-cli/scripts/workflow.sh version --format json
 ```
 

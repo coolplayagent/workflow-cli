@@ -15,6 +15,7 @@
 - [3.7 证据门禁](07-evidence-gates.md)
 - [3.8 运行时后置条件](08-runtime-postconditions.md)
 - [3.9 受保护的交付](09-release-acceptance.md)
+- [3.10 长时间运行的 Agent 会话](10-long-running-agents.md)
 
 [上一卷: 02. 定义流程](../02-process-definition/README.md)
 

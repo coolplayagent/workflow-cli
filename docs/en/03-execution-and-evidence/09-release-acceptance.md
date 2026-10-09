@@ -176,7 +176,7 @@ gateway implements its advertised atomicity; validate that adapter separately.
 
 ## Compatibility
 
-Storage tables remain schema 11; artifact catalogs remain schema 1. Optional
+Storage tables remain schema 12; artifact catalogs remain schema 1. Optional
 release/exception/workspace fields are omitted from legacy documents so their
 canonical hashes remain stable. Generated v1 schema families include the new
 typed fields. Old binaries with closed schemas reject new protected contracts;
@@ -187,6 +187,6 @@ retained-compatible-binary recovery procedure continues to apply.
 
 3.9 Protected delivery
 
-[Book contents](../README.md) · [3. Execute and verify](README.md) · [中文](../../zh/03-execution-and-evidence/09-release-acceptance.md) · [Previous: 3.8 Runtime postconditions](08-runtime-postconditions.md) · [Next: 4.1 Events and human decisions](../04-effects-and-recovery/01-event-inbox.md)
+[Book contents](../README.md) · [3. Execute and verify](README.md) · [中文](../../zh/03-execution-and-evidence/09-release-acceptance.md) · [Previous: 3.8 Runtime postconditions](08-runtime-postconditions.md) · [Next: 3.10 Long-running agent sessions](10-long-running-agents.md)
 
 <!-- /book-navigation -->

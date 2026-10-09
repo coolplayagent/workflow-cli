@@ -83,12 +83,12 @@ CLI 矩阵使用临时 Git 仓库、真实定义验证器和持久保存回执�
 
 ## 兼容性
 
-存储表仍为 schema 11，产物目录仍为 schema 1。旧文档省略可选的 release/exception/workspace 字段，因此规范化哈希保持稳定。生成的 v1 schema 家族包含新的类型化字段。采用封闭 schema 的旧二进制会拒绝新受保护契约，不能用来执行这些 run。R11 显式备份/升级以及保留兼容二进制的恢复流程继续适用。
+存储表仍为 schema 12，产物目录仍为 schema 1。旧文档省略可选的 release/exception/workspace 字段，因此规范化哈希保持稳定。生成的 v1 schema 家族包含新的类型化字段。采用封闭 schema 的旧二进制会拒绝新受保护契约，不能用来执行这些 run。R11 显式备份/升级以及保留兼容二进制的恢复流程继续适用。
 
 <!-- book-navigation -->
 
 3.9 受保护的交付
 
-[全书目录](../README.md) · [3. 执行与验证](README.md) · [English](../../en/03-execution-and-evidence/09-release-acceptance.md) · [上一章: 3.8 运行时后置条件](08-runtime-postconditions.md) · [下一章: 4.1 事件与人工决策](../04-effects-and-recovery/01-event-inbox.md)
+[全书目录](../README.md) · [3. 执行与验证](README.md) · [English](../../en/03-execution-and-evidence/09-release-acceptance.md) · [上一章: 3.8 运行时后置条件](08-runtime-postconditions.md) · [下一章: 3.10 长时间运行的 Agent 会话](10-long-running-agents.md)
 
 <!-- /book-navigation -->

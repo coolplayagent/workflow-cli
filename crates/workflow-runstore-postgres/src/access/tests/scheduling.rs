@@ -702,3 +702,74 @@ fn parked_gate_cannot_advance_through_single_worker_dispatch() {
             > before.revision
     );
 }
+
+#[test]
+#[ignore = "requires disposable PostgreSQL; mandatory postgres CI job runs this"]
+fn renewable_assignments_and_capacity_reservations_survive_the_initial_lease() {
+    let mut c = Cluster::new(&policy());
+    let request = simple("long-activity");
+    c.f.service
+        .start(c.runner.expose_secret(), &request)
+        .unwrap();
+    let lease =
+        c.f.service
+            .acquire(
+                c.scheduler.expose_secret(),
+                &request.run_id,
+                "short-ownership",
+                2000,
+            )
+            .unwrap();
+    let RoutedDispatch::Task { assignment_id } = c.dispatch(&lease, 0) else {
+        panic!()
+    };
+    let task =
+        c.f.service
+            .assignment(c.workers[0].expose_secret(), &assignment_id)
+            .unwrap();
+    assert!(task.renewable);
+    assert!(task.request.deadline_unix_ms > lease.expires_at_unix_ms);
+    let renewed =
+        c.f.service
+            .renew(c.scheduler.expose_secret(), &lease, 10000)
+            .unwrap();
+    let expiry: i64 = client()
+        .query_one(
+            "SELECT expires_at FROM workflow_scheduling.admissions WHERE id=$1",
+            &[&assignment_id],
+        )
+        .unwrap()
+        .get(0);
+    assert_eq!(
+        expiry as u64,
+        renewed
+            .expires_at_unix_ms
+            .min(task.request.deadline_unix_ms)
+    );
+    let now = workflow_worker::SystemClock.now_unix_ms().unwrap();
+    std::thread::sleep(std::time::Duration::from_millis(
+        lease.expires_at_unix_ms.saturating_sub(now) + 50,
+    ));
+    assert!(
+        !c.f.service
+            .task_progress(c.workers[0].expose_secret(), &assignment_id, true)
+            .unwrap()
+    );
+    assert!(
+        c.f.service
+            .task_progress(c.workers[1].expose_secret(), &assignment_id, true)
+            .is_err()
+    );
+    assert_eq!(
+        c.f.service
+            .assignment(c.workers[0].expose_secret(), &assignment_id)
+            .unwrap(),
+        task
+    );
+    c.finish(&assignment_id, 0);
+    assert!(
+        c.f.service
+            .task_progress(c.workers[0].expose_secret(), &assignment_id, true)
+            .is_err()
+    );
+}
