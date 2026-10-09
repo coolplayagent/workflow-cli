@@ -147,7 +147,9 @@ def main(binary, output):
                 cli('run', 'start', db, save(directory / 'start.json', start))
                 config = save(directory / 'daemon.json', dict(schema_version=1, database=str(db),
                     control_directory=str(directory / 'control'), model_bindings=str(models),
-                    artifacts=None, effect_bindings=None, lease_ms=2000, poll_interval_ms=50, error_backoff_ms=100))
+                    # Provider/restart contracts use enough ownership margin for debug
+                    # builds on CI; short-lease renewal has separate clock tests.
+                    artifacts=None, effect_bindings=None, lease_ms=10000, poll_interval_ms=50, error_backoff_ms=100))
 
                 def daemon():
                     child = subprocess.Popen([binary, 'daemon', 'serve', str(config)],
@@ -175,13 +177,32 @@ def main(binary, output):
                             wait(lambda pid=pid: stopped(pid), 'cancelled subprocess reaped')
                         provider.release.set()
                 expected = 'cancelled' if mode == 'cancel' else 'succeeded'
-                wait(lambda: cli('run', 'status', db, mode)['status'] == expected, f'{mode} terminal state')
+                def terminal():
+                    state = cli('run', 'status', db, mode)
+                    if state['status'] == expected:
+                        return True
+                    assert state['status'] not in ['succeeded', 'failed', 'cancelled'], state['status']
+                    assert child.poll() is None, f'daemon exited: {child.returncode}'
+                    return False
+
+                try:
+                    wait(terminal, f'{mode} terminal state')
+                except AssertionError as error:
+                    records = cli('run', 'execution-history', db, mode, 0, 100)['items']
+                    actions = [r['action'] for r in records]
+                    diagnostic = dict(case=mode, state=cli('run', 'status', db, mode)['status'],
+                        http_calls=len(provider.contexts),
+                        daemon=cli('daemon', 'status', directory / 'control'),
+                        actions=[dict(type=a['type'], error=a.get('error'),
+                                      outcome=a.get('result', {}).get('outcome')) for a in actions])
+                    raise AssertionError(json.dumps(diagnostic)) from error
                 cli('daemon', 'stop', directory / 'control')
                 child.wait(timeout=20)
                 cli('run', 'verify', db, mode)
                 records = cli('run', 'execution-history', db, mode, 0, 100)['items']
                 finished = [r['action'] for r in records if r['action']['type'] == 'finished']
                 if mode != 'cancel':
+                    assert len(provider.contexts) == 3, 'unexpected extra provider call'
                     assert len(finished) == 1
                     record = finished[0]['result']['model_record']
                     observed_tools = [e for e in record['events'] if e['type'] == 'tool_finished']
