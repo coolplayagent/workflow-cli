@@ -1,8 +1,8 @@
 schema_version: 4
 artifact_kind: map
 map_type: knowledge
-map_version: 32
-updated_at: unix:1790757754
+map_version: 64
+updated_at: unix:1791523317
 directories:
 - directory: domain
   purpose: Domain concepts, models, and business rules.
@@ -77,6 +77,7 @@ topics:
   - release-acceptance
   - remote-effects
   - remote-service
+  - reviewed-templates
   - run-store
   - runtime-postconditions
   - security-acceptance
@@ -85,8 +86,8 @@ topics:
   - version-migration
   - worker-protocol
   - workflow-evidence-gates
-  ref: topics/topic-4ca303a3bf7ddf7b-a62bb12c1241fd4fa3a9580526a4be7838c4560f09c3ad41357785609ad70d1b.yaml
-  digest: a62bb12c1241fd4fa3a9580526a4be7838c4560f09c3ad41357785609ad70d1b
+  ref: topics/topic-4ca303a3bf7ddf7b-c5aa08a05f45dc20706285e60ed478d193c6d7c3fc518e93bb24ba5723f0d165.yaml
+  digest: c5aa08a05f45dc20706285e60ed478d193c6d7c3fc518e93bb24ba5723f0d165
 - id: business-knowledge
   title: Business knowledge
   description: Version-controlled business domains, terminology, aliases, semantics, and technical mappings.
@@ -102,69 +103,69 @@ topics:
   ref: topics/topic-247e2a0d6f43d185-fc2d5534a38a5ddc28536afa855ff77db8e2941ccaccbfa79f948ddcfaec2f7d.yaml
   digest: fc2d5534a38a5ddc28536afa855ff77db8e2941ccaccbfa79f948ddcfaec2f7d
 history:
-  omitted_through: 16
+  omitted_through: 48
   recent:
-  - version: 17
-    action: source.add
+  - version: 49
+    action: source.update
     actor: cli
-    summary: Added source 'local-daemon' to topic 'architecture'.
-  - version: 18
-    action: source.add
+    summary: Updated source 'local-execution'.
+  - version: 50
+    action: source.update
     actor: cli
-    summary: Added source 'local-acceptance' to topic 'architecture'.
-  - version: 19
-    action: source.add
+    summary: Updated source 'model-boundaries-acceptance'.
+  - version: 51
+    action: source.update
     actor: cli
-    summary: Added source 'postgres-authority' to topic 'architecture'.
-  - version: 20
-    action: source.add
+    summary: Updated source 'model-execution'.
+  - version: 52
+    action: source.update
     actor: cli
-    summary: Added source 'authenticated-authority' to topic 'architecture'.
-  - version: 21
-    action: source.add
+    summary: Updated source 'ordered-compensation'.
+  - version: 53
+    action: source.update
     actor: cli
-    summary: Added source 'remote-service' to topic 'architecture'.
-  - version: 22
-    action: source.add
+    summary: Updated source 'postgres-authority'.
+  - version: 54
+    action: source.update
     actor: cli
-    summary: Added source 'shared-artifacts' to topic 'architecture'.
-  - version: 23
-    action: source.add
+    summary: Updated source 'release-acceptance'.
+  - version: 55
+    action: source.update
     actor: cli
-    summary: Added source 'definition-acceptance' to topic 'architecture'.
-  - version: 24
-    action: source.add
+    summary: Updated source 'remote-effects'.
+  - version: 56
+    action: source.update
     actor: cli
-    summary: Added source 'remote-effects' to topic 'architecture'.
-  - version: 25
-    action: source.add
+    summary: Updated source 'remote-service'.
+  - version: 57
+    action: source.update
     actor: cli
-    summary: Added source 'durable-approval' to topic 'architecture'.
-  - version: 26
-    action: source.add
+    summary: Updated source 'reviewed-templates'.
+  - version: 58
+    action: source.update
     actor: cli
-    summary: Added source 'model-boundaries-acceptance' to topic 'architecture'.
-  - version: 27
-    action: source.add
+    summary: Updated source 'run-store'.
+  - version: 59
+    action: source.update
     actor: cli
-    summary: Added source 'shared-recovery' to topic 'architecture'.
-  - version: 28
-    action: source.add
+    summary: Updated source 'runtime-postconditions'.
+  - version: 60
+    action: source.update
     actor: cli
-    summary: Added source 'artifact-acceptance' to topic 'architecture'.
-  - version: 29
-    action: source.add
+    summary: Updated source 'security-acceptance'.
+  - version: 61
+    action: source.update
     actor: cli
-    summary: Added source 'version-migration' to topic 'architecture'.
-  - version: 30
-    action: source.add
+    summary: Updated source 'shared-artifacts'.
+  - version: 62
+    action: source.update
     actor: cli
-    summary: Added source 'security-acceptance' to topic 'architecture'.
-  - version: 31
-    action: source.add
+    summary: Updated source 'shared-recovery'.
+  - version: 63
+    action: source.update
     actor: cli
-    summary: Added source 'release-acceptance' to topic 'architecture'.
-  - version: 32
-    action: source.add
+    summary: Updated source 'version-migration'.
+  - version: 64
+    action: source.update
     actor: cli
-    summary: Added source 'cluster-scheduling' to topic 'architecture'.
+    summary: Updated source 'worker-protocol'.

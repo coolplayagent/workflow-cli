@@ -1,0 +1,71 @@
+schema_version: 1
+id: requirements-review
+version: 1.0.0
+entry: review
+inputs: {}
+nodes:
+- id: review
+  kind:
+    type: wait
+    event: design-review
+    timeout_ms: 86400000
+  inputs: {}
+  outputs: {}
+  bindings: {}
+  preconditions: []
+- id: implement
+  kind:
+    type: task
+    capability:
+      id: coding.implement
+      version: 1.0.0
+    policy: null
+  inputs: {}
+  outputs: {}
+  bindings: {}
+  preconditions: []
+- id: done
+  kind:
+    type: terminal
+    outcome: succeeded
+  inputs: {}
+  outputs: {}
+  bindings: {}
+  preconditions: []
+- id: declined
+  kind:
+    type: terminal
+    outcome: cancelled
+  inputs: {}
+  outputs: {}
+  bindings: {}
+  preconditions: []
+- id: expired
+  kind:
+    type: terminal
+    outcome: failed
+  inputs: {}
+  outputs: {}
+  bindings: {}
+  preconditions: []
+edges:
+- id: approved
+  from: review
+  to: implement
+  route:
+    type: accepted
+- id: declined
+  from: review
+  to: declined
+  route:
+    type: rejected
+- id: expired
+  from: review
+  to: expired
+  route:
+    type: timed_out
+- id: implemented
+  from: implement
+  to: done
+  route:
+    type: next

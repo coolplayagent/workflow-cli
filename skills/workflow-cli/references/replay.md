@@ -2,7 +2,7 @@
 
 Use the wrapper resolved by SKILL.md and read `workflow help`.
 Read `workflow schema kernel-bundle` and `kernel-scenario` for current formats.
-The repository guide at [manual](../../../docs/kernel-semantics.md) defines transition semantics.
+The repository guide at [manual](manuals/en/02-process-definition/04-kernel-semantics.md) defines transition semantics.
 
 Obtain exact workflow definitions and capability descriptors from the task's
 catalog. Keep provider credentials and storage configuration outside the bundle.

@@ -1,0 +1,74 @@
+{
+  "run_id": "example-defect",
+  "parameters": {
+    "request": "Return the sum of two integers and pass the candidate test.",
+    "repository": "project-source",
+    "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "name": "candidate-1"
+  },
+  "business_facts": [
+    "pinned-source",
+    "isolated-tests"
+  ],
+  "environment": {
+    "mode": "local",
+    "capabilities": [
+      {
+        "capability": {
+          "id": "delivery.pr-create",
+          "version": "1.0.0"
+        },
+        "contract_digest": "sha256:c576094bc9265e2efe4ef67b7851ad9ecbeb7b13e2977c294c3b03eecd4ff268",
+        "host_binding": "project-adapters"
+      },
+      {
+        "capability": {
+          "id": "delivery.query",
+          "version": "1.0.0"
+        },
+        "contract_digest": "sha256:a60a60954477ac458a337c636bd1b266043ad70f3457c3fde4e43a8fceea5989",
+        "host_binding": "project-adapters"
+      },
+      {
+        "capability": {
+          "id": "sdlc.diagnose",
+          "version": "1.0.0"
+        },
+        "contract_digest": "sha256:d5c22deed6d94f2da909bf06ac3df00317904e5647073295b385f8e17e35bb77",
+        "host_binding": "project-adapters"
+      },
+      {
+        "capability": {
+          "id": "sdlc.propose",
+          "version": "1.0.0"
+        },
+        "contract_digest": "sha256:06e9237d5cb3eb61dc8d3a509d19ca9a195f3223e1866a3bc53d3b3543f16327",
+        "host_binding": "project-adapters"
+      },
+      {
+        "capability": {
+          "id": "sdlc.test",
+          "version": "1.0.0"
+        },
+        "contract_digest": "sha256:9d13f9437efe0bee4566ab09b9b8360b33bb58c3baaabe2193c874675bd61018",
+        "host_binding": "project-adapters"
+      },
+      {
+        "capability": {
+          "id": "sdlc.verify",
+          "version": "1.0.0"
+        },
+        "contract_digest": "sha256:2ae9425bb29e58ba50e70b213c9136a915df9a6c55cd4b6b7c32c5def20192fe",
+        "host_binding": "project-adapters"
+      }
+    ],
+    "effect_targets": [
+      "sdlc-delivery@1.0.0"
+    ],
+    "approvers": [
+      "delivery-reviewer"
+    ],
+    "model_policies": []
+  },
+  "started_at_unix_ms": 1000
+}

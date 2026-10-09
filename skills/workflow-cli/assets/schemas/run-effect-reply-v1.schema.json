@@ -1,0 +1,291 @@
+{
+  "ok": true,
+  "result": {
+    "$defs": {
+      "ArtifactLink": {
+        "additionalProperties": false,
+        "properties": {
+          "artifact_id": {
+            "type": "string"
+          },
+          "digest": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "artifact_id",
+          "digest"
+        ],
+        "type": "object"
+      },
+      "EffectReceipt": {
+        "additionalProperties": false,
+        "properties": {
+          "intent_digest": {
+            "type": "string"
+          },
+          "operation_key": {
+            "type": "string"
+          },
+          "outputs": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "provider_receipt": {
+            "type": "string"
+          },
+          "release": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/ReleaseReceipt"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "resource_id": {
+            "type": "string"
+          },
+          "target": {
+            "$ref": "#/$defs/VersionRef"
+          }
+        },
+        "required": [
+          "operation_key",
+          "intent_digest",
+          "target",
+          "resource_id",
+          "provider_receipt",
+          "outputs"
+        ],
+        "type": "object"
+      },
+      "FailureClass": {
+        "enum": [
+          "invalid_input",
+          "permanent",
+          "permission_denied",
+          "business_rejected",
+          "transient",
+          "cancelled",
+          "unknown_effect"
+        ],
+        "type": "string"
+      },
+      "Observation": {
+        "oneOf": [
+          {
+            "additionalProperties": false,
+            "properties": {
+              "receipt": {
+                "$ref": "#/$defs/EffectReceipt"
+              },
+              "status": {
+                "const": "applied",
+                "type": "string"
+              }
+            },
+            "required": [
+              "status",
+              "receipt"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "description": "Provider guarantees this invocation did not apply an effect. Timeouts,\ntransport errors and ambiguous HTTP 5xx must use Unknown instead.",
+            "properties": {
+              "class": {
+                "$ref": "#/$defs/FailureClass"
+              },
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "status": {
+                "const": "not_applied",
+                "type": "string"
+              }
+            },
+            "required": [
+              "status",
+              "code",
+              "class",
+              "message"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "description": "A query found nothing *at that instant*. It does not fence an old writer.",
+            "properties": {
+              "status": {
+                "const": "absent",
+                "type": "string"
+              }
+            },
+            "required": [
+              "status"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "reason": {
+                "type": "string"
+              },
+              "status": {
+                "const": "unknown",
+                "type": "string"
+              }
+            },
+            "required": [
+              "status",
+              "reason"
+            ],
+            "type": "object"
+          }
+        ]
+      },
+      "ReleaseReceipt": {
+        "additionalProperties": false,
+        "properties": {
+          "authorization_digest": {
+            "type": "string"
+          },
+          "observed_at_unix_ms": {
+            "format": "uint64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "subject": {
+            "$ref": "#/$defs/ReleaseSubject",
+            "description": "Actual subject observed by the gateway, never merely copied from input."
+          },
+          "target_check": {
+            "$ref": "#/$defs/TargetCheck"
+          }
+        },
+        "required": [
+          "subject",
+          "target_check",
+          "authorization_digest",
+          "observed_at_unix_ms"
+        ],
+        "type": "object"
+      },
+      "ReleaseSubject": {
+        "additionalProperties": false,
+        "properties": {
+          "artifacts": {
+            "items": {
+              "$ref": "#/$defs/ArtifactLink"
+            },
+            "type": "array"
+          },
+          "input_digest": {
+            "type": "string"
+          },
+          "source_revision": {
+            "$ref": "#/$defs/SourceRevision"
+          }
+        },
+        "required": [
+          "source_revision",
+          "input_digest",
+          "artifacts"
+        ],
+        "type": "object"
+      },
+      "SourceRevision": {
+        "additionalProperties": false,
+        "properties": {
+          "repository": {
+            "type": "string"
+          },
+          "revision": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "repository",
+          "revision"
+        ],
+        "type": "object"
+      },
+      "TargetCheck": {
+        "oneOf": [
+          {
+            "additionalProperties": false,
+            "description": "Gateway atomically compares the full subject and applies the operation.",
+            "properties": {
+              "type": {
+                "const": "atomic_compare",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "description": "Gateway observes before writing; the declared query is required after\nambiguous outcomes. This mode does not claim to close the external race.",
+            "properties": {
+              "remaining_race": {
+                "type": "string"
+              },
+              "type": {
+                "const": "observe_then_reconcile",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type",
+              "remaining_race"
+            ],
+            "type": "object"
+          }
+        ]
+      },
+      "VersionRef": {
+        "additionalProperties": false,
+        "description": "Versions are immutable opaque release identifiers, never ranges or `latest`.",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "version"
+        ],
+        "type": "object"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "additionalProperties": false,
+    "properties": {
+      "observation": {
+        "$ref": "#/$defs/Observation"
+      },
+      "request_digest": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "request_digest",
+      "observation"
+    ],
+    "title": "EffectReply",
+    "type": "object"
+  }
+}

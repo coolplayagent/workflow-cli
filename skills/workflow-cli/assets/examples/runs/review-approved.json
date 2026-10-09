@@ -1,0 +1,14 @@
+{
+  "event_id": "event-1",
+  "run_id": "demo-review-approved",
+  "run_digest": "sha256:ed2fb1cab8ea46017e45231a2aac6f1fbdeb675de8ae572bdabcfd1b07472e70",
+  "expected_revision": 1,
+  "at_unix_ms": 1001,
+  "kind": {
+    "type": "signal",
+    "instance_id": 5,
+    "event": "design-review",
+    "accepted": true,
+    "outputs": {}
+  }
+}

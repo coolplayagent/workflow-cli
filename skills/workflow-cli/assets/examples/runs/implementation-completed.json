@@ -1,0 +1,15 @@
+{
+  "event_id": "event-2",
+  "run_id": "demo-review-approved",
+  "run_digest": "sha256:ed2fb1cab8ea46017e45231a2aac6f1fbdeb675de8ae572bdabcfd1b07472e70",
+  "expected_revision": 2,
+  "at_unix_ms": 1002,
+  "kind": {
+    "type": "task_completed",
+    "instance_id": 4,
+    "result": {
+      "status": "succeeded",
+      "outputs": {}
+    }
+  }
+}

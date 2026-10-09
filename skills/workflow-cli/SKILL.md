@@ -19,8 +19,8 @@ version is rejected. Release archives contain the binary, manuals and examples;
 source installations require a matching published CLI on PATH. Do not compile an
 unrelated checkout to repair a missing runtime. See [installation](references/install.md).
 
-For a guided introduction, read the [English book](../../docs/README.md) or
-[中文书籍](../../docs/zh/README.md). Read only the reference needed for the task:
+For a guided introduction, read the [English book](references/manuals/en/README.md) or
+[中文书籍](references/manuals/zh/README.md). Read only the reference needed for the task:
 
 | Task | Reference | CLI entry |
 | --- | --- | --- |

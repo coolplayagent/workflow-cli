@@ -1,7 +1,7 @@
 # Workflow run
 
 Use the wrapper resolved by SKILL.md and read `workflow help`. Consult
-[manual](../../../docs/run-store.md) and [manual](../../../docs/local-execution.md) for transaction, lease and failure semantics.
+[manual](manuals/en/03-execution-and-evidence/01-run-store.md) and [manual](manuals/en/03-execution-and-evidence/02-local-execution.md) for transaction, lease and failure semantics.
 
 Choose the explicit run database from the user's task. `run init <db>` alone
 creates a store. Do not point it at a definition-registry database or silently
@@ -9,7 +9,7 @@ initialize a different database after a query fails. Inspect the error and path.
 For schema 1–10, inspect `run storage-plan <db>` and use the explicit
 `run --artifacts <store> migrate <db> <new-backup-file>` to upgrade to schema 11
 with a verified backup. Omit the artifact reader only when retained runs have no
-artifact dependencies. Read [version migration](../../../docs/version-migration.md) for
+artifact dependencies. Read [version migration](manuals/en/04-effects-and-recovery/05-version-migration.md) for
 plan, backup, rollback and definition-migration contracts. A future/foreign schema
 must not be overwritten to make it open.
 
@@ -94,7 +94,7 @@ replace the local lease token with its returned value. Release the current lease
 afterward. `run tick-due` observes due waits under the lease; `run attempt-failed`
 records an actual worker protocol error, never an invented business outcome.
 
-For a bundle with mandatory postconditions, read [manual](../../../docs/runtime-postconditions.md).
+For a bundle with mandatory postconditions, read [manual](manuals/en/03-execution-and-evidence/08-runtime-postconditions.md).
 A settled task can still await its gate; inspect node decisions and run status.
 `claim`/`drive` computes gates from settled evidence. UNKNOWN is idle until an
 authorized explicit `run retry-gate <db> <run-id> <instance-id> <event-id>
@@ -113,7 +113,7 @@ For model-policy tasks, follow `model.md` and use
 `run drive-models` with exact host bindings. Model result settlement checks explicit
 records; raw task successes cannot bypass it. Recovery replays without model calls.
 
-For a real host-verified callback, read [manual](../../../docs/event-inbox.md), `schema run-signal`
+For a real host-verified callback, read [manual](manuals/en/04-effects-and-recovery/01-event-inbox.md), `schema run-signal`
 and `run waits <db> <id> 0 <limit>`. Copy the actual run digest, target and correlation;
 retain a stable source message ID, decision, bounded reason and expiry. Use
 `run receive <db> <signal.json>` and inspect `result.entry.status.status`:
@@ -128,7 +128,7 @@ the actual source/decision first. Never create a human approval from model text.
 
 ## Managed write effects
 
-Read [manual](../../../docs/durable-effects.md) before dispatching a write. The workflow needs a
+Read [manual](manuals/en/04-effects-and-recovery/02-durable-effects.md) before dispatching a write. The workflow needs a
 frozen effect binding, exact descriptor and authorized host target/principal
 configuration. Use `run drive-effects <db> <id> <owner> <budget> <bindings.json>`
 only within the user's authorized effect scope. An optional model binding file
@@ -149,7 +149,7 @@ the provider and quiescing outstanding writers. This settles the task as cancell
 and does not grant a new attempt. Do not fabricate receipts or authenticated actor
 claims.
 
-For compensation, read [manual](../../../docs/ordered-compensation.md). Declare exact compensator
+For compensation, read [manual](manuals/en/04-effects-and-recovery/03-ordered-compensation.md). Declare exact compensator
 versions, same-frame effect dependencies and an explicit business branch. The host
 binds the original Applied receipt and enforces reverse dependency order.
 `irreversible: true` prohibits a compensator. Inspect `needs_attention` separately
@@ -161,7 +161,7 @@ of rollback; check the original effects and their `compensated_by` links.
 
 ## Local backup and recovery
 
-Read [manual](../../../docs/backup-recovery.md) and the exported backup schemas. Name the exact run
+Read [manual](manuals/en/04-effects-and-recovery/04-backup-recovery.md) and the exported backup schemas. Name the exact run
 store, required artifacts and optional definition registry in the source file;
 `backup create` writes only to a new directory. `backup verify` checks bytes and
 full application replay. Do not copy live database files or omit required artifacts.
@@ -190,7 +190,7 @@ Restoring a database does not retire the source service or authorize two active 
 
 ## Optional unattended local daemon
 
-Read [manual](../../../docs/local-daemon.md) and `schema daemon-config`. Use `daemon serve` with the
+Read [manual](manuals/en/03-execution-and-evidence/03-local-daemon.md) and `schema daemon-config`. Use `daemon serve` with the
 explicit database, artifact path and private control directory; it remains in the
 foreground and can be supervised by the OS. Bindings load once at startup. Local
 builtins need no network, while configured model/effect adapters still may.

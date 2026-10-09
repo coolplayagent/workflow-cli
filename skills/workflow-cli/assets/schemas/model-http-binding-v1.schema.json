@@ -1,0 +1,91 @@
+{
+  "$defs": {
+    "LeaseRef": {
+      "additionalProperties": false,
+      "description": "A reference to a broker-owned file, never a credential literal. Each call\nrereads the file, so atomic replacement rotates credentials without changing\nthe workflow, policy, host binding or running worker.",
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "principal": {
+          "$ref": "#/$defs/Principal"
+        }
+      },
+      "required": [
+        "path",
+        "principal"
+      ],
+      "type": "object"
+    },
+    "Principal": {
+      "additionalProperties": false,
+      "properties": {
+        "actor": {
+          "type": "string"
+        },
+        "project": {
+          "type": "string"
+        },
+        "tenant": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "tenant",
+        "project",
+        "actor"
+      ],
+      "type": "object"
+    },
+    "Provider": {
+      "enum": [
+        "openai_responses",
+        "anthropic_messages"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "allow_loopback_http": {
+      "default": false,
+      "type": "boolean"
+    },
+    "api_key_env": {
+      "type": "string"
+    },
+    "credential": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/LeaseRef"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "endpoint": {
+      "type": "string"
+    },
+    "model": {
+      "type": "string"
+    },
+    "provider": {
+      "$ref": "#/$defs/Provider"
+    },
+    "schema_version": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    }
+  },
+  "required": [
+    "schema_version",
+    "provider",
+    "model",
+    "endpoint"
+  ],
+  "title": "HttpBinding",
+  "type": "object"
+}

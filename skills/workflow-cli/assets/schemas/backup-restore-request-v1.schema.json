@@ -1,0 +1,21 @@
+{
+  "ok": true,
+  "result": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "additionalProperties": false,
+    "properties": {
+      "actor": {
+        "type": "string"
+      },
+      "reason": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "actor",
+      "reason"
+    ],
+    "title": "RestoreRequest",
+    "type": "object"
+  }
+}

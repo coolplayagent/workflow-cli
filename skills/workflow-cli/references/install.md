@@ -17,13 +17,13 @@ and falls back to a compatible executable on PATH if the bundled one cannot run.
 Use an absolute `WORKFLOW_BIN` path when explicitly selecting another installation.
 It does not download software or rewrite environment configuration automatically.
 
-The source skill contains the operating references and wrapper; published archives
-add `references/manuals/`, `assets/examples/`, `assets/schemas/`, `manifest.json`,
-and the compiled executable. Build those archives with the repository's
-`scripts/package_skill.py`. Source-checkout links resolve directly to `docs/`; packaging rewrites every local
-link into the archive, including both book editions, examples and schemas. Read
-the [English contents](../../../docs/README.md) or
-[中文目录](../../../docs/zh/README.md). Source-checkout examples live in `examples/`.
+The source skill and published archives both contain the operating references,
+`references/manuals/`, `assets/examples/` and `assets/schemas/`. Every local reading
+link stays inside the skill directory. Read the [English contents](manuals/en/README.md)
+or [中文目录](manuals/zh/README.md) only when the task needs detailed guidance.
+Release archives additionally contain `manifest.json` and the compiled executable.
+Copying the source skill alone preserves its reading resources; supply a matching
+CLI through PATH or `WORKFLOW_BIN` for execution.
 
 For a deterministic isolated demo after extracting a release:
 
@@ -40,5 +40,5 @@ project-specific adapters or test services as documented in their manuals.
 Keep databases, artifacts, workspaces, credentials and daemon control directories
 outside the skill installation. To upgrade, retain the old CLI while verifying
 new store compatibility. Storage schema upgrades require the explicit backed-up
-procedure in [version migration](../../../docs/version-migration.md); replacing a skill
+procedure in [version migration](manuals/en/04-effects-and-recovery/05-version-migration.md); replacing a skill
 directory does not migrate a run database or alter a frozen run definition.

@@ -1,0 +1,131 @@
+{
+  "ok": true,
+  "result": {
+    "$defs": {
+      "Change": {
+        "additionalProperties": false,
+        "properties": {
+          "declared_output": {
+            "type": "boolean"
+          },
+          "kind": {
+            "$ref": "#/$defs/ChangeKind"
+          },
+          "path": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "path",
+          "kind",
+          "declared_output"
+        ],
+        "type": "object"
+      },
+      "ChangeKind": {
+        "enum": [
+          "added",
+          "modified",
+          "deleted"
+        ],
+        "type": "string"
+      },
+      "FileEntry": {
+        "additionalProperties": false,
+        "properties": {
+          "bytes": {
+            "format": "uint64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "digest": {
+            "type": "string"
+          },
+          "executable": {
+            "type": "boolean"
+          },
+          "path": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "path",
+          "digest",
+          "bytes",
+          "executable"
+        ],
+        "type": "object"
+      },
+      "SourceRevision": {
+        "additionalProperties": false,
+        "properties": {
+          "repository": {
+            "type": "string"
+          },
+          "revision": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "repository",
+          "revision"
+        ],
+        "type": "object"
+      },
+      "WorkspaceLink": {
+        "additionalProperties": false,
+        "properties": {
+          "digest": {
+            "type": "string"
+          },
+          "workspace_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "workspace_id",
+          "digest"
+        ],
+        "type": "object"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "additionalProperties": false,
+    "properties": {
+      "changes": {
+        "items": {
+          "$ref": "#/$defs/Change"
+        },
+        "type": "array"
+      },
+      "clean": {
+        "type": "boolean"
+      },
+      "files": {
+        "items": {
+          "$ref": "#/$defs/FileEntry"
+        },
+        "type": "array"
+      },
+      "source_revision": {
+        "$ref": "#/$defs/SourceRevision"
+      },
+      "tree_digest": {
+        "type": "string"
+      },
+      "workspace": {
+        "$ref": "#/$defs/WorkspaceLink"
+      }
+    },
+    "required": [
+      "workspace",
+      "source_revision",
+      "tree_digest",
+      "files",
+      "clean",
+      "changes"
+    ],
+    "title": "Observation",
+    "type": "object"
+  }
+}

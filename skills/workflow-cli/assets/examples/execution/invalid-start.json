@@ -1,0 +1,264 @@
+{
+  "schema_version": 1,
+  "bundle": {
+    "schema_version": 1,
+    "root": {
+      "id": "inspect-definition",
+      "version": "1.0.0"
+    },
+    "workflows": [
+      {
+        "schema_version": 1,
+        "id": "inspect-definition",
+        "version": "1.0.0",
+        "entry": "inspect",
+        "inputs": {
+          "document": {
+            "required": true,
+            "value_type": {
+              "type": "string"
+            }
+          },
+          "format": {
+            "required": true,
+            "value_type": {
+              "type": "string"
+            }
+          }
+        },
+        "nodes": [
+          {
+            "id": "inspect",
+            "kind": {
+              "type": "task",
+              "capability": {
+                "id": "workflow.validate",
+                "version": "1.0.0"
+              },
+              "policy": null
+            },
+            "inputs": {
+              "document": {
+                "required": true,
+                "value_type": {
+                  "type": "string"
+                }
+              },
+              "format": {
+                "required": true,
+                "value_type": {
+                  "type": "string"
+                }
+              }
+            },
+            "outputs": {
+              "diagnostics": {
+                "required": true,
+                "value_type": {
+                  "items": {
+                    "fields": {
+                      "code": {
+                        "type": "string"
+                      },
+                      "edge": {
+                        "type": "string"
+                      },
+                      "file": {
+                        "type": "string"
+                      },
+                      "message": {
+                        "type": "string"
+                      },
+                      "node": {
+                        "type": "string"
+                      },
+                      "path": {
+                        "type": "string"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "type": "array"
+                }
+              },
+              "digest": {
+                "required": false,
+                "value_type": {
+                  "type": "string"
+                }
+              },
+              "valid": {
+                "required": true,
+                "value_type": {
+                  "type": "boolean"
+                }
+              }
+            },
+            "bindings": {
+              "document": {
+                "source": "workflow_input",
+                "field": "document"
+              },
+              "format": {
+                "source": "workflow_input",
+                "field": "format"
+              }
+            }
+          },
+          {
+            "id": "route",
+            "kind": {
+              "type": "decision",
+              "mode": "exclusive"
+            },
+            "inputs": {
+              "valid": {
+                "value_type": {
+                  "type": "boolean"
+                },
+                "required": true
+              }
+            },
+            "bindings": {
+              "valid": {
+                "source": "node_output",
+                "node": "inspect",
+                "field": "valid"
+              }
+            }
+          },
+          {
+            "id": "accepted",
+            "kind": {
+              "type": "terminal",
+              "outcome": "succeeded"
+            }
+          },
+          {
+            "id": "invalid",
+            "kind": {
+              "type": "terminal",
+              "outcome": "failed"
+            }
+          }
+        ],
+        "edges": [
+          {
+            "id": "check-result",
+            "from": "inspect",
+            "to": "route",
+            "route": {
+              "type": "next"
+            }
+          },
+          {
+            "id": "valid",
+            "from": "route",
+            "to": "accepted",
+            "route": {
+              "type": "case",
+              "when": {
+                "op": "eq",
+                "field": "valid",
+                "value": true
+              }
+            }
+          },
+          {
+            "id": "invalid",
+            "from": "route",
+            "to": "invalid",
+            "route": {
+              "type": "otherwise"
+            }
+          }
+        ]
+      }
+    ],
+    "capabilities": [
+      {
+        "capability": {
+          "id": "workflow.validate",
+          "version": "1.0.0"
+        },
+        "effects": {
+          "type": "read_only"
+        },
+        "error_codes": {
+          "invalid_definition": "invalid_input",
+          "invalid_format": "invalid_input"
+        },
+        "inputs": {
+          "document": {
+            "required": true,
+            "value_type": {
+              "type": "string"
+            }
+          },
+          "format": {
+            "required": true,
+            "value_type": {
+              "type": "string"
+            }
+          }
+        },
+        "outputs": {
+          "diagnostics": {
+            "required": true,
+            "value_type": {
+              "items": {
+                "fields": {
+                  "code": {
+                    "type": "string"
+                  },
+                  "edge": {
+                    "type": "string"
+                  },
+                  "file": {
+                    "type": "string"
+                  },
+                  "message": {
+                    "type": "string"
+                  },
+                  "node": {
+                    "type": "string"
+                  },
+                  "path": {
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              },
+              "type": "array"
+            }
+          },
+          "digest": {
+            "required": false,
+            "value_type": {
+              "type": "string"
+            }
+          },
+          "valid": {
+            "required": true,
+            "value_type": {
+              "type": "boolean"
+            }
+          }
+        },
+        "schema_version": 1,
+        "skill": {
+          "id": "workflow-capability",
+          "version": "1.0.0"
+        },
+        "timeout_ms": 60000,
+        "usage": "Validate an in-memory JSON/YAML workflow. Invalid definitions are a successful inspection with valid=false and diagnostics; digest is absent. No filesystem or model access."
+      }
+    ]
+  },
+  "run_id": "inspect-invalid",
+  "inputs": {
+    "format": "json",
+    "document": "{}"
+  },
+  "started_at_unix_ms": 1000
+}

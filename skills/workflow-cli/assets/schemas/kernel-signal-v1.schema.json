@@ -1,0 +1,131 @@
+{
+  "$defs": {
+    "ExceptionClaim": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "type": "string"
+        },
+        "policy": {
+          "$ref": "#/$defs/VersionRef"
+        }
+      },
+      "required": [
+        "policy",
+        "code"
+      ],
+      "type": "object"
+    },
+    "SignalDecision": {
+      "enum": [
+        "approve",
+        "reject",
+        "request_changes"
+      ],
+      "type": "string"
+    },
+    "VersionRef": {
+      "additionalProperties": false,
+      "description": "Versions are immutable opaque release identifiers, never ranges or `latest`.",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "version"
+      ],
+      "type": "object"
+    },
+    "WaitTarget": {
+      "additionalProperties": false,
+      "properties": {
+        "definition_digest": {
+          "type": "string"
+        },
+        "event": {
+          "type": "string"
+        },
+        "input_digest": {
+          "type": "string"
+        },
+        "instance_id": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "instance_id",
+        "definition_digest",
+        "input_digest",
+        "event"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "A host-verified observation. This type does not authenticate its source.",
+  "properties": {
+    "correlation_id": {
+      "type": "string"
+    },
+    "decision": {
+      "$ref": "#/$defs/SignalDecision"
+    },
+    "exception": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ExceptionClaim"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "expires_at_unix_ms": {
+      "format": "uint64",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "message_id": {
+      "type": "string"
+    },
+    "outputs": {
+      "additionalProperties": true,
+      "type": "object"
+    },
+    "reason": {
+      "type": "string"
+    },
+    "schema_version": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "source": {
+      "type": "string"
+    },
+    "target": {
+      "$ref": "#/$defs/WaitTarget"
+    }
+  },
+  "required": [
+    "schema_version",
+    "message_id",
+    "correlation_id",
+    "target",
+    "source",
+    "decision",
+    "reason",
+    "outputs",
+    "expires_at_unix_ms"
+  ],
+  "title": "SignalMessage",
+  "type": "object"
+}

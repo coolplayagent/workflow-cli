@@ -1,0 +1,6 @@
+{
+  "actor": "runner",
+  "role": "runner",
+  "capabilities": [],
+  "ttl_ms": 3600000
+}

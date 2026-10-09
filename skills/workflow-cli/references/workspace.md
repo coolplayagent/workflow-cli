@@ -1,6 +1,6 @@
 # Workflow workspace
 
-Read `workflow help`, [manual](../../../docs/workspaces.md) and `workflow schema workspace-checkout`.
+Read `workflow help`, [manual](manuals/en/03-execution-and-evidence/06-workspaces.md) and `workflow schema workspace-checkout`.
 Use the run database, artifact store, workspace store and repository mapping from
 the task. The local adapter requires Linux, `/proc` and Git. Only `workspace init`
 creates a store; investigate a missing/foreign store instead of silently replacing it.

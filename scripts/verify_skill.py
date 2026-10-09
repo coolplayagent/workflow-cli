@@ -31,8 +31,13 @@ def main():
         book = json.loads((skill / 'references/manuals/book.json').read_text())
         for part in book['parts']:
             for chapter in part['chapters']:
-                for language in ['', 'zh/']:
+                for language in ['en/', 'zh/']:
                     assert (skill / 'references/manuals' / (language + chapter['file'])).is_file()
+        for language in ['en', 'zh']:
+            manuals = skill / 'references/manuals' / language
+            assert (manuals / 'README.md').is_file()
+            for part in book['parts']:
+                assert (manuals / part['directory'] / 'README.md').is_file()
         cwd = root / 'unrelated project'
         cwd.mkdir()
         wrapper = str(skill / 'scripts/workflow.sh')

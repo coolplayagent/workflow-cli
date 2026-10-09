@@ -1,0 +1,124 @@
+{
+  "$defs": {
+    "AdapterOutcome": {
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "evidence": {
+              "items": {
+                "$ref": "#/$defs/EvidenceRef"
+              },
+              "type": "array"
+            },
+            "outputs": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "status": {
+              "const": "succeeded",
+              "type": "string"
+            }
+          },
+          "required": [
+            "status",
+            "outputs",
+            "evidence"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "class": {
+              "$ref": "#/$defs/FailureClass"
+            },
+            "code": {
+              "type": "string"
+            },
+            "evidence": {
+              "items": {
+                "$ref": "#/$defs/EvidenceRef"
+              },
+              "type": "array"
+            },
+            "message": {
+              "type": "string"
+            },
+            "status": {
+              "const": "failed",
+              "type": "string"
+            }
+          },
+          "required": [
+            "status",
+            "code",
+            "class",
+            "message",
+            "evidence"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "EvidenceRef": {
+      "additionalProperties": false,
+      "properties": {
+        "artifact_id": {
+          "type": "string"
+        },
+        "digest": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "artifact_id",
+        "digest"
+      ],
+      "type": "object"
+    },
+    "FailureClass": {
+      "enum": [
+        "invalid_input",
+        "permanent",
+        "permission_denied",
+        "business_rejected",
+        "transient",
+        "cancelled",
+        "unknown_effect"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "completed_at_unix_ms": {
+      "format": "uint64",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "model_record": {
+      "description": "Explicit model/tool decisions. The policy executor and durable host validate its schema."
+    },
+    "outcome": {
+      "$ref": "#/$defs/AdapterOutcome"
+    },
+    "protocol_version": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "request_digest": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "protocol_version",
+    "request_digest",
+    "completed_at_unix_ms",
+    "outcome"
+  ],
+  "title": "WorkResult",
+  "type": "object"
+}

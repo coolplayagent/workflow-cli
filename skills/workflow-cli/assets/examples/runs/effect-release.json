@@ -1,0 +1,190 @@
+{
+  "schema_version": 1,
+  "bundle": {
+    "schema_version": 1,
+    "root": {
+      "id": "sandbox-release",
+      "version": "1.0.0"
+    },
+    "workflows": [
+      {
+        "schema_version": 1,
+        "id": "sandbox-release",
+        "version": "1.0.0",
+        "entry": "publish",
+        "inputs": {
+          "release_name": {
+            "value_type": {
+              "type": "string"
+            },
+            "required": true
+          }
+        },
+        "nodes": [
+          {
+            "id": "publish",
+            "kind": {
+              "type": "task",
+              "capability": {
+                "id": "sandbox.release",
+                "version": "1.0.0"
+              },
+              "policy": null
+            },
+            "inputs": {
+              "release_name": {
+                "value_type": {
+                  "type": "string"
+                },
+                "required": true
+              }
+            },
+            "outputs": {
+              "release_id": {
+                "value_type": {
+                  "type": "string"
+                },
+                "required": true
+              }
+            },
+            "bindings": {
+              "release_name": {
+                "source": "workflow_input",
+                "field": "release_name"
+              }
+            }
+          },
+          {
+            "id": "done",
+            "kind": {
+              "type": "terminal",
+              "outcome": "succeeded"
+            },
+            "inputs": {
+              "release_id": {
+                "value_type": {
+                  "type": "string"
+                },
+                "required": true
+              }
+            },
+            "bindings": {
+              "release_id": {
+                "source": "node_output",
+                "node": "publish",
+                "field": "release_id"
+              }
+            }
+          }
+        ],
+        "edges": [
+          {
+            "id": "published",
+            "from": "publish",
+            "to": "done",
+            "route": {
+              "type": "next"
+            }
+          }
+        ]
+      }
+    ],
+    "capabilities": [
+      {
+        "schema_version": 1,
+        "capability": {
+          "id": "sandbox.release",
+          "version": "1.0.0"
+        },
+        "inputs": {
+          "release_name": {
+            "value_type": {
+              "type": "string"
+            },
+            "required": true
+          }
+        },
+        "outputs": {
+          "release_id": {
+            "value_type": {
+              "type": "string"
+            },
+            "required": true
+          }
+        },
+        "timeout_ms": 30000,
+        "error_codes": {
+          "bad_input": "invalid_input",
+          "forbidden": "permission_denied",
+          "rejected": "business_rejected",
+          "retry": "transient"
+        },
+        "effects": {
+          "type": "write",
+          "idempotency": {
+            "mode": "key",
+            "scope": "sandbox.releases",
+            "retention_ms": 3600000
+          },
+          "query": {
+            "id": "sandbox.release-query",
+            "version": "1.0.0"
+          },
+          "compensation": null
+        },
+        "usage": "Create a release in an explicitly configured sandbox gateway. The gateway must deduplicate by operation key and expose provider-backed lookup. This fixture does not publish a real release.",
+        "skill": null
+      },
+      {
+        "schema_version": 1,
+        "capability": {
+          "id": "sandbox.release-query",
+          "version": "1.0.0"
+        },
+        "inputs": {},
+        "outputs": {},
+        "timeout_ms": 30000,
+        "error_codes": {},
+        "effects": {
+          "type": "read_only"
+        },
+        "usage": "Effect-protocol lookup by the original immutable intent. Returned receipts use the write capability output contract. Not a direct Worker call.",
+        "skill": null
+      }
+    ],
+    "effect_bindings": [
+      {
+        "workflow": {
+          "id": "sandbox-release",
+          "version": "1.0.0"
+        },
+        "node_id": "publish",
+        "policy": {
+          "identity": {
+            "id": "sandbox-release-policy",
+            "version": "1.0.0"
+          },
+          "target": {
+            "id": "sandbox-releases",
+            "version": "1.0.0"
+          },
+          "call_identity": {
+            "id": "sandbox-publisher",
+            "version": "1.0.0"
+          },
+          "retry": {
+            "max_calls": 6,
+            "initial_backoff_ms": 10,
+            "max_backoff_ms": 100,
+            "total_write_ms": 60000
+          }
+        }
+      }
+    ]
+  },
+  "run_id": "demo-effect-release",
+  "inputs": {
+    "release_name": "candidate-1"
+  },
+  "started_at_unix_ms": 1000
+}

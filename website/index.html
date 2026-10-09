@@ -5,10 +5,10 @@
 <meta name="description" content="以 Skill over CLI 架构定义、执行和验证业务 SOP。一个安装包，持久化运行、证据门禁与可回放的执行记录。">
 <link rel="stylesheet" href="style.css"></head>
 <body>
-<header><nav aria-label="主导航"><a class="brand" href="index.html"><span class="mark">w</span>workflow</a><a href="docs/zh/skill-distribution.html">安装</a><a href="docs/zh/index.html">文档</a><a class="language-switch" lang="en" href="index.en.html">English</a><a href="https://github.com/coolplayagent/workflow-cli">GitHub ↗</a></nav></header>
+<header><nav aria-label="主导航"><a class="brand" href="index.html"><span class="mark">w</span>workflow</a><a href="docs/zh/01-getting-started/02-skill-distribution.html">安装</a><a href="docs/zh/index.html">文档</a><a class="language-switch" lang="en" href="index.en.html">English</a><a href="https://github.com/coolplayagent/workflow-cli">GitHub ↗</a></nav></header>
 <main>
 <section class="hero">
-<div><div class="eyebrow">Skill over CLI / v__VERSION__</div><h1>一个 Skill，<br>可靠执行每一步。</h1><p class="lead">将业务 SOP 变成可检查、可执行、可恢复的流程。Agent 理解目标，CLI 管理状态、执行契约与证据。</p><div class="buttons"><a class="button primary" href="https://github.com/coolplayagent/workflow-cli/releases/download/v__VERSION__/workflow-cli-skill-v__VERSION__-linux-x86_64.tar.gz">下载 Skill ↓</a><a class="button" href="docs/zh/skill-distribution.html">开始使用 →</a></div><div class="meta"><span class="pill">Linux x86_64</span><span class="pill">glibc ≥ 2.39</span><span class="pill">MIT License</span></div></div>
+<div><div class="eyebrow">Skill over CLI / v__VERSION__</div><h1>一个 Skill，<br>可靠执行每一步。</h1><p class="lead">将业务 SOP 变成可检查、可执行、可恢复的流程。Agent 理解目标，CLI 管理状态、执行契约与证据。</p><div class="buttons"><a class="button primary" href="https://github.com/coolplayagent/workflow-cli/releases/download/v__VERSION__/workflow-cli-skill-v__VERSION__-linux-x86_64.tar.gz">下载 Skill ↓</a><a class="button" href="docs/zh/01-getting-started/02-skill-distribution.html">开始使用 →</a></div><div class="meta"><span class="pill">Linux x86_64</span><span class="pill">glibc ≥ 2.39</span><span class="pill">MIT License</span></div></div>
 <div class="terminal" aria-label="命令使用示意"><div class="terminal-title">workflow / local execution · 命令示意</div><pre><span class="comment"># 检查流程定义</span>
 $ workflow validate review.yaml
 <span class="ok">{"valid": true, "digest": "sha256:…"}</span>
@@ -23,8 +23,8 @@ $ workflow run verify runs.db review-1</pre></div>
 <div class="eyebrow">明确分工，保留证据</div>
 <section class="grid" aria-label="架构分层">
 <article class="card"><span class="number">01 / SKILL</span><h3>按任务加载操作指引</h3><p>一个入口覆盖定义、运行、产物、门禁与恢复。详细参考按需读取，CLI、手册和示例随包分发。</p><a href="skill/index.html">浏览 Skill →</a></article>
-<article class="card"><span class="number">02 / CLI</span><h3>执行确定的流程契约</h3><p>类型检查、版本锁定、任务租约与事务提交由运行时处理。模型输出必须经过实际契约校验。</p><a href="docs/zh/local-execution.html">了解执行机制 →</a></article>
-<article class="card"><span class="number">03 / EVIDENCE</span><h3>以真实记录确认结果</h3><p>产物摘要、执行历史、门禁结论与外部写入回执支持审计和恢复。退出成功与业务成功分别检查。</p><a href="docs/zh/evidence-gates.html">了解证据门禁 →</a></article>
+<article class="card"><span class="number">02 / CLI</span><h3>执行确定的流程契约</h3><p>类型检查、版本锁定、任务租约与事务提交由运行时处理。模型输出必须经过实际契约校验。</p><a href="docs/zh/03-execution-and-evidence/02-local-execution.html">了解执行机制 →</a></article>
+<article class="card"><span class="number">03 / EVIDENCE</span><h3>以真实记录确认结果</h3><p>产物摘要、执行历史、门禁结论与外部写入回执支持审计和恢复。退出成功与业务成功分别检查。</p><a href="docs/zh/03-execution-and-evidence/07-evidence-gates.html">了解证据门禁 →</a></article>
 </section>
 <section class="install" id="install"><div><div class="eyebrow">从本地开始</div><h2>安装一次，<br>运行可验证的示例。</h2><p>下载发布包及校验文件，解压到 agent 的 skills 目录。内置校验任务无需编译器、云端模型或远程数据库。</p><p>模型、业务 adapter 和远程 PostgreSQL 按工作流需要配置。</p><a href="https://github.com/coolplayagent/workflow-cli/releases/tag/v__VERSION__">发布说明与 SHA256SUMS →</a></div><div><pre>sha256sum --check SHA256SUMS
 mkdir -p ~/.codex/skills
@@ -34,6 +34,6 @@ tar -xzf workflow-cli-skill-v__VERSION__-linux-x86_64.tar.gz \
 ~/.codex/skills/workflow-cli/scripts/workflow.sh --version</pre><p>运行真实校验、显式示例审批和恢复检查：</p><pre>python3 ~/.codex/skills/workflow-cli/assets/examples/execution/offline-demo.py \
   --workflow ~/.codex/skills/workflow-cli/scripts/workflow.sh \
   --decision approve</pre></div></section>
-<section><h2>从定义到交付</h2><div class="grid"><article class="card"><h3>定义与模板</h3><p>明确节点、分支、参数和成功条件。发布不可变定义，复用经过评审的业务模板。</p><a href="docs/zh/reviewed-templates.html">模板与评审 →</a></article><article class="card"><h3>本地与共享执行</h3><p>本地 SQLite 持久化起步；需要协作时使用经过认证的 HTTPS 服务、scheduler 和 worker。</p><a href="docs/zh/remote-service.html">共享执行 →</a></article><article class="card"><h3>恢复与版本升级</h3><p>保留历史和证据，显式升级存储。对不确定的外部写入先核对提供方状态，再决定下一步。</p><a href="docs/zh/backup-recovery.html">备份与恢复 →</a></article></div></section>
+<section><h2>从定义到交付</h2><div class="grid"><article class="card"><h3>定义与模板</h3><p>明确节点、分支、参数和成功条件。发布不可变定义，复用经过评审的业务模板。</p><a href="docs/zh/02-process-definition/05-reviewed-templates.html">模板与评审 →</a></article><article class="card"><h3>本地与共享执行</h3><p>本地 SQLite 持久化起步；需要协作时使用经过认证的 HTTPS 服务、scheduler 和 worker。</p><a href="docs/zh/05-shared-execution/03-remote-service.html">共享执行 →</a></article><article class="card"><h3>恢复与版本升级</h3><p>保留历史和证据，显式升级存储。对不确定的外部写入先核对提供方状态，再决定下一步。</p><a href="docs/zh/04-effects-and-recovery/04-backup-recovery.html">备份与恢复 →</a></article></div></section>
 </main><footer><span>Workflow CLI · Skill over CLI · MIT</span><span>v__VERSION__ · source __REVISION__</span></footer>
 </body></html>

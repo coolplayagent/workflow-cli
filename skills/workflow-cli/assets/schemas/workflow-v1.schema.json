@@ -1,0 +1,727 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Workflow",
+  "type": "object",
+  "properties": {
+    "edges": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Edge"
+      }
+    },
+    "entry": {
+      "type": "string"
+    },
+    "id": {
+      "type": "string"
+    },
+    "inputs": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/Field"
+      },
+      "default": {}
+    },
+    "nodes": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Node"
+      }
+    },
+    "schema_version": {
+      "type": "integer",
+      "format": "uint32",
+      "minimum": 0
+    },
+    "version": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "id",
+    "version",
+    "entry",
+    "nodes",
+    "edges"
+  ],
+  "$defs": {
+    "Binding": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "field": {
+              "type": "string"
+            },
+            "source": {
+              "type": "string",
+              "const": "workflow_input"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "source",
+            "field"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "field": {
+              "type": "string"
+            },
+            "node": {
+              "type": "string"
+            },
+            "source": {
+              "type": "string",
+              "const": "node_output"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "source",
+            "node",
+            "field"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "source": {
+              "type": "string",
+              "const": "literal"
+            },
+            "value": true
+          },
+          "additionalProperties": false,
+          "required": [
+            "source",
+            "value"
+          ]
+        }
+      ]
+    },
+    "Condition": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "field": {
+              "type": "string"
+            },
+            "op": {
+              "type": "string",
+              "const": "exists"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "op",
+            "field"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "field": {
+              "type": "string"
+            },
+            "op": {
+              "type": "string",
+              "const": "eq"
+            },
+            "value": true
+          },
+          "additionalProperties": false,
+          "required": [
+            "op",
+            "field",
+            "value"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "field": {
+              "type": "string"
+            },
+            "op": {
+              "type": "string",
+              "const": "not_eq"
+            },
+            "value": true
+          },
+          "additionalProperties": false,
+          "required": [
+            "op",
+            "field",
+            "value"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "conditions": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/Condition"
+              }
+            },
+            "op": {
+              "type": "string",
+              "const": "all"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "op",
+            "conditions"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "conditions": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/Condition"
+              }
+            },
+            "op": {
+              "type": "string",
+              "const": "any"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "op",
+            "conditions"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "condition": {
+              "$ref": "#/$defs/Condition"
+            },
+            "op": {
+              "type": "string",
+              "const": "not"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "op",
+            "condition"
+          ]
+        }
+      ]
+    },
+    "DecisionMode": {
+      "type": "string",
+      "enum": [
+        "exclusive",
+        "first_match"
+      ]
+    },
+    "Edge": {
+      "type": "object",
+      "properties": {
+        "from": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "route": {
+          "$ref": "#/$defs/Route"
+        },
+        "to": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "from",
+        "to",
+        "route"
+      ]
+    },
+    "Field": {
+      "type": "object",
+      "properties": {
+        "required": {
+          "type": "boolean"
+        },
+        "value_type": {
+          "$ref": "#/$defs/ValueType"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "value_type",
+        "required"
+      ]
+    },
+    "JoinMode": {
+      "type": "string",
+      "enum": [
+        "all",
+        "any"
+      ]
+    },
+    "Node": {
+      "type": "object",
+      "properties": {
+        "bindings": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/Binding"
+          },
+          "default": {}
+        },
+        "id": {
+          "type": "string"
+        },
+        "inputs": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/Field"
+          },
+          "default": {}
+        },
+        "kind": {
+          "$ref": "#/$defs/NodeKind"
+        },
+        "outputs": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/Field"
+          },
+          "default": {}
+        },
+        "preconditions": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/Condition"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "kind"
+      ]
+    },
+    "NodeKind": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "capability": {
+              "$ref": "#/$defs/VersionRef"
+            },
+            "policy": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/VersionRef"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": {
+              "type": "string",
+              "const": "task"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "capability"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "mode": {
+              "$ref": "#/$defs/DecisionMode"
+            },
+            "type": {
+              "type": "string",
+              "const": "decision"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "mode"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "fork"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "type"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "mode": {
+              "$ref": "#/$defs/JoinMode"
+            },
+            "remaining": {
+              "$ref": "#/$defs/RemainingPolicy"
+            },
+            "type": {
+              "type": "string",
+              "const": "join"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "mode",
+            "remaining"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "event": {
+              "type": "string"
+            },
+            "timeout_ms": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0
+            },
+            "type": {
+              "type": "string",
+              "const": "wait"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "event",
+            "timeout_ms"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "subworkflow"
+            },
+            "workflow": {
+              "$ref": "#/$defs/VersionRef"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "workflow"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "body": {
+              "$ref": "#/$defs/VersionRef"
+            },
+            "deadline_ms": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0
+            },
+            "max_iterations": {
+              "type": "integer",
+              "format": "uint32",
+              "minimum": 0
+            },
+            "type": {
+              "type": "string",
+              "const": "loop"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "body",
+            "max_iterations",
+            "deadline_ms"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "outcome": {
+              "$ref": "#/$defs/TerminalOutcome"
+            },
+            "type": {
+              "type": "string",
+              "const": "terminal"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "outcome"
+          ]
+        }
+      ]
+    },
+    "RemainingPolicy": {
+      "type": "string",
+      "enum": [
+        "await",
+        "cancel_and_reconcile"
+      ]
+    },
+    "Route": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "next"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "type"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "case"
+            },
+            "when": {
+              "$ref": "#/$defs/Condition"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "when"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "otherwise"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "type"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "completed"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "type"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "exhausted"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "type"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "accepted"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "type"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "rejected"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "type"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "timed_out"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "type"
+          ]
+        }
+      ]
+    },
+    "TerminalOutcome": {
+      "type": "string",
+      "enum": [
+        "succeeded",
+        "failed",
+        "cancelled"
+      ]
+    },
+    "ValueType": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "type"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "boolean"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "type"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "integer"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "type"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "number"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "type"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "items": {
+              "$ref": "#/$defs/ValueType"
+            },
+            "type": {
+              "type": "string",
+              "const": "array"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "items"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "fields": {
+              "type": "object",
+              "additionalProperties": {
+                "$ref": "#/$defs/ValueType"
+              }
+            },
+            "type": {
+              "type": "string",
+              "const": "object"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "fields"
+          ]
+        }
+      ]
+    },
+    "VersionRef": {
+      "description": "Versions are immutable opaque release identifiers, never ranges or `latest`.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "version"
+      ]
+    }
+  }
+}

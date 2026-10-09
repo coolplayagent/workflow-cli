@@ -1,0 +1,56 @@
+{
+  "run_id": "example-feature",
+  "parameters": {
+    "request": "Return the sum of two integers and pass the candidate test.",
+    "repository": "project-source",
+    "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "name": "candidate-1"
+  },
+  "business_facts": [
+    "pinned-source",
+    "isolated-tests"
+  ],
+  "environment": {
+    "mode": "local",
+    "capabilities": [
+      {
+        "capability": {
+          "id": "sdlc.design",
+          "version": "1.0.0"
+        },
+        "contract_digest": "sha256:c885ee8d4fb65e7745d855ec73bc151345ce6e27ad60b7a54e4701fd090693ce",
+        "host_binding": "project-adapters"
+      },
+      {
+        "capability": {
+          "id": "sdlc.propose",
+          "version": "1.0.0"
+        },
+        "contract_digest": "sha256:06e9237d5cb3eb61dc8d3a509d19ca9a195f3223e1866a3bc53d3b3543f16327",
+        "host_binding": "project-adapters"
+      },
+      {
+        "capability": {
+          "id": "sdlc.test",
+          "version": "1.0.0"
+        },
+        "contract_digest": "sha256:9d13f9437efe0bee4566ab09b9b8360b33bb58c3baaabe2193c874675bd61018",
+        "host_binding": "project-adapters"
+      },
+      {
+        "capability": {
+          "id": "sdlc.verify",
+          "version": "1.0.0"
+        },
+        "contract_digest": "sha256:2ae9425bb29e58ba50e70b213c9136a915df9a6c55cd4b6b7c32c5def20192fe",
+        "host_binding": "project-adapters"
+      }
+    ],
+    "effect_targets": [],
+    "approvers": [
+      "delivery-reviewer"
+    ],
+    "model_policies": []
+  },
+  "started_at_unix_ms": 1000
+}

@@ -1,0 +1,31 @@
+{
+  "ok": true,
+  "result": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "additionalProperties": false,
+    "properties": {
+      "acquisition_id": {
+        "type": "string"
+      },
+      "owner": {
+        "type": "string"
+      },
+      "run_id": {
+        "type": "string"
+      },
+      "ttl_ms": {
+        "format": "uint64",
+        "minimum": 0,
+        "type": "integer"
+      }
+    },
+    "required": [
+      "run_id",
+      "owner",
+      "acquisition_id",
+      "ttl_ms"
+    ],
+    "title": "LeaseRequest",
+    "type": "object"
+  }
+}

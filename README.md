@@ -7,7 +7,7 @@ declares steps, typed handoffs, legal decisions and evidence requirements. An ag
 uses one skill to operate the CLI; models propose bounded node decisions, adapters
 perform work, and the runtime retains state, ownership and verified results.
 
-Read [The Workflow CLI Book](docs/README.md) from installation to shared deployment,
+Read [The Workflow CLI Book](docs/en/README.md) from installation to shared deployment,
 or open the [documentation site](https://coolplayagent.github.io/workflow-cli/).
 The [Chinese edition](docs/zh/README.md) follows the same chapters and examples.
 
@@ -29,7 +29,7 @@ contains the matching CLI, [task references](skills/workflow-cli/SKILL.md), comp
 English/Chinese manuals, examples, schemas and file digests. Progressive reading
 stays inside the extracted package. The release supports Linux x86_64 with
 Ubuntu 24.04 / glibc 2.39 or newer; it does not provide macOS, Windows or ARM
-binaries. See [installation and upgrade](docs/skill-distribution.md).
+binaries. See [installation and upgrade](docs/en/01-getting-started/02-skill-distribution.md).
 
 ## Execute a real local example
 
@@ -44,7 +44,7 @@ python3 ~/.codex/skills/workflow-cli/assets/examples/execution/offline-demo.py \
 The example runs two actual built-in validation tasks, supplies the explicit demo
 operator decision, checks history and backup, and stops its daemon. Repeat with
 `--decision reject` to observe cancellation. Follow the
-[first workflow chapter](docs/getting-started.md) to inspect durable progress and
+[first workflow chapter](docs/en/01-getting-started/03-getting-started.md) to inspect durable progress and
 prove a second drive does not repeat committed tasks.
 
 CLI exit success and business success are separate: inspect
@@ -61,8 +61,8 @@ nor authorizes a capability.
 - Local daemon, verified backup and explicit migration; authenticated HTTPS workers, PostgreSQL authority and shared scheduling.
 - Reviewed SOP templates with local and TLS acceptance experiments.
 
-Start with the [book's reading paths](docs/preface.md). Acceptance chapters explain
-tested environments and limits; the [delivery map](docs/roadmap.md) retains the
+Start with the [book's reading paths](docs/en/01-getting-started/01-preface.md). Acceptance chapters explain
+tested environments and limits; the [delivery map](docs/en/06-acceptance-and-maintenance/08-roadmap.md) retains the
 remaining work, including business-value benchmarks. Models, business adapters
 and shared services require their own bindings only when a workflow uses them.
 
@@ -88,7 +88,7 @@ paths. After changing Cargo manifests or `Cargo.lock`, update and review the
 Bazel lock with `bazel mod deps --lockfile_mode=update`. Verification rejects stale
 locks. The existing Qualitygate policy runs formatting, Clippy, Cargo and Bazel;
 CI additionally checks documentation, the extracted skill and real shared-mode
-acceptance. See [contributing and diagnostics](docs/troubleshooting.md) and
-[release verification](docs/skill-distribution.md).
+acceptance. See [contributing and diagnostics](docs/en/06-acceptance-and-maintenance/07-troubleshooting.md) and
+[release verification](docs/en/01-getting-started/02-skill-distribution.md).
 
 Licensed under [MIT](LICENSE).

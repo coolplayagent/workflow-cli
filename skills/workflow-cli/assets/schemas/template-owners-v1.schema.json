@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "owners": {
+      "additionalProperties": {
+        "items": {
+          "type": "string"
+        },
+        "type": "array",
+        "uniqueItems": true
+      },
+      "type": "object"
+    }
+  },
+  "required": [
+    "owners"
+  ],
+  "title": "OwnerPolicy",
+  "type": "object"
+}

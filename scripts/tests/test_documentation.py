@@ -7,10 +7,11 @@ import unittest
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from book import sync
+from book import load_book, sync
 from build_site import build, check_site
 from doc_links import check_links, parse, rewrite_links
 from package_skill import copy_resources
+from sync_skill_resources import sync_resources
 
 
 class DocumentLinks(unittest.TestCase):
@@ -102,43 +103,94 @@ class Distribution(unittest.TestCase):
         return path
 
     def test_transitive_reading_closure_survives_source_removal(self):
-        self.write('skills/workflow-cli/SKILL.md', '# Skill\n\n[route](references/task.md)')
-        self.write('skills/workflow-cli/references/task.md', '# Task\n\n[manual](../../../docs/guide.md#run)')
-        self.write('docs/guide.md', '# Guide\n\n## Run\n\n[中文](zh/guide.md)\n'
-                   '[example](../examples/input.json)\n[schema](../schemas/input.json)\n'
-                   '[overview](../README.md)\n[skill](../skills/workflow-cli/SKILL.md)')
-        self.write('docs/zh/guide.md', '# 中文\n\n[English](../guide.md#run)')
-        self.write('examples/input.json', '{}')
-        self.write('schemas/input.json', '{}')
-        self.write('README.md', '# Overview\n\n[中文](README.zh-CN.md)')
-        self.write('README.zh-CN.md', '# 介绍\n\n[English](README.md)')
-        self.write('LICENSE', 'MIT')
+        skill = 'skills/workflow-cli/'
+        self.write(skill + 'SKILL.md', '# Skill\n\n[route](references/task.md)')
+        self.write(skill + 'references/task.md', '# Task\n\n[manual](manuals/en/01-start/01-guide.md#run)')
+        self.write(skill + 'references/manuals/en/01-start/01-guide.md',
+                   '# Guide\n\n## Run\n\n[中文](../../zh/01-start/01-guide.md)\n'
+                   '[example](../../../../assets/examples/input.json)\n'
+                   '[schema](../../../../assets/schemas/input.json)\n[skill](../../../../SKILL.md)')
+        self.write(skill + 'references/manuals/zh/01-start/01-guide.md',
+                   '# 中文\n\n[English](../../en/01-start/01-guide.md#run)')
+        self.write(skill + 'assets/examples/input.json', '{}')
+        self.write(skill + 'assets/schemas/input.json', '{}')
+        # No repository docs/examples/schemas exist. Packaging reads only the skill.
         package = self.root.parent / 'installed skill'
         copy_resources(self.root, package)
         self.root.rename(self.root.parent / 'unavailable-source')
-        self.assertEqual(check_links(list(package.rglob('*.md')), package), 10)
-        route = (package / 'references/task.md').read_text()
-        self.assertIn('manuals/guide.md#run', route)
-        self.assertNotIn('github.com', route)
+        self.assertEqual(check_links(list(package.rglob('*.md')), package), 7)
+        self.assertIn('manuals/en/01-start/01-guide.md#run', (package / 'references/task.md').read_text())
         self.assertTrue((package / 'assets/examples/input.json').is_file())
-        (package / 'references/manuals/zh/guide.md').unlink()
+        (package / 'references/manuals/zh/01-start/01-guide.md').unlink()
         with self.assertRaises(ValueError):
             check_links(list(package.rglob('*.md')), package)
 
-    def test_book_rejects_missing_translation_and_unlisted_chapter(self):
-        book = {'title': {'en': 'Book', 'zh': '书'}, 'parts': [
-            {'title': {'en': 'Part', 'zh': '篇'}, 'chapters': [
-                {'file': 'guide.md', 'title': {'en': 'Guide', 'zh': '指南'}}]}]}
-        self.write('docs/book.json', json.dumps(book))
-        self.write('docs/guide.md', '# Guide\n\n## Run\n\nRead this guide.\n')
+    def test_packaging_rejects_links_to_existing_repository_docs(self):
+        self.write('docs/guide.md', '# Guide')
+        self.write('skills/workflow-cli/SKILL.md', '# Skill\n\n[manual](../../docs/guide.md)')
+        with self.assertRaises(ValueError):
+            copy_resources(self.root, self.root.parent / 'package')
+
+    def book_fixture(self, legacy='guide'):
+        return {'title': {'en': 'Book', 'zh': '书'}, 'parts': [
+            {'directory': '01-start', 'title': {'en': 'Start', 'zh': '起步'},
+             'intro': {'en': 'Start here.', 'zh': '从这里开始。'}, 'chapters': [
+                 {'file': f'01-start/01-{legacy}.md', 'legacy': legacy,
+                  'title': {'en': 'Guide', 'zh': '指南'}}]}]}
+
+    def test_book_rejects_missing_translation_unlisted_chapter_and_missing_volume_index(self):
+        self.write('docs/book.json', json.dumps(self.book_fixture()))
+        self.write('docs/en/01-start/01-guide.md', '# Guide\n\n## Run\n\nRead this guide.\n')
         with self.assertRaisesRegex(ValueError, 'Missing zh chapter'):
             sync(self.root)
-        self.write('docs/zh/guide.md', '# 指南\n\n## 运行\n\n阅读指南。\n')
+        self.write('docs/zh/01-start/01-guide.md', '# 指南\n\n## 运行\n\n阅读指南。\n')
         sync(self.root)
         sync(self.root, check=True)
-        self.write('docs/forgotten.md', '# Forgotten')
+        cover = self.root / 'docs/en/01-start/README.md'
+        self.assertIn('[1.1 Guide](01-guide.md)', cover.read_text())
+        cover.unlink()
+        with self.assertRaisesRegex(ValueError, 'Outdated book contents'):
+            sync(self.root, check=True)
+        sync(self.root)
+        self.write('docs/en/01-start/02-forgotten.md', '# Forgotten')
         with self.assertRaisesRegex(ValueError, 'inventory differs'):
             sync(self.root, check=True)
+
+    def test_book_rejects_number_gaps_wrong_groups_and_duplicate_aliases(self):
+        for invalid in ['01-start/02-guide.md', '02-other/01-guide.md', '../01-guide.md',
+                        '01-start/01-Guide.md', '01-start/1-guide.md']:
+            book = self.book_fixture()
+            book['parts'][0]['chapters'][0]['file'] = invalid
+            self.write('docs/book.json', json.dumps(book))
+            with self.subTest(path=invalid), self.assertRaisesRegex(ValueError, 'chapter numbering'):
+                load_book(self.root)
+        book = self.book_fixture()
+        book['parts'][0]['directory'] = '02-start'
+        self.write('docs/book.json', json.dumps(book))
+        with self.assertRaisesRegex(ValueError, 'part numbering'):
+            load_book(self.root)
+        book = self.book_fixture()
+        book['parts'][0]['chapters'].append({'file': '01-start/02-next.md', 'legacy': 'guide',
+                                           'title': {'en': 'Next', 'zh': '下一章'}})
+        self.write('docs/book.json', json.dumps(book))
+        with self.assertRaisesRegex(ValueError, 'duplicate legacy'):
+            load_book(self.root)
+
+    def test_skill_resource_check_rejects_stale_copies(self):
+        self.write('docs/en/guide.md', '# Guide')
+        self.write('README.md', '# Overview')
+        self.write('README.zh-CN.md', '# 概述')
+        self.write('LICENSE', 'MIT')
+        self.write('skills/workflow-cli/SKILL.md', '# Skill')
+        sync_resources(self.root)
+        sync_resources(self.root, check=True)
+        self.write('docs/en/guide.md', '# Updated guide')
+        with self.assertRaisesRegex(ValueError, 'Stale or missing skill resource'):
+            sync_resources(self.root, check=True)
+        sync_resources(self.root)
+        (self.root / 'docs/en/guide.md').unlink()
+        with self.assertRaisesRegex(ValueError, 'Unexpected generated'):
+            sync_resources(self.root, check=True)
 
     def test_site_checks_fragments_and_local_resources(self):
         self.write('index.html', '<a href="zh/guide.html#运行">中文</a>')
@@ -158,15 +210,12 @@ class Distribution(unittest.TestCase):
             check_site(self.root)
 
     def test_built_book_switches_same_chapter_and_keeps_reading_assets_local(self):
-        book = {'title': {'en': 'Book', 'zh': '书'}, 'parts': [
-            {'title': {'en': 'Part', 'zh': '篇'}, 'chapters': [
-                {'file': 'skill-distribution.md', 'title': {'en': 'Install', 'zh': '安装'}}]}]}
+        book = self.book_fixture('skill-distribution')
         self.write('docs/book.json', json.dumps(book))
-        for language, heading, example in [('', 'Install', '../examples/input.json'),
-                                            ('zh/', '安装', '../../examples/input.json')]:
-            self.write(f'docs/{language}skill-distribution.md',
+        for language, heading in [('en', 'Install'), ('zh', '安装')]:
+            self.write(f'docs/{language}/01-start/01-skill-distribution.md',
                        f'# {heading}\n\n## Steps\n\n' + 'Read the complete instructions. ' * 10 +
-                       f'\n\n[example]({example})\n')
+                       '\n\n[example](../../../examples/input.json)\n')
         self.write('README.md', '# Overview\n\n[book](docs/README.md)')
         self.write('README.zh-CN.md', '# 介绍\n\n[书](docs/zh/README.md)')
         self.write('skills/workflow-cli/SKILL.md', '---\nname: example\n---\n# Skill')
@@ -176,18 +225,27 @@ class Distribution(unittest.TestCase):
             self.write('website/' + name, '<p>v__VERSION__</p>')
         for name in ['style.css', 'site.js', 'redirect.js']:
             self.write('website/' + name, '')
+        self.write('LICENSE', 'MIT')
         sync(self.root)
+        sync_resources(self.root)
         output = self.root.parent / 'site'
         with patch('build_site.subprocess.check_output', return_value='a' * 40 + '\n'):
             build(output, self.root)
-        en = (output / 'docs/en/skill-distribution.html').read_text()
-        zh = (output / 'docs/zh/skill-distribution.html').read_text()
-        self.assertIn('href="../zh/skill-distribution.html"', en)
-        self.assertIn('href="../en/skill-distribution.html"', zh)
+        en = (output / 'docs/en/01-start/01-skill-distribution.html').read_text()
+        zh = (output / 'docs/zh/01-start/01-skill-distribution.html').read_text()
+        self.assertIn('href="../../zh/01-start/01-skill-distribution.html"', en)
+        self.assertIn('href="../../en/01-start/01-skill-distribution.html"', zh)
         self.assertNotIn('book-navigation', en)
         self.assertNotIn('name: example', (output / 'skill/index.html').read_text())
         self.assertEqual((output / 'resources/examples/input.json').read_text(), '{"local":true}')
-        self.assertIn('href="../../resources/examples/input.json"', en)
+        self.assertIn('href="../../../resources/examples/input.json"', en)
+        self.assertIn('1.1 Guide', en)
+        self.assertIn('href="index.html"', en)
+        self.assertIn('href="en/01-start/01-skill-distribution.html"',
+                      (output / 'docs/skill-distribution.html').read_text())
+        self.assertTrue((output / 'docs/en/01-start/index.html').is_file())
+        self.assertIn('href="../../zh/01-start/index.html"',
+                      (output / 'docs/en/01-start/index.html').read_text())
         self.root.rename(self.root.parent / 'removed-source')
         self.assertGreater(check_site(output), 0)
 

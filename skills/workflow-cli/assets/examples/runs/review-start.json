@@ -1,0 +1,118 @@
+{
+  "bundle": {
+    "schema_version": 1,
+    "root": {
+      "id": "requirements-review",
+      "version": "1.0.0"
+    },
+    "workflows": [
+      {
+        "schema_version": 1,
+        "id": "requirements-review",
+        "version": "1.0.0",
+        "entry": "review",
+        "inputs": {},
+        "nodes": [
+          {
+            "id": "review",
+            "kind": {
+              "type": "wait",
+              "event": "design-review",
+              "timeout_ms": 86400000
+            }
+          },
+          {
+            "id": "implement",
+            "kind": {
+              "type": "task",
+              "capability": {
+                "id": "coding.implement",
+                "version": "1.0.0"
+              },
+              "policy": null
+            }
+          },
+          {
+            "id": "done",
+            "kind": {
+              "type": "terminal",
+              "outcome": "succeeded"
+            }
+          },
+          {
+            "id": "declined",
+            "kind": {
+              "type": "terminal",
+              "outcome": "cancelled"
+            }
+          },
+          {
+            "id": "expired",
+            "kind": {
+              "type": "terminal",
+              "outcome": "failed"
+            }
+          }
+        ],
+        "edges": [
+          {
+            "id": "approved",
+            "from": "review",
+            "to": "implement",
+            "route": {
+              "type": "accepted"
+            }
+          },
+          {
+            "id": "declined",
+            "from": "review",
+            "to": "declined",
+            "route": {
+              "type": "rejected"
+            }
+          },
+          {
+            "id": "expired",
+            "from": "review",
+            "to": "expired",
+            "route": {
+              "type": "timed_out"
+            }
+          },
+          {
+            "id": "implemented",
+            "from": "implement",
+            "to": "done",
+            "route": {
+              "type": "next"
+            }
+          }
+        ]
+      }
+    ],
+    "capabilities": [
+      {
+        "schema_version": 1,
+        "capability": {
+          "id": "coding.implement",
+          "version": "1.0.0"
+        },
+        "inputs": {},
+        "outputs": {},
+        "timeout_ms": 1000,
+        "error_codes": {
+          "test_failure": "permanent"
+        },
+        "effects": {
+          "type": "read_only"
+        },
+        "usage": "Simulation contract only. No adapter is invoked and supplied results are not execution evidence.",
+        "skill": null
+      }
+    ]
+  },
+  "run_id": "demo-review-approved",
+  "inputs": {},
+  "started_at_unix_ms": 1000,
+  "schema_version": 1
+}

@@ -1,6 +1,6 @@
 # Workflow artifact
 
-Read `workflow help` and the [artifact manual](../../../docs/artifacts.md). The local store needs no model, network account or cloud service.
+Read `workflow help` and the [artifact manual](manuals/en/03-execution-and-evidence/05-artifacts.md). The local store needs no model, network account or cloud service.
 
 Use the artifact directory authorized by the task. Only `artifact init <store>`
 creates one. Do not replace a missing/foreign/corrupt store with a fresh directory

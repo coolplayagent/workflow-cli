@@ -1,0 +1,2324 @@
+{
+  "schema_version": 1,
+  "identity": {
+    "id": "template.defect",
+    "version": "1.0.0"
+  },
+  "owner_role": "sdlc-owner",
+  "goal": "Turn a reproducible defect into a verified PR awaiting merge.",
+  "applicability": {
+    "requires": {
+      "pinned-source": "The repository and immutable revision are available to authorized workers.",
+      "isolated-tests": "The project has a bounded test command and isolated candidate workspace."
+    },
+    "excludes": {
+      "emergency-bypass": "An emergency exception needs a separately reviewed definition and approval policy."
+    }
+  },
+  "roles": {
+    "sdlc-owner": "Reviews exact template versions and regression evidence before publication.",
+    "delivery-reviewer": "Reviews the bound candidate, checks and source before authorizing delivery.",
+    "worker": "Uses scoped capability grants to prepare artifacts, execute tests and deliver only authorized effects."
+  },
+  "parameters": {
+    "request": {
+      "field": {
+        "value_type": {
+          "type": "string"
+        },
+        "required": true
+      },
+      "description": "Concrete business request and its testable acceptance criterion.",
+      "project_overridable": true,
+      "default": null,
+      "allowed_values": []
+    },
+    "repository": {
+      "field": {
+        "value_type": {
+          "type": "string"
+        },
+        "required": true
+      },
+      "description": "Logical authorized source repository identity.",
+      "project_overridable": true,
+      "default": null,
+      "allowed_values": []
+    },
+    "revision": {
+      "field": {
+        "value_type": {
+          "type": "string"
+        },
+        "required": true
+      },
+      "description": "Immutable source revision; provider must compare it at delivery.",
+      "project_overridable": true,
+      "default": null,
+      "allowed_values": []
+    },
+    "name": {
+      "field": {
+        "value_type": {
+          "type": "string"
+        },
+        "required": true
+      },
+      "description": "Project-selected delivery name.",
+      "project_overridable": true,
+      "default": null,
+      "allowed_values": []
+    }
+  },
+  "deliverables": {
+    "candidate": "Immutable workspace, design/context lineage and repair diagnostics.",
+    "tests": "Typed independent test reports bound to current inputs and source.",
+    "acceptance": "Verified run acceptance manifest, approvals and any provider receipts."
+  },
+  "exception_paths": {
+    "success": "Tests pass, independent verification passes and the bound human review approves; delivery reaches its terminal acceptance gate.",
+    "rework": "A failed first test sends its actual candidate and diagnostics to one repair attempt; repeated failure ends the run.",
+    "rejected": "The reviewer rejects the candidate; cancel without delivery.",
+    "timed_out": "The five-minute timeboxed review expires durably; fail without delivery. Longer review windows require a new reviewed template version.",
+    "failed": "Repeated test failure terminates. Release smoke-test failure compensates the exact original deployment receipt; ambiguous effects remain queryable for recovery."
+  },
+  "budget": {
+    "max_task_timeout_ms": 60000,
+    "max_loop_iterations": 2,
+    "max_loop_duration_ms": 600000,
+    "max_wait_ms": 300000,
+    "max_model_calls_per_task": 4,
+    "max_effect_calls_per_attempt": 6
+  },
+  "bundle": {
+    "schema_version": 1,
+    "root": {
+      "id": "sdlc.defect",
+      "version": "1.0.0"
+    },
+    "workflows": [
+      {
+        "schema_version": 1,
+        "id": "sdlc.defect",
+        "version": "1.0.0",
+        "entry": "prepare",
+        "inputs": {
+          "request": {
+            "value_type": {
+              "type": "string"
+            },
+            "required": true
+          },
+          "repository": {
+            "value_type": {
+              "type": "string"
+            },
+            "required": true
+          },
+          "revision": {
+            "value_type": {
+              "type": "string"
+            },
+            "required": true
+          },
+          "name": {
+            "value_type": {
+              "type": "string"
+            },
+            "required": true
+          }
+        },
+        "nodes": [
+          {
+            "id": "prepare",
+            "kind": {
+              "type": "task",
+              "capability": {
+                "id": "sdlc.diagnose",
+                "version": "1.0.0"
+              },
+              "policy": null
+            },
+            "inputs": {
+              "request": {
+                "value_type": {
+                  "type": "string"
+                },
+                "required": true
+              },
+              "repository": {
+                "value_type": {
+                  "type": "string"
+                },
+                "required": true
+              },
+              "revision": {
+                "value_type": {
+                  "type": "string"
+                },
+                "required": true
+              }
+            },
+            "outputs": {
+              "context": {
+                "value_type": {
+                  "type": "object",
+                  "fields": {
+                    "artifact_id": {
+                      "type": "string"
+                    },
+                    "digest": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "required": true
+              }
+            },
+            "bindings": {
+              "request": {
+                "source": "workflow_input",
+                "field": "request"
+              },
+              "repository": {
+                "source": "workflow_input",
+                "field": "repository"
+              },
+              "revision": {
+                "source": "workflow_input",
+                "field": "revision"
+              }
+            }
+          },
+          {
+            "id": "initial",
+            "kind": {
+              "type": "subworkflow",
+              "workflow": {
+                "id": "sdlc.implementation-attempt",
+                "version": "1.0.0"
+              }
+            },
+            "inputs": {
+              "request": {
+                "value_type": {
+                  "type": "string"
+                },
+                "required": true
+              },
+              "repository": {
+                "value_type": {
+                  "type": "string"
+                },
+                "required": true
+              },
+              "revision": {
+                "value_type": {
+                  "type": "string"
+                },
+                "required": true
+              },
+              "context": {
+                "value_type": {
+                  "type": "object",
+                  "fields": {
+                    "artifact_id": {
+                      "type": "string"
+                    },
+                    "digest": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "required": true
+              },
+              "feedback": {
+                "value_type": {
+                  "type": "string"
+                },
+                "required": true
+              }
+            },
+            "outputs": {
+              "candidate": {
+                "value_type": {
+                  "type": "object",
+                  "fields": {
+                    "artifact_id": {
+                      "type": "string"
+                    },
+                    "digest": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "required": true
+              },
+              "passed": {
+                "value_type": {
+                  "type": "boolean"
+                },
+                "required": true
+              },
+              "diagnostics": {
+                "value_type": {
+                  "type": "string"
+                },
+                "required": true
+              }
+            },
+            "bindings": {
+              "request": {
+                "source": "workflow_input",
+                "field": "request"
+              },
+              "repository": {
+                "source": "workflow_input",
+                "field": "repository"
+              },
+              "revision": {
+                "source": "workflow_input",
+                "field": "revision"
+              },
+              "context": {
+                "source": "node_output",
+                "node": "prepare",
+                "field": "context"
+              },
+              "feedback": {
+                "source": "literal",
+                "value": ""
+              }
+            }
+          },
+          {
+            "id": "tested_initial",
+            "kind": {
+              "type": "decision",
+              "mode": "exclusive"
+            },
+            "inputs": {
+              "passed": {
+                "value_type": {
+                  "type": "boolean"
+                },
+                "required": true
+              }
+            },
+            "bindings": {
+              "passed": {
+                "source": "node_output",
+                "node": "initial",
+                "field": "passed"
+              }
+            }
+          },
+          {
+            "id": "verify_initial",
+            "kind": {
+              "type": "task",
+              "capability": {
+                "id": "sdlc.verify",
+                "version": "1.0.0"
+              },
+              "policy": null
+            },
+            "inputs": {
+              "request": {
+                "value_type": {
+                  "type": "string"
+                },
+                "required": true
+              },
+              "repository": {
+                "value_type": {
+                  "type": "string"
+                },
+                "required": true
+              },
+              "revision": {
+                "value_type": {
+                  "type": "string"
+                },
+                "required": true
+              },
+              "candidate": {
+                "value_type": {
+                  "type": "object",
+                  "fields": {
+                    "artifact_id": {
+                      "type": "string"
+                    },
+                    "digest": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "required": true
+              },
+              "gate_policy_json": {
+                "value_type": {
+                  "type": "string"
+                },
+                "required": true
+              },
+              "action_json": {
+                "value_type": {
+                  "type": "string"
+                },
+                "required": true
+              }
+            },
+            "outputs": {
+              "passed": {
+                "value_type": {
+                  "type": "boolean"
+                },
+                "required": true
+              },
+              "diagnostics": {
+                "value_type": {
+                  "type": "string"
+                },
+                "required": true
+              },
+              "delivery": {
+                "value_type": {
+                  "type": "object",
+                  "fields": {
+                    "source_revision": {
+                      "type": "object",
+                      "fields": {
+                        "repository": {
+                          "type": "string"
+                        },
+                        "revision": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "input_digest": {
+                      "type": "string"
+                    },
+                    "artifacts": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "fields": {
+                          "artifact_id": {
+                            "type": "string"
+                          },
+                          "digest": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "required": true
+              },
+              "review_digest": {
+                "value_type": {
+                  "type": "string"
+                },
+                "required": true
+              },
+              "target_artifacts": {
+                "value_type": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "fields": {
+                      "artifact_id": {
+                        "type": "string"
+                      },
+                      "digest": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                },
+                "required": true
+              }
+            },
+            "bindings": {
+              "request": {
+                "source": "workflow_input",
+                "field": "request"
+              },
+              "repository": {
+                "source": "workflow_input",
+                "field": "repository"
+              },
+              "revision": {
+                "source": "workflow_input",
+                "field": "revision"
+              },
+              "candidate": {
+                "source": "node_output",
+                "node": "initial",
+                "field": "candidate"
+              },
+              "gate_policy_json": {
+                "source": "literal",
+                "value": "{\"identity\":{\"id\":\"sdlc.defect.verify_initial.quality\",\"version\":\"1.0.0\"},\"requirements\":[{\"capability\":{\"id\":\"sdlc.verify\",\"version\":\"1.0.0\"},\"contract_digest\":\"sha256:2ae9425bb29e58ba50e70b213c9136a915df9a6c55cd4b6b7c32c5def20192fe\",\"id\":\"tests\",\"max_age_ms\":600000,\"node_id\":\"verify_initial\",\"pass_field\":\"passed\",\"report_type\":{\"content\":{\"format\":\"json\",\"value_type\":{\"fields\":{\"command\":{\"type\":\"string\"},\"output\":{\"type\":\"string\"},\"passed\":{\"type\":\"boolean\"}},\"type\":\"object\"}},\"identity\":{\"id\":\"sdlc.test-report\",\"version\":\"1.0.0\"}}}],\"schema_version\":1}"
+              },
+              "action_json": {
+                "source": "literal",
+                "value": "{\"id\":\"delivery.pr-create\",\"version\":\"1.0.0\"}"
+              }
+            }
+          },
+          {
+            "id": "review_initial",
+            "kind": {
+              "type": "wait",
+              "event": "delivery-review",
+              "timeout_ms": 300000
+            },
+            "inputs": {
+              "subject": {
+                "value_type": {
+                  "type": "string"
+                },
+                "required": true
+              }
+            },
+            "bindings": {
+              "subject": {
+                "source": "node_output",
+                "node": "verify_initial",
+                "field": "review_digest"
+              }
+            }
+          },
+          {
+            "id": "done_initial",
+            "kind": {
+              "type": "terminal",
+              "outcome": "succeeded"
+            },
+            "inputs": {
+              "candidate": {
+                "value_type": {
+                  "type": "object",
+                  "fields": {
+                    "artifact_id": {
+                      "type": "string"
+                    },
+                    "digest": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "required": true
+              }
+            },
+            "bindings": {
+              "candidate": {
+                "source": "node_output",
+                "node": "initial",
+                "field": "candidate"
+              }
+            }
+          },
+          {
+            "id": "publish_initial",
+            "kind": {
+              "type": "task",
+              "capability": {
+                "id": "delivery.pr-create",
+                "version": "1.0.0"
+              },
+              "policy": null
+            },
+            "inputs": {
+              "name": {
+                "value_type": {
+                  "type": "string"
+                },
+                "required": true
+              },
+              "delivery": {
+                "value_type": {
+                  "type": "object",
+                  "fields": {
+                    "source_revision": {
+                      "type": "object",
+                      "fields": {
+                        "repository": {
+                          "type": "string"
+                        },
+                        "revision": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "input_digest": {
+                      "type": "string"
+                    },
+                    "artifacts": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "fields": {
+                          "artifact_id": {
+                            "type": "string"
+                          },
+                          "digest": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "required": true
+              }
+            },
+            "outputs": {
+              "resource_id": {
+                "value_type": {
+                  "type": "string"
+                },
+                "required": true
+              }
+            },
+            "bindings": {
+              "name": {
+                "source": "workflow_input",
+                "field": "name"
+              },
+              "delivery": {
+                "source": "node_output",
+                "node": "verify_initial",
+                "field": "delivery"
+              }
+            }
+          },
+          {
+            "id": "rework",
+            "kind": {
+              "type": "subworkflow",
+              "workflow": {
+                "id": "sdlc.implementation-attempt",
+                "version": "1.0.0"
+              }
+            },
+            "inputs": {
+              "request": {
+                "value_type": {
+                  "type": "string"
+                },
+                "required": true
+              },
+              "repository": {
+                "value_type": {
+                  "type": "string"
+                },
+                "required": true
+              },
+              "revision": {
+                "value_type": {
+                  "type": "string"
+                },
+                "required": true
+              },
+              "context": {
+                "value_type": {
+                  "type": "object",
+                  "fields": {
+                    "artifact_id": {
+                      "type": "string"
+                    },
+                    "digest": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "required": true
+              },
+              "feedback": {
+                "value_type": {
+                  "type": "string"
+                },
+                "required": true
+              }
+            },
+            "outputs": {
+              "candidate": {
+                "value_type": {
+                  "type": "object",
+                  "fields": {
+                    "artifact_id": {
+                      "type": "string"
+                    },
+                    "digest": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "required": true
+              },
+              "passed": {
+                "value_type": {
+                  "type": "boolean"
+                },
+                "required": true
+              },
+              "diagnostics": {
+                "value_type": {
+                  "type": "string"
+                },
+                "required": true
+              }
+            },
+            "bindings": {
+              "request": {
+                "source": "workflow_input",
+                "field": "request"
+              },
+              "repository": {
+                "source": "workflow_input",
+                "field": "repository"
+              },
+              "revision": {
+                "source": "workflow_input",
+                "field": "revision"
+              },
+              "context": {
+                "source": "node_output",
+                "node": "initial",
+                "field": "candidate"
+              },
+              "feedback": {
+                "source": "node_output",
+                "node": "initial",
+                "field": "diagnostics"
+              }
+            }
+          },
+          {
+            "id": "tested_rework",
+            "kind": {
+              "type": "decision",
+              "mode": "exclusive"
+            },
+            "inputs": {
+              "passed": {
+                "value_type": {
+                  "type": "boolean"
+                },
+                "required": true
+              }
+            },
+            "bindings": {
+              "passed": {
+                "source": "node_output",
+                "node": "rework",
+                "field": "passed"
+              }
+            }
+          },
+          {
+            "id": "verify_rework",
+            "kind": {
+              "type": "task",
+              "capability": {
+                "id": "sdlc.verify",
+                "version": "1.0.0"
+              },
+              "policy": null
+            },
+            "inputs": {
+              "request": {
+                "value_type": {
+                  "type": "string"
+                },
+                "required": true
+              },
+              "repository": {
+                "value_type": {
+                  "type": "string"
+                },
+                "required": true
+              },
+              "revision": {
+                "value_type": {
+                  "type": "string"
+                },
+                "required": true
+              },
+              "candidate": {
+                "value_type": {
+                  "type": "object",
+                  "fields": {
+                    "artifact_id": {
+                      "type": "string"
+                    },
+                    "digest": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "required": true
+              },
+              "gate_policy_json": {
+                "value_type": {
+                  "type": "string"
+                },
+                "required": true
+              },
+              "action_json": {
+                "value_type": {
+                  "type": "string"
+                },
+                "required": true
+              }
+            },
+            "outputs": {
+              "passed": {
+                "value_type": {
+                  "type": "boolean"
+                },
+                "required": true
+              },
+              "diagnostics": {
+                "value_type": {
+                  "type": "string"
+                },
+                "required": true
+              },
+              "delivery": {
+                "value_type": {
+                  "type": "object",
+                  "fields": {
+                    "source_revision": {
+                      "type": "object",
+                      "fields": {
+                        "repository": {
+                          "type": "string"
+                        },
+                        "revision": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "input_digest": {
+                      "type": "string"
+                    },
+                    "artifacts": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "fields": {
+                          "artifact_id": {
+                            "type": "string"
+                          },
+                          "digest": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "required": true
+              },
+              "review_digest": {
+                "value_type": {
+                  "type": "string"
+                },
+                "required": true
+              },
+              "target_artifacts": {
+                "value_type": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "fields": {
+                      "artifact_id": {
+                        "type": "string"
+                      },
+                      "digest": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                },
+                "required": true
+              }
+            },
+            "bindings": {
+              "request": {
+                "source": "workflow_input",
+                "field": "request"
+              },
+              "repository": {
+                "source": "workflow_input",
+                "field": "repository"
+              },
+              "revision": {
+                "source": "workflow_input",
+                "field": "revision"
+              },
+              "candidate": {
+                "source": "node_output",
+                "node": "rework",
+                "field": "candidate"
+              },
+              "gate_policy_json": {
+                "source": "literal",
+                "value": "{\"identity\":{\"id\":\"sdlc.defect.verify_rework.quality\",\"version\":\"1.0.0\"},\"requirements\":[{\"capability\":{\"id\":\"sdlc.verify\",\"version\":\"1.0.0\"},\"contract_digest\":\"sha256:2ae9425bb29e58ba50e70b213c9136a915df9a6c55cd4b6b7c32c5def20192fe\",\"id\":\"tests\",\"max_age_ms\":600000,\"node_id\":\"verify_rework\",\"pass_field\":\"passed\",\"report_type\":{\"content\":{\"format\":\"json\",\"value_type\":{\"fields\":{\"command\":{\"type\":\"string\"},\"output\":{\"type\":\"string\"},\"passed\":{\"type\":\"boolean\"}},\"type\":\"object\"}},\"identity\":{\"id\":\"sdlc.test-report\",\"version\":\"1.0.0\"}}}],\"schema_version\":1}"
+              },
+              "action_json": {
+                "source": "literal",
+                "value": "{\"id\":\"delivery.pr-create\",\"version\":\"1.0.0\"}"
+              }
+            }
+          },
+          {
+            "id": "review_rework",
+            "kind": {
+              "type": "wait",
+              "event": "delivery-review",
+              "timeout_ms": 300000
+            },
+            "inputs": {
+              "subject": {
+                "value_type": {
+                  "type": "string"
+                },
+                "required": true
+              }
+            },
+            "bindings": {
+              "subject": {
+                "source": "node_output",
+                "node": "verify_rework",
+                "field": "review_digest"
+              }
+            }
+          },
+          {
+            "id": "done_rework",
+            "kind": {
+              "type": "terminal",
+              "outcome": "succeeded"
+            },
+            "inputs": {
+              "candidate": {
+                "value_type": {
+                  "type": "object",
+                  "fields": {
+                    "artifact_id": {
+                      "type": "string"
+                    },
+                    "digest": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "required": true
+              }
+            },
+            "bindings": {
+              "candidate": {
+                "source": "node_output",
+                "node": "rework",
+                "field": "candidate"
+              }
+            }
+          },
+          {
+            "id": "publish_rework",
+            "kind": {
+              "type": "task",
+              "capability": {
+                "id": "delivery.pr-create",
+                "version": "1.0.0"
+              },
+              "policy": null
+            },
+            "inputs": {
+              "name": {
+                "value_type": {
+                  "type": "string"
+                },
+                "required": true
+              },
+              "delivery": {
+                "value_type": {
+                  "type": "object",
+                  "fields": {
+                    "source_revision": {
+                      "type": "object",
+                      "fields": {
+                        "repository": {
+                          "type": "string"
+                        },
+                        "revision": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "input_digest": {
+                      "type": "string"
+                    },
+                    "artifacts": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "fields": {
+                          "artifact_id": {
+                            "type": "string"
+                          },
+                          "digest": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "required": true
+              }
+            },
+            "outputs": {
+              "resource_id": {
+                "value_type": {
+                  "type": "string"
+                },
+                "required": true
+              }
+            },
+            "bindings": {
+              "name": {
+                "source": "workflow_input",
+                "field": "name"
+              },
+              "delivery": {
+                "source": "node_output",
+                "node": "verify_rework",
+                "field": "delivery"
+              }
+            }
+          },
+          {
+            "id": "rejected",
+            "kind": {
+              "type": "terminal",
+              "outcome": "cancelled"
+            },
+            "inputs": {},
+            "bindings": {}
+          },
+          {
+            "id": "expired",
+            "kind": {
+              "type": "terminal",
+              "outcome": "failed"
+            },
+            "inputs": {},
+            "bindings": {}
+          },
+          {
+            "id": "failed",
+            "kind": {
+              "type": "terminal",
+              "outcome": "failed"
+            },
+            "inputs": {},
+            "bindings": {}
+          }
+        ],
+        "edges": [
+          {
+            "id": "prepare-initial",
+            "from": "prepare",
+            "to": "initial",
+            "route": {
+              "type": "next"
+            }
+          },
+          {
+            "id": "initial-tested_initial",
+            "from": "initial",
+            "to": "tested_initial",
+            "route": {
+              "type": "next"
+            }
+          },
+          {
+            "id": "tested_initial-verify_initial",
+            "from": "tested_initial",
+            "to": "verify_initial",
+            "route": {
+              "type": "case",
+              "when": {
+                "op": "eq",
+                "field": "passed",
+                "value": true
+              }
+            }
+          },
+          {
+            "id": "tested_initial-rework",
+            "from": "tested_initial",
+            "to": "rework",
+            "route": {
+              "type": "otherwise"
+            }
+          },
+          {
+            "id": "verify_initial-review_initial",
+            "from": "verify_initial",
+            "to": "review_initial",
+            "route": {
+              "type": "next"
+            }
+          },
+          {
+            "id": "review_initial-rejected",
+            "from": "review_initial",
+            "to": "rejected",
+            "route": {
+              "type": "rejected"
+            }
+          },
+          {
+            "id": "review_initial-expired",
+            "from": "review_initial",
+            "to": "expired",
+            "route": {
+              "type": "timed_out"
+            }
+          },
+          {
+            "id": "review_initial-publish_initial",
+            "from": "review_initial",
+            "to": "publish_initial",
+            "route": {
+              "type": "accepted"
+            }
+          },
+          {
+            "id": "publish_initial-done_initial",
+            "from": "publish_initial",
+            "to": "done_initial",
+            "route": {
+              "type": "next"
+            }
+          },
+          {
+            "id": "rework-tested_rework",
+            "from": "rework",
+            "to": "tested_rework",
+            "route": {
+              "type": "next"
+            }
+          },
+          {
+            "id": "tested_rework-verify_rework",
+            "from": "tested_rework",
+            "to": "verify_rework",
+            "route": {
+              "type": "case",
+              "when": {
+                "op": "eq",
+                "field": "passed",
+                "value": true
+              }
+            }
+          },
+          {
+            "id": "tested_rework-failed",
+            "from": "tested_rework",
+            "to": "failed",
+            "route": {
+              "type": "otherwise"
+            }
+          },
+          {
+            "id": "verify_rework-review_rework",
+            "from": "verify_rework",
+            "to": "review_rework",
+            "route": {
+              "type": "next"
+            }
+          },
+          {
+            "id": "review_rework-rejected",
+            "from": "review_rework",
+            "to": "rejected",
+            "route": {
+              "type": "rejected"
+            }
+          },
+          {
+            "id": "review_rework-expired",
+            "from": "review_rework",
+            "to": "expired",
+            "route": {
+              "type": "timed_out"
+            }
+          },
+          {
+            "id": "review_rework-publish_rework",
+            "from": "review_rework",
+            "to": "publish_rework",
+            "route": {
+              "type": "accepted"
+            }
+          },
+          {
+            "id": "publish_rework-done_rework",
+            "from": "publish_rework",
+            "to": "done_rework",
+            "route": {
+              "type": "next"
+            }
+          }
+        ]
+      },
+      {
+        "schema_version": 1,
+        "id": "sdlc.implementation-attempt",
+        "version": "1.0.0",
+        "entry": "propose",
+        "inputs": {
+          "request": {
+            "value_type": {
+              "type": "string"
+            },
+            "required": true
+          },
+          "repository": {
+            "value_type": {
+              "type": "string"
+            },
+            "required": true
+          },
+          "revision": {
+            "value_type": {
+              "type": "string"
+            },
+            "required": true
+          },
+          "context": {
+            "value_type": {
+              "type": "object",
+              "fields": {
+                "artifact_id": {
+                  "type": "string"
+                },
+                "digest": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": true
+          },
+          "feedback": {
+            "value_type": {
+              "type": "string"
+            },
+            "required": true
+          }
+        },
+        "nodes": [
+          {
+            "id": "propose",
+            "kind": {
+              "type": "task",
+              "capability": {
+                "id": "sdlc.propose",
+                "version": "1.0.0"
+              },
+              "policy": null
+            },
+            "inputs": {
+              "request": {
+                "value_type": {
+                  "type": "string"
+                },
+                "required": true
+              },
+              "repository": {
+                "value_type": {
+                  "type": "string"
+                },
+                "required": true
+              },
+              "revision": {
+                "value_type": {
+                  "type": "string"
+                },
+                "required": true
+              },
+              "context": {
+                "value_type": {
+                  "type": "object",
+                  "fields": {
+                    "artifact_id": {
+                      "type": "string"
+                    },
+                    "digest": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "required": true
+              },
+              "feedback": {
+                "value_type": {
+                  "type": "string"
+                },
+                "required": true
+              }
+            },
+            "outputs": {
+              "candidate": {
+                "value_type": {
+                  "type": "object",
+                  "fields": {
+                    "artifact_id": {
+                      "type": "string"
+                    },
+                    "digest": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "required": true
+              }
+            },
+            "bindings": {
+              "request": {
+                "source": "workflow_input",
+                "field": "request"
+              },
+              "repository": {
+                "source": "workflow_input",
+                "field": "repository"
+              },
+              "revision": {
+                "source": "workflow_input",
+                "field": "revision"
+              },
+              "context": {
+                "source": "workflow_input",
+                "field": "context"
+              },
+              "feedback": {
+                "source": "workflow_input",
+                "field": "feedback"
+              }
+            }
+          },
+          {
+            "id": "test",
+            "kind": {
+              "type": "task",
+              "capability": {
+                "id": "sdlc.test",
+                "version": "1.0.0"
+              },
+              "policy": null
+            },
+            "inputs": {
+              "request": {
+                "value_type": {
+                  "type": "string"
+                },
+                "required": true
+              },
+              "repository": {
+                "value_type": {
+                  "type": "string"
+                },
+                "required": true
+              },
+              "revision": {
+                "value_type": {
+                  "type": "string"
+                },
+                "required": true
+              },
+              "candidate": {
+                "value_type": {
+                  "type": "object",
+                  "fields": {
+                    "artifact_id": {
+                      "type": "string"
+                    },
+                    "digest": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "required": true
+              }
+            },
+            "outputs": {
+              "passed": {
+                "value_type": {
+                  "type": "boolean"
+                },
+                "required": true
+              },
+              "diagnostics": {
+                "value_type": {
+                  "type": "string"
+                },
+                "required": true
+              }
+            },
+            "bindings": {
+              "request": {
+                "source": "workflow_input",
+                "field": "request"
+              },
+              "repository": {
+                "source": "workflow_input",
+                "field": "repository"
+              },
+              "revision": {
+                "source": "workflow_input",
+                "field": "revision"
+              },
+              "candidate": {
+                "source": "node_output",
+                "node": "propose",
+                "field": "candidate"
+              }
+            }
+          },
+          {
+            "id": "observed",
+            "kind": {
+              "type": "terminal",
+              "outcome": "succeeded"
+            },
+            "inputs": {
+              "candidate": {
+                "value_type": {
+                  "type": "object",
+                  "fields": {
+                    "artifact_id": {
+                      "type": "string"
+                    },
+                    "digest": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "required": true
+              },
+              "passed": {
+                "value_type": {
+                  "type": "boolean"
+                },
+                "required": true
+              },
+              "diagnostics": {
+                "value_type": {
+                  "type": "string"
+                },
+                "required": true
+              }
+            },
+            "bindings": {
+              "candidate": {
+                "source": "node_output",
+                "node": "propose",
+                "field": "candidate"
+              },
+              "passed": {
+                "source": "node_output",
+                "node": "test",
+                "field": "passed"
+              },
+              "diagnostics": {
+                "source": "node_output",
+                "node": "test",
+                "field": "diagnostics"
+              }
+            }
+          }
+        ],
+        "edges": [
+          {
+            "id": "propose-test",
+            "from": "propose",
+            "to": "test",
+            "route": {
+              "type": "next"
+            }
+          },
+          {
+            "id": "test-observed",
+            "from": "test",
+            "to": "observed",
+            "route": {
+              "type": "next"
+            }
+          }
+        ]
+      }
+    ],
+    "capabilities": [
+      {
+        "schema_version": 1,
+        "capability": {
+          "id": "delivery.pr-create",
+          "version": "1.0.0"
+        },
+        "inputs": {
+          "name": {
+            "value_type": {
+              "type": "string"
+            },
+            "required": true
+          },
+          "delivery": {
+            "value_type": {
+              "type": "object",
+              "fields": {
+                "source_revision": {
+                  "type": "object",
+                  "fields": {
+                    "repository": {
+                      "type": "string"
+                    },
+                    "revision": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "input_digest": {
+                  "type": "string"
+                },
+                "artifacts": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "fields": {
+                      "artifact_id": {
+                        "type": "string"
+                      },
+                      "digest": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "required": true
+          }
+        },
+        "outputs": {
+          "resource_id": {
+            "value_type": {
+              "type": "string"
+            },
+            "required": true
+          }
+        },
+        "timeout_ms": 60000,
+        "error_codes": {
+          "invalid": "invalid_input",
+          "forbidden": "permission_denied",
+          "rejected": "business_rejected",
+          "retry": "transient"
+        },
+        "effects": {
+          "type": "write",
+          "idempotency": {
+            "mode": "key",
+            "scope": "sdlc.delivery",
+            "retention_ms": 86400000
+          },
+          "query": {
+            "id": "delivery.query",
+            "version": "1.0.0"
+          },
+          "compensation": null
+        },
+        "usage": "Create a provider-backed PR from reviewed immutable proposal artifacts; return its stable identity. Leave it awaiting merge.",
+        "skill": null
+      },
+      {
+        "schema_version": 1,
+        "capability": {
+          "id": "delivery.query",
+          "version": "1.0.0"
+        },
+        "inputs": {},
+        "outputs": {},
+        "timeout_ms": 60000,
+        "error_codes": {
+          "invalid": "invalid_input",
+          "forbidden": "permission_denied",
+          "rejected": "business_rejected",
+          "retry": "transient"
+        },
+        "effects": {
+          "type": "read_only"
+        },
+        "usage": "Query the immutable original operation key; return provider-backed effect protocol observations, never execute a write.",
+        "skill": null
+      },
+      {
+        "schema_version": 1,
+        "capability": {
+          "id": "sdlc.diagnose",
+          "version": "1.0.0"
+        },
+        "inputs": {
+          "request": {
+            "value_type": {
+              "type": "string"
+            },
+            "required": true
+          },
+          "repository": {
+            "value_type": {
+              "type": "string"
+            },
+            "required": true
+          },
+          "revision": {
+            "value_type": {
+              "type": "string"
+            },
+            "required": true
+          }
+        },
+        "outputs": {
+          "context": {
+            "value_type": {
+              "type": "object",
+              "fields": {
+                "artifact_id": {
+                  "type": "string"
+                },
+                "digest": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": true
+          }
+        },
+        "timeout_ms": 60000,
+        "error_codes": {
+          "invalid": "invalid_input",
+          "forbidden": "permission_denied",
+          "rejected": "business_rejected",
+          "retry": "transient"
+        },
+        "effects": {
+          "type": "read_only"
+        },
+        "usage": "Read the pinned source and request; return an immutable workspace/design artifact. No writes to the source repository.",
+        "skill": null
+      },
+      {
+        "schema_version": 1,
+        "capability": {
+          "id": "sdlc.propose",
+          "version": "1.0.0"
+        },
+        "inputs": {
+          "request": {
+            "value_type": {
+              "type": "string"
+            },
+            "required": true
+          },
+          "repository": {
+            "value_type": {
+              "type": "string"
+            },
+            "required": true
+          },
+          "revision": {
+            "value_type": {
+              "type": "string"
+            },
+            "required": true
+          },
+          "context": {
+            "value_type": {
+              "type": "object",
+              "fields": {
+                "artifact_id": {
+                  "type": "string"
+                },
+                "digest": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": true
+          },
+          "feedback": {
+            "value_type": {
+              "type": "string"
+            },
+            "required": true
+          }
+        },
+        "outputs": {
+          "candidate": {
+            "value_type": {
+              "type": "object",
+              "fields": {
+                "artifact_id": {
+                  "type": "string"
+                },
+                "digest": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": true
+          }
+        },
+        "timeout_ms": 60000,
+        "error_codes": {
+          "invalid": "invalid_input",
+          "forbidden": "permission_denied",
+          "rejected": "business_rejected",
+          "retry": "transient"
+        },
+        "effects": {
+          "type": "read_only"
+        },
+        "usage": "Produce an immutable candidate workspace from the context and previous test diagnostics. Never merge or publish.",
+        "skill": null
+      },
+      {
+        "schema_version": 1,
+        "capability": {
+          "id": "sdlc.test",
+          "version": "1.0.0"
+        },
+        "inputs": {
+          "request": {
+            "value_type": {
+              "type": "string"
+            },
+            "required": true
+          },
+          "repository": {
+            "value_type": {
+              "type": "string"
+            },
+            "required": true
+          },
+          "revision": {
+            "value_type": {
+              "type": "string"
+            },
+            "required": true
+          },
+          "candidate": {
+            "value_type": {
+              "type": "object",
+              "fields": {
+                "artifact_id": {
+                  "type": "string"
+                },
+                "digest": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": true
+          }
+        },
+        "outputs": {
+          "passed": {
+            "value_type": {
+              "type": "boolean"
+            },
+            "required": true
+          },
+          "diagnostics": {
+            "value_type": {
+              "type": "string"
+            },
+            "required": true
+          }
+        },
+        "timeout_ms": 60000,
+        "error_codes": {
+          "invalid": "invalid_input",
+          "forbidden": "permission_denied",
+          "rejected": "business_rejected",
+          "retry": "transient"
+        },
+        "effects": {
+          "type": "read_only"
+        },
+        "usage": "Run the candidate tests in an isolated workspace; return the observed Boolean, diagnostics and a typed test report.",
+        "skill": null
+      },
+      {
+        "schema_version": 1,
+        "capability": {
+          "id": "sdlc.verify",
+          "version": "1.0.0"
+        },
+        "inputs": {
+          "request": {
+            "value_type": {
+              "type": "string"
+            },
+            "required": true
+          },
+          "repository": {
+            "value_type": {
+              "type": "string"
+            },
+            "required": true
+          },
+          "revision": {
+            "value_type": {
+              "type": "string"
+            },
+            "required": true
+          },
+          "candidate": {
+            "value_type": {
+              "type": "object",
+              "fields": {
+                "artifact_id": {
+                  "type": "string"
+                },
+                "digest": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": true
+          },
+          "gate_policy_json": {
+            "value_type": {
+              "type": "string"
+            },
+            "required": true
+          },
+          "action_json": {
+            "value_type": {
+              "type": "string"
+            },
+            "required": true
+          }
+        },
+        "outputs": {
+          "passed": {
+            "value_type": {
+              "type": "boolean"
+            },
+            "required": true
+          },
+          "diagnostics": {
+            "value_type": {
+              "type": "string"
+            },
+            "required": true
+          },
+          "delivery": {
+            "value_type": {
+              "type": "object",
+              "fields": {
+                "source_revision": {
+                  "type": "object",
+                  "fields": {
+                    "repository": {
+                      "type": "string"
+                    },
+                    "revision": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "input_digest": {
+                  "type": "string"
+                },
+                "artifacts": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "fields": {
+                      "artifact_id": {
+                        "type": "string"
+                      },
+                      "digest": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "required": true
+          },
+          "review_digest": {
+            "value_type": {
+              "type": "string"
+            },
+            "required": true
+          },
+          "target_artifacts": {
+            "value_type": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "fields": {
+                  "artifact_id": {
+                    "type": "string"
+                  },
+                  "digest": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "required": true
+          }
+        },
+        "timeout_ms": 60000,
+        "error_codes": {
+          "invalid": "invalid_input",
+          "forbidden": "permission_denied",
+          "rejected": "business_rejected",
+          "retry": "transient"
+        },
+        "effects": {
+          "type": "read_only"
+        },
+        "usage": "Independently execute candidate tests; bind the typed report, release subject and review digest to these exact inputs and artifacts. No model or external write.",
+        "skill": null
+      }
+    ],
+    "postconditions": [
+      {
+        "workflow": {
+          "id": "sdlc.defect",
+          "version": "1.0.0"
+        },
+        "node_id": "verify_initial",
+        "policy": {
+          "schema_version": 1,
+          "identity": {
+            "id": "sdlc.defect.verify_initial.quality",
+            "version": "1.0.0"
+          },
+          "requirements": [
+            {
+              "id": "tests",
+              "node_id": "verify_initial",
+              "capability": {
+                "id": "sdlc.verify",
+                "version": "1.0.0"
+              },
+              "contract_digest": "sha256:2ae9425bb29e58ba50e70b213c9136a915df9a6c55cd4b6b7c32c5def20192fe",
+              "report_type": {
+                "identity": {
+                  "id": "sdlc.test-report",
+                  "version": "1.0.0"
+                },
+                "content": {
+                  "format": "json",
+                  "value_type": {
+                    "type": "object",
+                    "fields": {
+                      "passed": {
+                        "type": "boolean"
+                      },
+                      "command": {
+                        "type": "string"
+                      },
+                      "output": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              },
+              "pass_field": "passed",
+              "max_age_ms": 600000
+            }
+          ]
+        },
+        "action": {
+          "id": "delivery.pr-create",
+          "version": "1.0.0"
+        },
+        "repository": {
+          "source": "workflow_input",
+          "field": "repository"
+        },
+        "revision": {
+          "source": "workflow_input",
+          "field": "revision"
+        },
+        "input_node": "verify_initial",
+        "artifacts": {
+          "source": "node_output",
+          "node": "verify_initial",
+          "field": "target_artifacts"
+        }
+      },
+      {
+        "workflow": {
+          "id": "sdlc.defect",
+          "version": "1.0.0"
+        },
+        "node_id": "done_initial",
+        "policy": {
+          "schema_version": 1,
+          "identity": {
+            "id": "sdlc.defect.verify_initial.quality",
+            "version": "1.0.0"
+          },
+          "requirements": [
+            {
+              "id": "tests",
+              "node_id": "verify_initial",
+              "capability": {
+                "id": "sdlc.verify",
+                "version": "1.0.0"
+              },
+              "contract_digest": "sha256:2ae9425bb29e58ba50e70b213c9136a915df9a6c55cd4b6b7c32c5def20192fe",
+              "report_type": {
+                "identity": {
+                  "id": "sdlc.test-report",
+                  "version": "1.0.0"
+                },
+                "content": {
+                  "format": "json",
+                  "value_type": {
+                    "type": "object",
+                    "fields": {
+                      "passed": {
+                        "type": "boolean"
+                      },
+                      "command": {
+                        "type": "string"
+                      },
+                      "output": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              },
+              "pass_field": "passed",
+              "max_age_ms": 600000
+            }
+          ]
+        },
+        "action": {
+          "id": "delivery.pr-create",
+          "version": "1.0.0"
+        },
+        "repository": {
+          "source": "workflow_input",
+          "field": "repository"
+        },
+        "revision": {
+          "source": "workflow_input",
+          "field": "revision"
+        },
+        "input_node": "verify_initial",
+        "artifacts": {
+          "source": "node_output",
+          "node": "verify_initial",
+          "field": "target_artifacts"
+        }
+      },
+      {
+        "workflow": {
+          "id": "sdlc.defect",
+          "version": "1.0.0"
+        },
+        "node_id": "verify_rework",
+        "policy": {
+          "schema_version": 1,
+          "identity": {
+            "id": "sdlc.defect.verify_rework.quality",
+            "version": "1.0.0"
+          },
+          "requirements": [
+            {
+              "id": "tests",
+              "node_id": "verify_rework",
+              "capability": {
+                "id": "sdlc.verify",
+                "version": "1.0.0"
+              },
+              "contract_digest": "sha256:2ae9425bb29e58ba50e70b213c9136a915df9a6c55cd4b6b7c32c5def20192fe",
+              "report_type": {
+                "identity": {
+                  "id": "sdlc.test-report",
+                  "version": "1.0.0"
+                },
+                "content": {
+                  "format": "json",
+                  "value_type": {
+                    "type": "object",
+                    "fields": {
+                      "passed": {
+                        "type": "boolean"
+                      },
+                      "command": {
+                        "type": "string"
+                      },
+                      "output": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              },
+              "pass_field": "passed",
+              "max_age_ms": 600000
+            }
+          ]
+        },
+        "action": {
+          "id": "delivery.pr-create",
+          "version": "1.0.0"
+        },
+        "repository": {
+          "source": "workflow_input",
+          "field": "repository"
+        },
+        "revision": {
+          "source": "workflow_input",
+          "field": "revision"
+        },
+        "input_node": "verify_rework",
+        "artifacts": {
+          "source": "node_output",
+          "node": "verify_rework",
+          "field": "target_artifacts"
+        }
+      },
+      {
+        "workflow": {
+          "id": "sdlc.defect",
+          "version": "1.0.0"
+        },
+        "node_id": "done_rework",
+        "policy": {
+          "schema_version": 1,
+          "identity": {
+            "id": "sdlc.defect.verify_rework.quality",
+            "version": "1.0.0"
+          },
+          "requirements": [
+            {
+              "id": "tests",
+              "node_id": "verify_rework",
+              "capability": {
+                "id": "sdlc.verify",
+                "version": "1.0.0"
+              },
+              "contract_digest": "sha256:2ae9425bb29e58ba50e70b213c9136a915df9a6c55cd4b6b7c32c5def20192fe",
+              "report_type": {
+                "identity": {
+                  "id": "sdlc.test-report",
+                  "version": "1.0.0"
+                },
+                "content": {
+                  "format": "json",
+                  "value_type": {
+                    "type": "object",
+                    "fields": {
+                      "passed": {
+                        "type": "boolean"
+                      },
+                      "command": {
+                        "type": "string"
+                      },
+                      "output": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              },
+              "pass_field": "passed",
+              "max_age_ms": 600000
+            }
+          ]
+        },
+        "action": {
+          "id": "delivery.pr-create",
+          "version": "1.0.0"
+        },
+        "repository": {
+          "source": "workflow_input",
+          "field": "repository"
+        },
+        "revision": {
+          "source": "workflow_input",
+          "field": "revision"
+        },
+        "input_node": "verify_rework",
+        "artifacts": {
+          "source": "node_output",
+          "node": "verify_rework",
+          "field": "target_artifacts"
+        }
+      }
+    ],
+    "wait_policies": [
+      {
+        "workflow": {
+          "id": "sdlc.defect",
+          "version": "1.0.0"
+        },
+        "node_id": "review_initial",
+        "policy": {
+          "identity": {
+            "id": "sdlc.defect.review_initial",
+            "version": "1.0.0"
+          },
+          "kind": "human_approval",
+          "responders": [
+            "delivery-reviewer"
+          ],
+          "subjects": {
+            "subject": "digest"
+          },
+          "max_validity_ms": 300000,
+          "exception": null
+        }
+      },
+      {
+        "workflow": {
+          "id": "sdlc.defect",
+          "version": "1.0.0"
+        },
+        "node_id": "review_rework",
+        "policy": {
+          "identity": {
+            "id": "sdlc.defect.review_rework",
+            "version": "1.0.0"
+          },
+          "kind": "human_approval",
+          "responders": [
+            "delivery-reviewer"
+          ],
+          "subjects": {
+            "subject": "digest"
+          },
+          "max_validity_ms": 300000,
+          "exception": null
+        }
+      }
+    ],
+    "effect_bindings": [
+      {
+        "workflow": {
+          "id": "sdlc.defect",
+          "version": "1.0.0"
+        },
+        "node_id": "publish_initial",
+        "policy": {
+          "identity": {
+            "id": "sdlc.delivery-policy",
+            "version": "1.0.0"
+          },
+          "target": {
+            "id": "sdlc-delivery",
+            "version": "1.0.0"
+          },
+          "call_identity": {
+            "id": "sdlc-publisher",
+            "version": "1.0.0"
+          },
+          "retry": {
+            "max_calls": 6,
+            "initial_backoff_ms": 100,
+            "max_backoff_ms": 1000,
+            "total_write_ms": 120000
+          }
+        },
+        "release": {
+          "gate_nodes": [
+            "verify_initial"
+          ],
+          "subject_field": "delivery",
+          "approvals": [
+            {
+              "gate_node": "verify_initial",
+              "approval": {
+                "node_id": "review_initial",
+                "subject_field": "subject"
+              }
+            }
+          ],
+          "target_check": {
+            "type": "atomic_compare"
+          }
+        }
+      },
+      {
+        "workflow": {
+          "id": "sdlc.defect",
+          "version": "1.0.0"
+        },
+        "node_id": "publish_rework",
+        "policy": {
+          "identity": {
+            "id": "sdlc.delivery-policy",
+            "version": "1.0.0"
+          },
+          "target": {
+            "id": "sdlc-delivery",
+            "version": "1.0.0"
+          },
+          "call_identity": {
+            "id": "sdlc-publisher",
+            "version": "1.0.0"
+          },
+          "retry": {
+            "max_calls": 6,
+            "initial_backoff_ms": 100,
+            "max_backoff_ms": 1000,
+            "total_write_ms": 120000
+          }
+        },
+        "release": {
+          "gate_nodes": [
+            "verify_rework"
+          ],
+          "subject_field": "delivery",
+          "approvals": [
+            {
+              "gate_node": "verify_rework",
+              "approval": {
+                "node_id": "review_rework",
+                "subject_field": "subject"
+              }
+            }
+          ],
+          "target_check": {
+            "type": "atomic_compare"
+          }
+        }
+      }
+    ],
+    "model_policies": []
+  }
+}

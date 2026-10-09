@@ -1,0 +1,174 @@
+{
+  "schema_version": 1,
+  "policy": {
+    "id": "sop.inspect-policy",
+    "version": "1.0.0"
+  },
+  "task": {
+    "capability": {
+      "id": "sop.inspect",
+      "version": "1.0.0"
+    },
+    "effects": {
+      "type": "read_only"
+    },
+    "error_codes": {
+      "model_unavailable": "permanent",
+      "model_invalid_response": "permanent",
+      "model_refused": "permanent",
+      "model_budget": "permanent",
+      "model_deadline": "permanent"
+    },
+    "inputs": {
+      "document": {
+        "required": true,
+        "value_type": {
+          "type": "string"
+        }
+      },
+      "format": {
+        "required": true,
+        "value_type": {
+          "type": "string"
+        }
+      }
+    },
+    "outputs": {
+      "diagnostics": {
+        "required": true,
+        "value_type": {
+          "items": {
+            "fields": {
+              "code": {
+                "type": "string"
+              },
+              "edge": {
+                "type": "string"
+              },
+              "file": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "node": {
+                "type": "string"
+              },
+              "path": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "type": "array"
+        }
+      },
+      "digest": {
+        "required": false,
+        "value_type": {
+          "type": "string"
+        }
+      },
+      "valid": {
+        "required": true,
+        "value_type": {
+          "type": "boolean"
+        }
+      }
+    },
+    "schema_version": 1,
+    "skill": {
+      "id": "workflow-model",
+      "version": "1.0.0"
+    },
+    "timeout_ms": 60000,
+    "usage": "Inspect a workflow using a bounded model policy. Outputs are model claims; downstream gates supply independent acceptance."
+  },
+  "goal": "Call workflow.validate with the supplied document and format, then return the actual tool outputs without alteration. Do not invent a validation result.",
+  "tools": [
+    {
+      "capability": {
+        "id": "workflow.validate",
+        "version": "1.0.0"
+      },
+      "effects": {
+        "type": "read_only"
+      },
+      "error_codes": {
+        "invalid_definition": "invalid_input",
+        "invalid_format": "invalid_input"
+      },
+      "inputs": {
+        "document": {
+          "required": true,
+          "value_type": {
+            "type": "string"
+          }
+        },
+        "format": {
+          "required": true,
+          "value_type": {
+            "type": "string"
+          }
+        }
+      },
+      "outputs": {
+        "diagnostics": {
+          "required": true,
+          "value_type": {
+            "items": {
+              "fields": {
+                "code": {
+                  "type": "string"
+                },
+                "edge": {
+                  "type": "string"
+                },
+                "file": {
+                  "type": "string"
+                },
+                "message": {
+                  "type": "string"
+                },
+                "node": {
+                  "type": "string"
+                },
+                "path": {
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "digest": {
+          "required": false,
+          "value_type": {
+            "type": "string"
+          }
+        },
+        "valid": {
+          "required": true,
+          "value_type": {
+            "type": "boolean"
+          }
+        }
+      },
+      "schema_version": 1,
+      "skill": {
+        "id": "workflow-capability",
+        "version": "1.0.0"
+      },
+      "timeout_ms": 60000,
+      "usage": "Validate an in-memory JSON/YAML workflow. Invalid definitions are a successful inspection with valid=false and diagnostics; digest is absent. No filesystem or model access."
+    }
+  ],
+  "budget": {
+    "model_calls": 3,
+    "tool_calls": 2,
+    "context_bytes": 65536,
+    "response_bytes": 16384,
+    "output_tokens_per_call": 2048
+  }
+}

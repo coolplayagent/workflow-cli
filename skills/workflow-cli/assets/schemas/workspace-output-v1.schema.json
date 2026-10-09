@@ -1,0 +1,66 @@
+{
+  "ok": true,
+  "result": {
+    "$defs": {
+      "CapturedFile": {
+        "additionalProperties": false,
+        "properties": {
+          "artifact_id": {
+            "type": "string"
+          },
+          "digest": {
+            "type": "string"
+          },
+          "executable": {
+            "type": "boolean"
+          },
+          "path": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "path",
+          "executable",
+          "artifact_id",
+          "digest"
+        ],
+        "type": "object"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "additionalProperties": false,
+    "properties": {
+      "baseline_tree_digest": {
+        "type": "string"
+      },
+      "clean": {
+        "type": "boolean"
+      },
+      "files": {
+        "items": {
+          "$ref": "#/$defs/CapturedFile"
+        },
+        "type": "array"
+      },
+      "observed_tree_digest": {
+        "type": "string"
+      },
+      "workspace_digest": {
+        "type": "string"
+      },
+      "workspace_id": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "workspace_id",
+      "workspace_digest",
+      "baseline_tree_digest",
+      "observed_tree_digest",
+      "clean",
+      "files"
+    ],
+    "title": "OutputManifest",
+    "type": "object"
+  }
+}

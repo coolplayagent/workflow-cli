@@ -4,10 +4,12 @@ import re
 
 from book import ROOT, NAV_START, chapters, edition_path, load_book, sync
 from doc_links import check_links, parse
+from sync_skill_resources import sync_resources
 
 
 def check(root=ROOT):
     sync(root, check=True)
+    sync_resources(root, check=True)
     book = load_book(root)
     for chapter in chapters(book):
         for lang in ('en', 'zh'):

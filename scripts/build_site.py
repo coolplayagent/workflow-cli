@@ -19,13 +19,15 @@ REPO = 'https://github.com/coolplayagent/workflow-cli'
 
 
 def site_routes(root, book):
-    routes = {}
+    routes = {root / "docs/README.md": Path("docs/index.html")}
     for lang in ('en', 'zh'):
         routes[edition_path(root, lang, 'README.md')] = Path(f'docs/{lang}/index.html')
         overview = 'README.md' if lang == 'en' else 'README.zh-CN.md'
         routes[root / overview] = Path(f'docs/{lang}/overview.html')
+        for part in book["parts"]:
+            routes[edition_path(root, lang, part["directory"] + "/README.md")] = Path(f'docs/{lang}/{part["directory"]}/index.html')
         for chapter in chapters(book):
-            routes[edition_path(root, lang, chapter['file'])] = Path(f'docs/{lang}/{Path(chapter["file"]).stem}.html')
+            routes[edition_path(root, lang, chapter['file'])] = Path(f'docs/{lang}') / Path(chapter["file"]).with_suffix(".html")
     skill = root / 'skills/workflow-cli'
     routes[skill / 'SKILL.md'] = Path('skill/index.html')
     routes.update({p: Path('skill') / (p.stem + '.html') for p in (skill / 'references').glob('*.md')})
@@ -75,6 +77,14 @@ def build(out, root=ROOT):
     revision = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=root, text=True).strip()
     book = load_book(root)
     routes = site_routes(root, book)
+    # Skill manuals are committed local copies; render their links through the book routes.
+    lookup = dict(routes)
+    manuals = root / 'skills/workflow-cli/references/manuals'
+    for source, destination in routes.items():
+        if source.is_relative_to(root / 'docs'):
+            lookup[manuals / source.relative_to(root / 'docs')] = destination
+    lookup[manuals / 'overview.md'] = routes[root / 'README.md']
+    lookup[manuals / 'overview.zh-CN.md'] = routes[root / 'README.zh-CN.md']
     for asset in ['style.css', 'site.js', 'redirect.js']:
         shutil.copy2(root / 'website' / asset, out / asset)
     for filename in ('index.html', 'index.en.html'):
@@ -82,7 +92,7 @@ def build(out, root=ROOT):
         (out / filename).write_text(homepage.replace('__VERSION__', version).replace('__REVISION__', revision[:7]))
     (out / '.nojekyll').touch()
     (out / 'build.json').write_text(json.dumps({'version': version, 'source_revision': revision,
-                                              'languages': ['en', 'zh'], 'chapters_per_language': len(chapters(book))}) + '\n')
+                                              'languages': ['en', 'zh'], 'chapters_per_language': len(chapters(book)), 'volumes_per_language': len(book['parts'])}) + '\n')
     for source, destination in routes.items():
         lang = 'zh' if ('zh' in source.relative_to(root).parts or source.name == 'README.zh-CN.md') else 'en'
 
@@ -98,8 +108,8 @@ def build(out, root=ROOT):
                 continue
             target, _ = resolved
             url = urlsplit(href)
-            if target in routes:
-                link = relative(routes[target])
+            if target in lookup:
+                link = relative(lookup[target])
             else:
                 # Examples, schemas and other reading assets are served locally.
                 # A path not present in the repository has already failed validation.
@@ -115,19 +125,23 @@ def build(out, root=ROOT):
         body = md.renderer.render(tokens, md.options, {})
         title = next(tokens[i + 1].content for i, token in enumerate(tokens) if token.type == 'heading_open' and token.tag == 'h1')
         navigation = f'<a href="{relative(Path(f"docs/{lang}/index.html"))}">{html.escape(book["title"][lang])}</a>'
-        for part in book['parts']:
-            navigation += f'<strong>{html.escape(part["title"][lang])}</strong>'
-            for chapter in part['chapters']:
+        for p, part in enumerate(book['parts'], 1):
+            cover = edition_path(root, lang, part['directory'] + '/README.md')
+            current = ' aria-current="page"' if cover == source else ''
+            navigation += f'<strong><a{current} href="{relative(routes[cover])}">{p:02}. {html.escape(part["title"][lang])}</a></strong>'
+            for n, chapter in enumerate(part['chapters'], 1):
                 path = edition_path(root, lang, chapter['file'])
                 current = ' aria-current="page"' if path == source else ''
-                navigation += f'<a{current} href="{relative(routes[path])}">{html.escape(chapter["title"][lang])}</a>'
+                navigation += f'<a{current} href="{relative(routes[path])}">{p}.{n} {html.escape(chapter["title"][lang])}</a>'
         navigation += '<strong>Skill</strong>'
         for path, route in routes.items():
             if route.parts[0] == 'skill':
                 navigation += f'<a href="{relative(route)}">{html.escape(path.stem)}</a>'
         other = 'en' if lang == 'zh' else 'zh'
-        if source.parent == edition_path(root, lang, 'README.md').parent:
-            counterpart = edition_path(root, other, source.name)
+        if source.is_relative_to(root / 'docs' / lang):
+            counterpart = edition_path(root, other, source.relative_to(root / 'docs' / lang))
+        elif source == root / 'docs/README.md':
+            counterpart = edition_path(root, other, 'README.md')
         elif source.name in ('README.md', 'README.zh-CN.md'):
             counterpart = root / ('README.md' if other == 'en' else 'README.zh-CN.md')
         else:
@@ -135,11 +149,13 @@ def build(out, root=ROOT):
         language_switch = relative(routes[counterpart])
         labels = {'zh': ['查找章节', '筛选章节…', '安装', '查看源码', '文档导航'],
                   'en': ['Find a chapter', 'Filter chapters…', 'Install', 'View source', 'Book navigation']}[lang]
+        install = next(c for c in chapters(book) if c['legacy'] == 'skill-distribution')
+        install_route = routes[edition_path(root, lang, install['file'])]
         output = f'''<!doctype html><html lang="{'zh-CN' if lang == 'zh' else 'en'}"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>{html.escape(title)} · Workflow</title>
 <link rel="stylesheet" href="{relative(Path('style.css'))}"></head><body>
 <header><nav aria-label="Main navigation"><a class="brand" href="{relative(Path('index.html' if lang == 'zh' else 'index.en.html'))}"><span class="mark">w</span>workflow</a>
-<a href="{relative(Path(f'docs/{lang}/skill-distribution.html'))}">{labels[2]}</a><a class="language-switch" lang="{other}" href="{language_switch}">{'English' if other == 'en' else '中文'}</a><a href="{REPO}">GitHub ↗</a></nav></header>
+<a href="{relative(install_route)}">{labels[2]}</a><a class="language-switch" lang="{other}" href="{language_switch}">{'English' if other == 'en' else '中文'}</a><a href="{REPO}">GitHub ↗</a></nav></header>
 <main class="doc-layout"><aside class="sidebar" aria-label="{labels[4]}"><label for="doc-search">{labels[0]}</label>
 <input id="doc-search" type="search" placeholder="{labels[1]}"><strong>v{version}</strong>{navigation}</aside>
 <article class="document">{body}<p class="doc-source">v{version} · <a href="{REPO}/blob/{revision}/{source.relative_to(root)}">{labels[3]} · {revision[:7]}</a></p></article></main>
@@ -148,10 +164,17 @@ def build(out, root=ROOT):
         (out / destination).parent.mkdir(parents=True, exist_ok=True)
         (out / destination).write_text(output)
     # Preserve old public URLs and their fragments without duplicating book content.
-    aliases = {'overview': 'overview', **{Path(c['file']).stem: Path(c['file']).stem for c in chapters(book)}}
+    aliases = {Path('docs/overview.html'): Path('docs/en/overview.html')}
+    for chapter in chapters(book):
+        target = Path(chapter['file']).with_suffix('.html')
+        aliases[Path(f'docs/{chapter["legacy"]}.html')] = Path('docs/en') / target
+        for lang in ('en', 'zh'):
+            aliases[Path(f'docs/{lang}/{chapter["legacy"]}.html')] = Path(f'docs/{lang}') / target
     for legacy, target in aliases.items():
-        (out / f'docs/{legacy}.html').write_text(f'''<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Moved · Workflow</title></head>
-<body><p><a id="redirect-target" href="en/{target}.html">Continue to this chapter</a></p><script src="../redirect.js"></script></body></html>''')
+        destination = os.path.relpath(target, legacy.parent)
+        script = os.path.relpath('redirect.js', legacy.parent)
+        (out / legacy).write_text(f'''<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Moved · Workflow</title></head>
+<body><p><a id="redirect-target" href="{destination}">Continue to this chapter</a></p><script src="{script}"></script></body></html>''')
     count = check_site(out)
     print(f'Built and checked {count} pages at {out} for v{version} ({revision[:7]})')
 

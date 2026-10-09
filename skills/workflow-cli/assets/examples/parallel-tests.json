@@ -1,0 +1,94 @@
+{
+  "schema_version": 1,
+  "id": "parallel-tests",
+  "version": "1.0.0",
+  "entry": "split",
+  "inputs": {},
+  "nodes": [
+    {
+      "id": "split",
+      "kind": {
+        "type": "fork"
+      }
+    },
+    {
+      "id": "unit",
+      "kind": {
+        "type": "task",
+        "capability": {
+          "id": "test.unit",
+          "version": "1.0.0"
+        },
+        "policy": null
+      }
+    },
+    {
+      "id": "integration",
+      "kind": {
+        "type": "task",
+        "capability": {
+          "id": "test.integration",
+          "version": "1.0.0"
+        },
+        "policy": null
+      }
+    },
+    {
+      "id": "join",
+      "kind": {
+        "type": "join",
+        "mode": "all",
+        "remaining": "await"
+      }
+    },
+    {
+      "id": "done",
+      "kind": {
+        "type": "terminal",
+        "outcome": "succeeded"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "unit-start",
+      "from": "split",
+      "to": "unit",
+      "route": {
+        "type": "next"
+      }
+    },
+    {
+      "id": "integration-start",
+      "from": "split",
+      "to": "integration",
+      "route": {
+        "type": "next"
+      }
+    },
+    {
+      "id": "unit-done",
+      "from": "unit",
+      "to": "join",
+      "route": {
+        "type": "next"
+      }
+    },
+    {
+      "id": "integration-done",
+      "from": "integration",
+      "to": "join",
+      "route": {
+        "type": "next"
+      }
+    },
+    {
+      "id": "finish",
+      "from": "join",
+      "to": "done",
+      "route": {
+        "type": "next"
+      }
+    }
+  ]
+}

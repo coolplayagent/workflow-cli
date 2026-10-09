@@ -1,0 +1,158 @@
+{
+  "$defs": {
+    "InvocationScope": {
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "const": "standalone",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "attempt_id": {
+              "type": "string"
+            },
+            "definition_digest": {
+              "type": "string"
+            },
+            "lease_epoch": {
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "node_id": {
+              "type": "string"
+            },
+            "node_instance_id": {
+              "type": "string"
+            },
+            "run_id": {
+              "type": "string"
+            },
+            "type": {
+              "const": "workflow",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "definition_digest",
+            "run_id",
+            "node_id",
+            "node_instance_id",
+            "attempt_id",
+            "lease_epoch"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "ModelPolicyBinding": {
+      "additionalProperties": false,
+      "properties": {
+        "digest": {
+          "type": "string"
+        },
+        "policy": {
+          "$ref": "#/$defs/VersionRef"
+        }
+      },
+      "required": [
+        "policy",
+        "digest"
+      ],
+      "type": "object"
+    },
+    "VersionRef": {
+      "additionalProperties": false,
+      "description": "Versions are immutable opaque release identifiers, never ranges or `latest`.",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "version"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "capability": {
+      "$ref": "#/$defs/VersionRef"
+    },
+    "contract_digest": {
+      "type": "string"
+    },
+    "deadline_unix_ms": {
+      "format": "uint64",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "input_digest": {
+      "type": "string"
+    },
+    "inputs": {
+      "additionalProperties": true,
+      "type": "object"
+    },
+    "issued_at_unix_ms": {
+      "format": "uint64",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "model_policy": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ModelPolicyBinding"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "protocol_version": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "request_id": {
+      "type": "string"
+    },
+    "scope": {
+      "$ref": "#/$defs/InvocationScope"
+    },
+    "trace_id": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "protocol_version",
+    "request_id",
+    "trace_id",
+    "scope",
+    "capability",
+    "contract_digest",
+    "inputs",
+    "input_digest",
+    "issued_at_unix_ms",
+    "deadline_unix_ms"
+  ],
+  "title": "WorkRequest",
+  "type": "object"
+}

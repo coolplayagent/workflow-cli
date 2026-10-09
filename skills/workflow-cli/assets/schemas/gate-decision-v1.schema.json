@@ -1,0 +1,212 @@
+{
+  "ok": true,
+  "result": {
+    "$defs": {
+      "ArtifactFinding": {
+        "additionalProperties": false,
+        "properties": {
+          "artifact": {
+            "$ref": "#/$defs/ArtifactLink"
+          },
+          "reason": {
+            "$ref": "#/$defs/Reason"
+          },
+          "verdict": {
+            "$ref": "#/$defs/Verdict"
+          }
+        },
+        "required": [
+          "artifact",
+          "verdict",
+          "reason"
+        ],
+        "type": "object"
+      },
+      "ArtifactLink": {
+        "additionalProperties": false,
+        "properties": {
+          "artifact_id": {
+            "type": "string"
+          },
+          "digest": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "artifact_id",
+          "digest"
+        ],
+        "type": "object"
+      },
+      "Finding": {
+        "additionalProperties": false,
+        "properties": {
+          "completed_at_unix_ms": {
+            "format": "uint64",
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "expires_at_unix_ms": {
+            "format": "uint64",
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "producer": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/Producer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reason": {
+            "$ref": "#/$defs/Reason"
+          },
+          "report": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/ArtifactLink"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "requirement_id": {
+            "type": "string"
+          },
+          "verdict": {
+            "$ref": "#/$defs/Verdict"
+          }
+        },
+        "required": [
+          "requirement_id",
+          "verdict",
+          "reason"
+        ],
+        "type": "object"
+      },
+      "Producer": {
+        "additionalProperties": false,
+        "properties": {
+          "attempt_id": {
+            "type": "string"
+          },
+          "input_digest": {
+            "type": "string"
+          },
+          "node_instance_id": {
+            "type": "string"
+          },
+          "request_digest": {
+            "type": "string"
+          },
+          "run_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "run_id",
+          "node_instance_id",
+          "attempt_id",
+          "request_digest",
+          "input_digest"
+        ],
+        "type": "object"
+      },
+      "Reason": {
+        "enum": [
+          "passed",
+          "check_failed",
+          "check_inconclusive",
+          "missing_evidence",
+          "evidence_unavailable",
+          "type_mismatch",
+          "target_mismatch",
+          "unrecorded_evidence",
+          "producer_mismatch",
+          "tool_mismatch",
+          "invalid_time",
+          "expired",
+          "missing_boolean",
+          "artifact_unavailable"
+        ],
+        "type": "string"
+      },
+      "Verdict": {
+        "enum": [
+          "PASS",
+          "FAIL",
+          "UNKNOWN"
+        ],
+        "type": "string"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "additionalProperties": false,
+    "properties": {
+      "artifacts": {
+        "items": {
+          "$ref": "#/$defs/ArtifactFinding"
+        },
+        "type": "array"
+      },
+      "checks": {
+        "items": {
+          "$ref": "#/$defs/Finding"
+        },
+        "type": "array"
+      },
+      "evaluated_at_unix_ms": {
+        "format": "uint64",
+        "minimum": 0,
+        "type": "integer"
+      },
+      "expires_at_unix_ms": {
+        "format": "uint64",
+        "minimum": 0,
+        "type": [
+          "integer",
+          "null"
+        ]
+      },
+      "policy_digest": {
+        "type": "string"
+      },
+      "request_digest": {
+        "type": "string"
+      },
+      "schema_version": {
+        "format": "uint32",
+        "minimum": 0,
+        "type": "integer"
+      },
+      "target_digest": {
+        "type": "string"
+      },
+      "verdict": {
+        "$ref": "#/$defs/Verdict"
+      }
+    },
+    "required": [
+      "schema_version",
+      "request_digest",
+      "policy_digest",
+      "target_digest",
+      "evaluated_at_unix_ms",
+      "verdict",
+      "checks",
+      "artifacts"
+    ],
+    "title": "Decision",
+    "type": "object"
+  }
+}

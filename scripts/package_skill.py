@@ -11,7 +11,7 @@ import tarfile
 import tempfile
 import tomllib
 
-from doc_links import check_links, rewrite_links
+from doc_links import check_links
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -21,37 +21,15 @@ def sha256(path):
 
 
 def copy_resources(root, package):
-    """Copy the complete local reading closure, then rewrite all Markdown links."""
-    sources = [
-        (root / 'skills/workflow-cli', package),
-        (root / 'docs', package / 'references/manuals'),
-        (root / 'examples', package / 'assets/examples'),
-        (root / 'schemas', package / 'assets/schemas'),
-    ]
-    mapping = {}
-    for source, destination in sources:
-        for path in [source, *sorted(source.rglob('*'))]:
-            if '__pycache__' in path.parts or path.suffix == '.pyc':
-                continue
-            if path.is_symlink():
-                raise ValueError(f'Symlink cannot be packaged as a local resource: {path}')
-            target = destination / path.relative_to(source)
-            mapping[path.resolve()] = target
-            if path.is_dir():
-                target.mkdir(parents=True, exist_ok=True)
-            elif path.is_file():
-                shutil.copy2(path, target)
-    for name, target in [('README.md', 'references/manuals/overview.md'),
-                         ('README.zh-CN.md', 'references/manuals/overview.zh-CN.md'),
-                         ('LICENSE', 'LICENSE')]:
-        source, destination = root / name, package / target
-        mapping[source.resolve()] = destination
-        shutil.copy2(source, destination)
-    for source, destination in mapping.items():
-        if source.suffix == '.md' and source.is_file():
-            destination.write_text(rewrite_links(source.read_text(), source, destination, mapping, root))
+    """Package the skill as-is; never import resources from outside its directory."""
+    source = root / 'skills/workflow-cli'
+    for path in source.rglob('*'):
+        if path.is_symlink():
+            raise ValueError(f'Symlink cannot be packaged as a local resource: {path}')
+    check_links(list(source.rglob('*.md')), source)
+    shutil.copytree(source, package, ignore=shutil.ignore_patterns('__pycache__', '*.pyc'))
     check_links(list(package.rglob('*.md')), package)
-    return mapping
+    return {p: package / p.relative_to(source) for p in source.rglob('*') if p.is_file()}
 
 
 def main():

@@ -1,6 +1,6 @@
 # Authenticated shared execution
 
-Read `workflow help` and the packaged [remote manual](../../../docs/remote-service.md)
+Read `workflow help` and the packaged [remote manual](manuals/en/05-shared-execution/03-remote-service.md)
 before configuring a shared service. The same executable provides `service serve`,
 `remote schedule`, `remote managed-work` and client commands. These are separate
 process roles; a skill installation does not provision PostgreSQL or start them.
@@ -22,7 +22,7 @@ by the user; possession of an input document does not grant a remote role.
 Successful HTTP transport alone does not prove a business run succeeded. Inspect
 the typed response and current run status before reporting progress or retrying.
 
-For deployment details read [authentication](../../../docs/authenticated-authority.md),
-[cluster scheduling](../../../docs/cluster-scheduling.md),
-[remote effects](../../../docs/remote-effects.md) or
-[shared recovery](../../../docs/shared-recovery.md) as needed.
+For deployment details read [authentication](manuals/en/05-shared-execution/02-authenticated-authority.md),
+[cluster scheduling](manuals/en/05-shared-execution/06-cluster-scheduling.md),
+[remote effects](manuals/en/05-shared-execution/05-remote-effects.md) or
+[shared recovery](manuals/en/05-shared-execution/07-shared-recovery.md) as needed.

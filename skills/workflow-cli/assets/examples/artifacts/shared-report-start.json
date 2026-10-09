@@ -1,0 +1,138 @@
+{
+  "schema_version": 1,
+  "run_id": "shared-report",
+  "started_at_unix_ms": 1,
+  "inputs": {
+    "repository": "fixture-repository",
+    "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  },
+  "bundle": {
+    "schema_version": 1,
+    "root": {
+      "id": "shared-report-fixture",
+      "version": "1.0.0"
+    },
+    "workflows": [
+      {
+        "schema_version": 1,
+        "id": "shared-report-fixture",
+        "version": "1.0.0",
+        "entry": "report",
+        "inputs": {
+          "repository": {
+            "required": true,
+            "value_type": {
+              "type": "string"
+            }
+          },
+          "revision": {
+            "required": true,
+            "value_type": {
+              "type": "string"
+            }
+          }
+        },
+        "nodes": [
+          {
+            "id": "report",
+            "kind": {
+              "type": "task",
+              "capability": {
+                "id": "fixture.report",
+                "version": "1.0.0"
+              },
+              "policy": null
+            },
+            "inputs": {
+              "repository": {
+                "required": true,
+                "value_type": {
+                  "type": "string"
+                }
+              },
+              "revision": {
+                "required": true,
+                "value_type": {
+                  "type": "string"
+                }
+              }
+            },
+            "outputs": {
+              "ok": {
+                "required": true,
+                "value_type": {
+                  "type": "boolean"
+                }
+              }
+            },
+            "bindings": {
+              "repository": {
+                "source": "workflow_input",
+                "field": "repository"
+              },
+              "revision": {
+                "source": "workflow_input",
+                "field": "revision"
+              }
+            }
+          },
+          {
+            "id": "done",
+            "kind": {
+              "type": "terminal",
+              "outcome": "succeeded"
+            }
+          }
+        ],
+        "edges": [
+          {
+            "id": "finish",
+            "from": "report",
+            "to": "done",
+            "route": {
+              "type": "next"
+            }
+          }
+        ]
+      }
+    ],
+    "capabilities": [
+      {
+        "schema_version": 1,
+        "capability": {
+          "id": "fixture.report",
+          "version": "1.0.0"
+        },
+        "inputs": {
+          "repository": {
+            "required": true,
+            "value_type": {
+              "type": "string"
+            }
+          },
+          "revision": {
+            "required": true,
+            "value_type": {
+              "type": "string"
+            }
+          }
+        },
+        "outputs": {
+          "ok": {
+            "required": true,
+            "value_type": {
+              "type": "boolean"
+            }
+          }
+        },
+        "timeout_ms": 120000,
+        "error_codes": {},
+        "effects": {
+          "type": "read_only"
+        },
+        "usage": "Test-only report contract implemented by the service test host; not registered in the builtin CLI worker.",
+        "skill": null
+      }
+    ]
+  }
+}
