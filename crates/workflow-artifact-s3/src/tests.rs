@@ -134,7 +134,10 @@ fn real_s3_roundtrip_lineage_download_auth_integrity_and_process_crashes() {
             .unwrap(),
         release
     );
-    let download_grant = target.grant_download(&release.link(), 1).unwrap();
+    // SigV4 timestamps have whole-second precision. A one-second grant can
+    // expire while an otherwise valid request is being admitted across a tick.
+    // Give success/scope checks headroom and test expiry with a separate grant.
+    let download_grant = target.grant_download(&release.link(), 30).unwrap();
     assert_eq!(
         download(&download_grant.artifact, &download_grant.url, true, None).unwrap(),
         b"release"
@@ -155,8 +158,13 @@ fn real_s3_roundtrip_lineage_download_auth_integrity_and_process_crashes() {
             .status()
             .is_client_error()
     );
-    std::thread::sleep(std::time::Duration::from_secs(2));
-    assert!(download(&release, &download_grant.url, true, None).is_err());
+    let expiring_grant = target.grant_download(&release.link(), 1).unwrap();
+    let now_ms =
+        u64::try_from(time::OffsetDateTime::now_utc().unix_timestamp_nanos() / 1_000_000).unwrap();
+    std::thread::sleep(std::time::Duration::from_millis(
+        expiring_grant.expires_at_unix_ms.saturating_sub(now_ms) + 100,
+    ));
+    assert!(download(&release, &expiring_grant.url, true, None).is_err());
     let wrong_type = ArtifactType {
         content: ContentSchema::Bytes,
         ..release.manifest.spec.artifact_type.clone()
