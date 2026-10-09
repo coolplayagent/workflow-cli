@@ -53,7 +53,7 @@ receipts verify storage semantics, not behavior of an actual release provider.
 Image tests check journal round trips, removed execution records, mismatched run
 identity, malformed columns, size bounds and multiple-run rejection.
 
-Images are limited to 64 MiB per run and use SQLite application schema 11 within
+Images are limited to 64 MiB per run and use SQLite application schema 12 within
 PostgreSQL schema 1. Each mutation rewrites and verifies the aggregate. This has
 deliberate memory, CPU and write-amplification costs; throughput has not been
 claimed. Large histories require a separately verified storage evolution. The

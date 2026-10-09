@@ -279,14 +279,64 @@
       ]
     },
     "ModelFailure": {
-      "enum": [
-        "unavailable",
-        "invalid_response",
-        "refused",
-        "budget",
-        "deadline"
-      ],
-      "type": "string"
+      "oneOf": [
+        {
+          "enum": [
+            "unavailable",
+            "uncertain",
+            "authentication",
+            "invalid_response",
+            "refused",
+            "budget",
+            "deadline"
+          ],
+          "type": "string"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "temporary": {
+              "properties": {
+                "retry_after_ms": {
+                  "format": "uint64",
+                  "minimum": 0,
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                }
+              },
+              "type": "object"
+            }
+          },
+          "required": [
+            "temporary"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "rate_limited": {
+              "properties": {
+                "retry_after_ms": {
+                  "format": "uint64",
+                  "minimum": 0,
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                }
+              },
+              "type": "object"
+            }
+          },
+          "required": [
+            "rate_limited"
+          ],
+          "type": "object"
+        }
+      ]
     },
     "ModelIdentity": {
       "additionalProperties": false,
@@ -438,6 +488,20 @@
           "required": [
             "status",
             "error"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "The process died after admission; no tool observation was durably acknowledged.",
+          "properties": {
+            "status": {
+              "const": "uncertain",
+              "type": "string"
+            }
+          },
+          "required": [
+            "status"
           ],
           "type": "object"
         }
@@ -609,6 +673,16 @@
       "format": "uint32",
       "minimum": 0,
       "type": "integer"
+    },
+    "source_request": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/WorkRequest"
+        },
+        {
+          "type": "null"
+        }
+      ]
     }
   },
   "required": [

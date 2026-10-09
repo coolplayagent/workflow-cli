@@ -1,6 +1,7 @@
 use crate::recovery::Recovered;
 use crate::*;
 use rusqlite::{OptionalExtension, params};
+mod continuation;
 mod controls;
 pub(crate) mod effects;
 pub(crate) mod gates;

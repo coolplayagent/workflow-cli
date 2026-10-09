@@ -175,7 +175,7 @@ impl PostgresRunStore {
         if image.run_id() != id {
             return Err(corrupt("run image identity mismatch"));
         }
-        SqliteRunStore::from_image(&image, reader)
+        SqliteRunStore::from_authoritative_image(&image, reader)
     }
     fn read<T>(&mut self, id: &str, f: impl FnOnce(&mut SqliteRunStore) -> Result<T>) -> Result<T> {
         validate_id(id)?;

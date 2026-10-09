@@ -103,7 +103,7 @@ workflow run recovery-acknowledge /new/restored-directory/runs.sqlite my-run aud
 
 ## 存储、证据与恢复目标
 
-Schema 10 引入恢复代际、屏障与导入回执；当前 schema 11 对 1–10 使用显式备份[迁移](05-version-migration.md)，
+Schema 10 引入恢复代际、屏障与导入回执；当前 schema 12 对 1–11 使用显式备份[迁移](05-version-migration.md)，
 旧 reader 拒绝新存储。真实 v9 迁移测试准确保留暂停 Inbox 和 prepared 操作的 lease/history。旧记录省略
 generation 字段，摘要保持不变。
 

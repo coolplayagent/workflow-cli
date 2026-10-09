@@ -217,6 +217,18 @@ pub enum Operation {
     Assignment {
         assignment_id: String,
     },
+    TaskProgress {
+        assignment_id: String,
+        record: bool,
+    },
+    LoadModelCheckpoint {
+        assignment_id: String,
+    },
+    SaveModelCheckpoint {
+        assignment_id: String,
+        previous_digest: Option<String>,
+        checkpoint: Box<workflow_models::ModelCheckpoint>,
+    },
     Finish {
         assignment_id: String,
         result: Box<workflow_worker::WorkResult>,
@@ -270,6 +282,8 @@ pub struct Reply {
     deny_unknown_fields
 )]
 pub enum Response {
+    TaskProgress { cancelled: bool },
+    ModelCheckpoint(Option<Box<workflow_models::ModelCheckpoint>>),
     TemplateProposed(String),
     TemplateCandidate(Box<workflow_templates::Candidate>),
     TemplateReviewed(Box<workflow_templates::Review>),
@@ -548,6 +562,22 @@ impl Request {
             Operation::Assignment { assignment_id } => service
                 .assignment(token, assignment_id)
                 .map(|r| Response::Assignment(Box::new(r))),
+            Operation::TaskProgress {
+                assignment_id,
+                record,
+            } => service
+                .task_progress(token, assignment_id, *record)
+                .map(|cancelled| Response::TaskProgress { cancelled }),
+            Operation::LoadModelCheckpoint { assignment_id } => service
+                .load_model_checkpoint(token, assignment_id)
+                .map(|c| Response::ModelCheckpoint(c.map(Box::new))),
+            Operation::SaveModelCheckpoint {
+                assignment_id,
+                previous_digest,
+                checkpoint,
+            } => service
+                .save_model_checkpoint(token, assignment_id, previous_digest.as_deref(), checkpoint)
+                .map(|_| Response::Unit),
             Operation::Finish {
                 assignment_id,
                 result,
@@ -682,6 +712,15 @@ impl Request {
                 | (Operation::Tick { .. }, Response::Tick(_))
                 | (Operation::Dispatch { .. }, Response::Dispatch(_))
                 | (Operation::Assignment { .. }, Response::Assignment(_))
+                | (
+                    Operation::TaskProgress { .. },
+                    Response::TaskProgress { .. }
+                )
+                | (
+                    Operation::LoadModelCheckpoint { .. },
+                    Response::ModelCheckpoint(_)
+                )
+                | (Operation::SaveModelCheckpoint { .. }, Response::Unit)
                 | (Operation::Finish { .. }, Response::Finished(_))
                 | (Operation::Fail { .. }, Response::Unit)
                 | (Operation::Approve { .. }, Response::Approved(_))

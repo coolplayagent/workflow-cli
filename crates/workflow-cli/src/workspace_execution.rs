@@ -7,7 +7,7 @@ use workflow_worker::{
 use workflow_workspace_local::{GitSource, LocalWorkspaceStore};
 use workflow_workspaces::{CheckoutSpec, MergePolicy, OutputFile, WorkspaceStore};
 
-#[derive(Deserialize)]
+#[derive(Clone, serde::Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(crate) struct Binding {
     pub workspace_store: PathBuf,
@@ -15,7 +15,7 @@ pub(crate) struct Binding {
     pub source_revision: SourceRevision,
     pub capabilities: Vec<TaskBinding>,
 }
-#[derive(Deserialize)]
+#[derive(Clone, serde::Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(crate) struct TaskBinding {
     capability: workflow_ir::VersionRef,
@@ -25,7 +25,7 @@ pub(crate) struct TaskBinding {
     input_artifacts: BTreeMap<String, ArtifactType>,
     reports: Vec<ReportBinding>,
 }
-#[derive(Deserialize)]
+#[derive(Clone, serde::Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 struct ReportBinding {
     path: String,

@@ -40,6 +40,8 @@ pub struct Status {
     pub info: Info,
     pub phase: Phase,
     pub active_run: Option<String>,
+    #[serde(default)]
+    pub active_runs: Vec<String>,
     pub last_scan_unix_ms: Option<u64>,
     pub last_completed_run: Option<String>,
     pub completed_drives: u64,
@@ -67,20 +69,29 @@ impl Control {
     /// Reserve one bounded drive before stop linearizes. An admitted drive drains.
     pub fn admit(&self, run_id: &str) -> bool {
         let mut s = self.0.lock().expect("daemon state");
-        if s.phase == Phase::Draining {
+        if s.phase == Phase::Draining
+            || s.active_runs.len() >= 8
+            || s.active_runs.iter().any(|id| id == run_id)
+        {
             return false;
         }
         s.phase = Phase::Busy;
-        s.active_run = Some(run_id.into());
+        s.active_runs.push(run_id.into());
+        s.active_run = s.active_runs.first().cloned();
         true
     }
     pub fn complete(&self, run_id: &str) {
         let mut s = self.0.lock().expect("daemon state");
-        s.active_run = None;
+        s.active_runs.retain(|id| id != run_id);
+        s.active_run = s.active_runs.first().cloned();
         s.last_completed_run = Some(run_id.into());
         s.completed_drives = s.completed_drives.saturating_add(1);
         if s.phase != Phase::Draining {
-            s.phase = Phase::Polling;
+            s.phase = if s.active_runs.is_empty() {
+                Phase::Polling
+            } else {
+                Phase::Busy
+            };
         }
     }
     pub fn scanned(&self) {

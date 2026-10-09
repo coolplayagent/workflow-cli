@@ -129,7 +129,7 @@ versions. Schema 11 protects definition-migration events and storage-upgrade
 journals from older interpreters. Ordinary open/create refuses older/future
 storage; it never upgrades as a side effect of running work.
 
-Local upgrades accept schemas 1–10. Schema 1 receives empty execution-authority
+Local upgrades accept schemas 1–11. Schema 1 receives empty execution-authority
 heads; later versions preserve existing authority. Preflight reconstructs a
 consistent snapshot in memory, verifies every run, event, checkpoint, outbox,
 receipt, execution proof and artifact dependency, and produces a source digest
@@ -167,7 +167,7 @@ Retain/copy the referenced artifact catalog and content as well as the database.
 If execution or external writes occurred after the backup, use the existing
 fenced recovery/reconciliation procedure instead of reopening an old owner.
 
-Shared images upgrade **one run at a time**, from image schema 10 to 11. A scoped
+Shared images upgrade **one run at a time**, from image schemas 10–11 to 12. A scoped
 administrator calls `plan_storage_upgrade {run_id}` and then
 `upgrade_storage {run_id, plan}`. The source-byte digest is checked under the
 aggregate row lock. Complete replay, global binding and artifact verification

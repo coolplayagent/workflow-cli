@@ -2,6 +2,58 @@
   "ok": true,
   "result": {
     "$defs": {
+      "Action": {
+        "oneOf": [
+          {
+            "additionalProperties": false,
+            "properties": {
+              "capability": {
+                "$ref": "#/$defs/VersionRef"
+              },
+              "inputs": {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              "summary": {
+                "type": "string"
+              },
+              "type": {
+                "const": "call",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type",
+              "capability",
+              "inputs",
+              "summary"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "outputs": {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              "summary": {
+                "type": "string"
+              },
+              "type": {
+                "const": "complete",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type",
+              "outputs",
+              "summary"
+            ],
+            "type": "object"
+          }
+        ]
+      },
       "AdapterOutcome": {
         "oneOf": [
           {
@@ -58,6 +110,56 @@
               "class",
               "message",
               "evidence"
+            ],
+            "type": "object"
+          }
+        ]
+      },
+      "Admission": {
+        "oneOf": [
+          {
+            "additionalProperties": false,
+            "properties": {
+              "at_unix_ms": {
+                "format": "uint64",
+                "minimum": 0,
+                "type": "integer"
+              },
+              "call_digest": {
+                "type": "string"
+              },
+              "type": {
+                "const": "model",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type",
+              "call_digest",
+              "at_unix_ms"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "at_unix_ms": {
+                "format": "uint64",
+                "minimum": 0,
+                "type": "integer"
+              },
+              "request_digest": {
+                "type": "string"
+              },
+              "type": {
+                "const": "tool",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type",
+              "request_digest",
+              "at_unix_ms"
             ],
             "type": "object"
           }
@@ -202,6 +304,157 @@
         ],
         "type": "object"
       },
+      "Binding": {
+        "oneOf": [
+          {
+            "additionalProperties": false,
+            "properties": {
+              "field": {
+                "type": "string"
+              },
+              "source": {
+                "const": "workflow_input",
+                "type": "string"
+              }
+            },
+            "required": [
+              "source",
+              "field"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "field": {
+                "type": "string"
+              },
+              "node": {
+                "type": "string"
+              },
+              "source": {
+                "const": "node_output",
+                "type": "string"
+              }
+            },
+            "required": [
+              "source",
+              "node",
+              "field"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "source": {
+                "const": "literal",
+                "type": "string"
+              },
+              "value": true
+            },
+            "required": [
+              "source",
+              "value"
+            ],
+            "type": "object"
+          }
+        ]
+      },
+      "Budget": {
+        "additionalProperties": false,
+        "properties": {
+          "context_bytes": {
+            "format": "uint32",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "model_calls": {
+            "format": "uint32",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "output_tokens_per_call": {
+            "format": "uint32",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "response_bytes": {
+            "format": "uint32",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "tool_calls": {
+            "format": "uint32",
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "model_calls",
+          "tool_calls",
+          "context_bytes",
+          "response_bytes",
+          "output_tokens_per_call"
+        ],
+        "type": "object"
+      },
+      "BundleSpec": {
+        "additionalProperties": false,
+        "properties": {
+          "capabilities": {
+            "items": {
+              "$ref": "#/$defs/CapabilityDescriptor"
+            },
+            "type": "array"
+          },
+          "effect_bindings": {
+            "items": {
+              "$ref": "#/$defs/EffectBinding"
+            },
+            "type": "array"
+          },
+          "model_policies": {
+            "items": {
+              "$ref": "#/$defs/PolicySpec"
+            },
+            "type": "array"
+          },
+          "postconditions": {
+            "items": {
+              "$ref": "#/$defs/Postcondition"
+            },
+            "type": "array"
+          },
+          "root": {
+            "$ref": "#/$defs/VersionRef"
+          },
+          "schema_version": {
+            "format": "uint32",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "wait_policies": {
+            "items": {
+              "$ref": "#/$defs/WaitPolicyBinding"
+            },
+            "type": "array"
+          },
+          "workflows": {
+            "items": {
+              "$ref": "#/$defs/Workflow"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "schema_version",
+          "root",
+          "workflows",
+          "capabilities"
+        ],
+        "type": "object"
+      },
       "CallKind": {
         "enum": [
           "write",
@@ -288,6 +541,122 @@
         ],
         "type": "object"
       },
+      "Condition": {
+        "oneOf": [
+          {
+            "additionalProperties": false,
+            "properties": {
+              "field": {
+                "type": "string"
+              },
+              "op": {
+                "const": "exists",
+                "type": "string"
+              }
+            },
+            "required": [
+              "op",
+              "field"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "field": {
+                "type": "string"
+              },
+              "op": {
+                "const": "eq",
+                "type": "string"
+              },
+              "value": true
+            },
+            "required": [
+              "op",
+              "field",
+              "value"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "field": {
+                "type": "string"
+              },
+              "op": {
+                "const": "not_eq",
+                "type": "string"
+              },
+              "value": true
+            },
+            "required": [
+              "op",
+              "field",
+              "value"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "conditions": {
+                "items": {
+                  "$ref": "#/$defs/Condition"
+                },
+                "type": "array"
+              },
+              "op": {
+                "const": "all",
+                "type": "string"
+              }
+            },
+            "required": [
+              "op",
+              "conditions"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "conditions": {
+                "items": {
+                  "$ref": "#/$defs/Condition"
+                },
+                "type": "array"
+              },
+              "op": {
+                "const": "any",
+                "type": "string"
+              }
+            },
+            "required": [
+              "op",
+              "conditions"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "condition": {
+                "$ref": "#/$defs/Condition"
+              },
+              "op": {
+                "const": "not",
+                "type": "string"
+              }
+            },
+            "required": [
+              "op",
+              "condition"
+            ],
+            "type": "object"
+          }
+        ]
+      },
       "ContentSchema": {
         "oneOf": [
           {
@@ -334,6 +703,32 @@
             "type": "object"
           }
         ]
+      },
+      "ContinuationPlan": {
+        "additionalProperties": false,
+        "properties": {
+          "handoff": {
+            "$ref": "#/$defs/Handoff"
+          },
+          "handoff_input": {
+            "type": "string"
+          },
+          "schema_version": {
+            "format": "uint32",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "successor": {
+            "$ref": "#/$defs/StartRun"
+          }
+        },
+        "required": [
+          "schema_version",
+          "handoff",
+          "handoff_input",
+          "successor"
+        ],
+        "type": "object"
       },
       "Decision": {
         "additionalProperties": false,
@@ -390,6 +785,37 @@
           "verdict",
           "checks",
           "artifacts"
+        ],
+        "type": "object"
+      },
+      "DecisionMode": {
+        "enum": [
+          "exclusive",
+          "first_match"
+        ],
+        "type": "string"
+      },
+      "Edge": {
+        "additionalProperties": false,
+        "properties": {
+          "from": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "route": {
+            "$ref": "#/$defs/Route"
+          },
+          "to": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "from",
+          "to",
+          "route"
         ],
         "type": "object"
       },
@@ -450,6 +876,48 @@
           "prepared_revision",
           "issued_at_unix_ms",
           "deadline_unix_ms"
+        ],
+        "type": "object"
+      },
+      "EffectBinding": {
+        "additionalProperties": false,
+        "properties": {
+          "compensates": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "depends_on": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "node_id": {
+            "type": "string"
+          },
+          "policy": {
+            "$ref": "#/$defs/EffectPolicy"
+          },
+          "release": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/ReleasePolicy"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "workflow": {
+            "$ref": "#/$defs/VersionRef"
+          }
+        },
+        "required": [
+          "workflow",
+          "node_id",
+          "policy"
         ],
         "type": "object"
       },
@@ -732,7 +1200,7 @@
             "$ref": "#/$defs/VersionRef"
           },
           "retry": {
-            "$ref": "#/$defs/RetryPolicy"
+            "$ref": "#/$defs/RetryPolicy2"
           },
           "target": {
             "$ref": "#/$defs/VersionRef",
@@ -923,8 +1391,133 @@
         ],
         "type": "object"
       },
+      "ExceptionPolicy": {
+        "additionalProperties": false,
+        "properties": {
+          "codes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "uniqueItems": true
+          },
+          "identity": {
+            "$ref": "#/$defs/VersionRef"
+          },
+          "responders": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "uniqueItems": true
+          }
+        },
+        "required": [
+          "identity",
+          "responders",
+          "codes"
+        ],
+        "type": "object"
+      },
       "ExecutionAction": {
         "oneOf": [
+          {
+            "additionalProperties": false,
+            "properties": {
+              "at_unix_ms": {
+                "format": "uint64",
+                "minimum": 0,
+                "type": "integer"
+              },
+              "epoch": {
+                "format": "uint64",
+                "minimum": 0,
+                "type": "integer"
+              },
+              "plan": {
+                "$ref": "#/$defs/ContinuationPlan"
+              },
+              "type": {
+                "const": "continued",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type",
+              "epoch",
+              "plan",
+              "at_unix_ms"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "at_unix_ms": {
+                "format": "uint64",
+                "minimum": 0,
+                "type": "integer"
+              },
+              "attempt_id": {
+                "type": "string"
+              },
+              "checkpoint": {
+                "$ref": "#/$defs/ModelCheckpoint"
+              },
+              "epoch": {
+                "format": "uint64",
+                "minimum": 0,
+                "type": "integer"
+              },
+              "previous_digest": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "type": {
+                "const": "model_checkpoint",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type",
+              "epoch",
+              "attempt_id",
+              "checkpoint",
+              "at_unix_ms"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "at_unix_ms": {
+                "format": "uint64",
+                "minimum": 0,
+                "type": "integer"
+              },
+              "attempt_id": {
+                "type": "string"
+              },
+              "epoch": {
+                "format": "uint64",
+                "minimum": 0,
+                "type": "integer"
+              },
+              "type": {
+                "const": "progress",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type",
+              "epoch",
+              "attempt_id",
+              "at_unix_ms"
+            ],
+            "type": "object"
+          },
           {
             "additionalProperties": false,
             "properties": {
@@ -1452,6 +2045,73 @@
         ],
         "type": "object"
       },
+      "Handoff": {
+        "additionalProperties": false,
+        "properties": {
+          "artifacts": {
+            "items": {
+              "$ref": "#/$defs/ArtifactLink"
+            },
+            "type": "array"
+          },
+          "failures": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "objective": {
+            "type": "string"
+          },
+          "plan": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "remaining_work": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "schema_version": {
+            "format": "uint32",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "source_revision": {
+            "format": "uint64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "source_run_digest": {
+            "type": "string"
+          },
+          "source_run_id": {
+            "type": "string"
+          },
+          "verified_facts": {
+            "items": {
+              "$ref": "#/$defs/VerifiedFact"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "schema_version",
+          "source_run_id",
+          "source_run_digest",
+          "source_revision",
+          "objective",
+          "plan",
+          "verified_facts",
+          "artifacts",
+          "failures",
+          "remaining_work"
+        ],
+        "type": "object"
+      },
       "Idempotency": {
         "oneOf": [
           {
@@ -1548,6 +2208,13 @@
           }
         ]
       },
+      "JoinMode": {
+        "enum": [
+          "all",
+          "any"
+        ],
+        "type": "string"
+      },
       "Lease": {
         "additionalProperties": false,
         "properties": {
@@ -1589,6 +2256,38 @@
           "epoch",
           "issued_at_unix_ms",
           "expires_at_unix_ms"
+        ],
+        "type": "object"
+      },
+      "Limits": {
+        "additionalProperties": false,
+        "properties": {
+          "max_events": {
+            "format": "uint32",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "max_frames": {
+            "format": "uint32",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "max_instances": {
+            "format": "uint32",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "max_transitions": {
+            "format": "uint64",
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "max_frames",
+          "max_instances",
+          "max_transitions",
+          "max_events"
         ],
         "type": "object"
       },
@@ -1717,6 +2416,195 @@
         ],
         "type": "object"
       },
+      "ModelCheckpoint": {
+        "additionalProperties": false,
+        "description": "A host-owned checkpoint, never accepted from model output as authority.",
+        "properties": {
+          "admitted": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/Admission"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "deadline_unix_ms": {
+            "format": "uint64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "events": {
+            "items": {
+              "$ref": "#/$defs/ModelEvent"
+            },
+            "type": "array"
+          },
+          "identity": {
+            "$ref": "#/$defs/ModelIdentity"
+          },
+          "policy_digest": {
+            "type": "string"
+          },
+          "request": {
+            "$ref": "#/$defs/WorkRequest"
+          },
+          "schema_version": {
+            "format": "uint32",
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "schema_version",
+          "request",
+          "policy_digest",
+          "identity",
+          "deadline_unix_ms",
+          "events"
+        ],
+        "type": "object"
+      },
+      "ModelEvent": {
+        "oneOf": [
+          {
+            "additionalProperties": false,
+            "properties": {
+              "at_unix_ms": {
+                "format": "uint64",
+                "minimum": 0,
+                "type": "integer"
+              },
+              "call_digest": {
+                "type": "string"
+              },
+              "response": {
+                "$ref": "#/$defs/Reply"
+              },
+              "type": {
+                "const": "replied",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type",
+              "call_digest",
+              "at_unix_ms",
+              "response"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "at_unix_ms": {
+                "format": "uint64",
+                "minimum": 0,
+                "type": "integer"
+              },
+              "request": {
+                "$ref": "#/$defs/WorkRequest"
+              },
+              "response": {
+                "$ref": "#/$defs/ToolReply"
+              },
+              "type": {
+                "const": "tool_finished",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type",
+              "request",
+              "at_unix_ms",
+              "response"
+            ],
+            "type": "object"
+          }
+        ]
+      },
+      "ModelFailure": {
+        "oneOf": [
+          {
+            "enum": [
+              "unavailable",
+              "uncertain",
+              "authentication",
+              "invalid_response",
+              "refused",
+              "budget",
+              "deadline"
+            ],
+            "type": "string"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "temporary": {
+                "properties": {
+                  "retry_after_ms": {
+                    "format": "uint64",
+                    "minimum": 0,
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  }
+                },
+                "type": "object"
+              }
+            },
+            "required": [
+              "temporary"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "rate_limited": {
+                "properties": {
+                  "retry_after_ms": {
+                    "format": "uint64",
+                    "minimum": 0,
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  }
+                },
+                "type": "object"
+              }
+            },
+            "required": [
+              "rate_limited"
+            ],
+            "type": "object"
+          }
+        ]
+      },
+      "ModelIdentity": {
+        "additionalProperties": false,
+        "properties": {
+          "adapter": {
+            "$ref": "#/$defs/VersionRef"
+          },
+          "binding_digest": {
+            "description": "Host binding fingerprint excludes credential values.",
+            "type": "string"
+          },
+          "model": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "adapter",
+          "model",
+          "binding_digest"
+        ],
+        "type": "object"
+      },
       "ModelPolicyBinding": {
         "additionalProperties": false,
         "properties": {
@@ -1732,6 +2620,249 @@
           "digest"
         ],
         "type": "object"
+      },
+      "ModelReply": {
+        "additionalProperties": false,
+        "properties": {
+          "proposal": {
+            "$ref": "#/$defs/Proposal"
+          },
+          "resolved_model": {
+            "type": "string"
+          },
+          "response_id": {
+            "type": "string"
+          },
+          "usage": {
+            "$ref": "#/$defs/Usage"
+          }
+        },
+        "required": [
+          "proposal",
+          "resolved_model",
+          "response_id",
+          "usage"
+        ],
+        "type": "object"
+      },
+      "Node": {
+        "additionalProperties": false,
+        "properties": {
+          "bindings": {
+            "additionalProperties": {
+              "$ref": "#/$defs/Binding"
+            },
+            "default": {},
+            "type": "object"
+          },
+          "id": {
+            "type": "string"
+          },
+          "inputs": {
+            "additionalProperties": {
+              "$ref": "#/$defs/Field"
+            },
+            "default": {},
+            "type": "object"
+          },
+          "kind": {
+            "$ref": "#/$defs/NodeKind"
+          },
+          "outputs": {
+            "additionalProperties": {
+              "$ref": "#/$defs/Field"
+            },
+            "default": {},
+            "type": "object"
+          },
+          "preconditions": {
+            "default": [],
+            "items": {
+              "$ref": "#/$defs/Condition"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "kind"
+        ],
+        "type": "object"
+      },
+      "NodeKind": {
+        "oneOf": [
+          {
+            "additionalProperties": false,
+            "properties": {
+              "capability": {
+                "$ref": "#/$defs/VersionRef"
+              },
+              "policy": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/VersionRef"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "type": {
+                "const": "task",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type",
+              "capability"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "mode": {
+                "$ref": "#/$defs/DecisionMode"
+              },
+              "type": {
+                "const": "decision",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type",
+              "mode"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "type": {
+                "const": "fork",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "mode": {
+                "$ref": "#/$defs/JoinMode"
+              },
+              "remaining": {
+                "$ref": "#/$defs/RemainingPolicy"
+              },
+              "type": {
+                "const": "join",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type",
+              "mode",
+              "remaining"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "event": {
+                "type": "string"
+              },
+              "timeout_ms": {
+                "format": "uint64",
+                "minimum": 0,
+                "type": "integer"
+              },
+              "type": {
+                "const": "wait",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type",
+              "event",
+              "timeout_ms"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "type": {
+                "const": "subworkflow",
+                "type": "string"
+              },
+              "workflow": {
+                "$ref": "#/$defs/VersionRef"
+              }
+            },
+            "required": [
+              "type",
+              "workflow"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "body": {
+                "$ref": "#/$defs/VersionRef"
+              },
+              "deadline_ms": {
+                "format": "uint64",
+                "minimum": 0,
+                "type": "integer"
+              },
+              "feedback": {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "description": "Next-iteration input field -> failed body terminal input field.",
+                "type": "object"
+              },
+              "max_iterations": {
+                "format": "uint32",
+                "minimum": 0,
+                "type": "integer"
+              },
+              "type": {
+                "const": "loop",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type",
+              "body",
+              "max_iterations",
+              "deadline_ms"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "outcome": {
+                "$ref": "#/$defs/TerminalOutcome"
+              },
+              "type": {
+                "const": "terminal",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type",
+              "outcome"
+            ],
+            "type": "object"
+          }
+        ]
       },
       "Observation": {
         "oneOf": [
@@ -1836,6 +2967,105 @@
         ],
         "type": "object"
       },
+      "PolicySpec": {
+        "additionalProperties": false,
+        "properties": {
+          "budget": {
+            "$ref": "#/$defs/Budget"
+          },
+          "goal": {
+            "type": "string"
+          },
+          "policy": {
+            "$ref": "#/$defs/VersionRef"
+          },
+          "retry": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/RetryPolicy"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "schema_version": {
+            "format": "uint32",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "task": {
+            "$ref": "#/$defs/CapabilityDescriptor"
+          },
+          "tools": {
+            "items": {
+              "$ref": "#/$defs/CapabilityDescriptor"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "schema_version",
+          "policy",
+          "task",
+          "goal",
+          "tools",
+          "budget"
+        ],
+        "type": "object"
+      },
+      "Postcondition": {
+        "additionalProperties": false,
+        "description": "Mandatory success postcondition, frozen with its graph and policy in the run bundle.",
+        "properties": {
+          "action": {
+            "$ref": "#/$defs/VersionRef"
+          },
+          "artifacts": {
+            "$ref": "#/$defs/Binding"
+          },
+          "exception": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/ApprovalRequirement"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "input_node": {
+            "description": "The current frame's task whose resolved inputs identify the checked subject.",
+            "type": "string"
+          },
+          "node_id": {
+            "type": "string"
+          },
+          "policy": {
+            "$ref": "#/$defs/Policy"
+          },
+          "repository": {
+            "$ref": "#/$defs/Binding"
+          },
+          "revision": {
+            "$ref": "#/$defs/Binding"
+          },
+          "workflow": {
+            "$ref": "#/$defs/VersionRef"
+          }
+        },
+        "required": [
+          "workflow",
+          "node_id",
+          "policy",
+          "action",
+          "repository",
+          "revision",
+          "input_node",
+          "artifacts"
+        ],
+        "type": "object"
+      },
       "PreparedTask": {
         "additionalProperties": false,
         "properties": {
@@ -1867,6 +3097,9 @@
             "format": "uint64",
             "minimum": 0,
             "type": "integer"
+          },
+          "renewable": {
+            "type": "boolean"
           },
           "request": {
             "$ref": "#/$defs/WorkRequest"
@@ -1909,6 +3142,24 @@
           "attempt_id",
           "request_digest",
           "input_digest"
+        ],
+        "type": "object"
+      },
+      "Proposal": {
+        "additionalProperties": false,
+        "properties": {
+          "action": {
+            "$ref": "#/$defs/Action"
+          },
+          "protocol_version": {
+            "format": "uint32",
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "protocol_version",
+          "action"
         ],
         "type": "object"
       },
@@ -2162,6 +3413,51 @@
         ],
         "type": "object"
       },
+      "RemainingPolicy": {
+        "enum": [
+          "await",
+          "cancel_and_reconcile"
+        ],
+        "type": "string"
+      },
+      "Reply": {
+        "oneOf": [
+          {
+            "additionalProperties": false,
+            "properties": {
+              "reply": {
+                "$ref": "#/$defs/ModelReply"
+              },
+              "status": {
+                "const": "received",
+                "type": "string"
+              }
+            },
+            "required": [
+              "status",
+              "reply"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "failure": {
+                "$ref": "#/$defs/ModelFailure"
+              },
+              "status": {
+                "const": "failed",
+                "type": "string"
+              }
+            },
+            "required": [
+              "status",
+              "failure"
+            ],
+            "type": "object"
+          }
+        ]
+      },
       "Request": {
         "additionalProperties": false,
         "properties": {
@@ -2237,6 +3533,32 @@
             "minimum": 0,
             "type": "integer"
           },
+          "max_retries": {
+            "format": "uint32",
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "max_retries",
+          "initial_backoff_ms",
+          "max_backoff_ms"
+        ],
+        "type": "object"
+      },
+      "RetryPolicy2": {
+        "additionalProperties": false,
+        "properties": {
+          "initial_backoff_ms": {
+            "format": "uint64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "max_backoff_ms": {
+            "format": "uint64",
+            "minimum": 0,
+            "type": "integer"
+          },
           "max_calls": {
             "description": "Includes queries and writes; persists across leases and process restarts.",
             "format": "uint32",
@@ -2257,6 +3579,118 @@
         ],
         "type": "object"
       },
+      "Route": {
+        "oneOf": [
+          {
+            "additionalProperties": false,
+            "properties": {
+              "type": {
+                "const": "next",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "type": {
+                "const": "case",
+                "type": "string"
+              },
+              "when": {
+                "$ref": "#/$defs/Condition"
+              }
+            },
+            "required": [
+              "type",
+              "when"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "type": {
+                "const": "otherwise",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "type": {
+                "const": "completed",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "type": {
+                "const": "exhausted",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "type": {
+                "const": "accepted",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "type": {
+                "const": "rejected",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "type": {
+                "const": "timed_out",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "type": "object"
+          }
+        ]
+      },
       "SourceRevision": {
         "additionalProperties": false,
         "properties": {
@@ -2272,6 +3706,55 @@
           "revision"
         ],
         "type": "object"
+      },
+      "StartRun": {
+        "additionalProperties": false,
+        "properties": {
+          "bundle": {
+            "$ref": "#/$defs/BundleSpec"
+          },
+          "inputs": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "limits": {
+            "$ref": "#/$defs/Limits",
+            "default": {
+              "max_events": 4096,
+              "max_frames": 256,
+              "max_instances": 16384,
+              "max_transitions": 100000
+            }
+          },
+          "run_id": {
+            "type": "string"
+          },
+          "schema_version": {
+            "format": "uint32",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "started_at_unix_ms": {
+            "format": "uint64",
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "schema_version",
+          "bundle",
+          "run_id",
+          "inputs",
+          "started_at_unix_ms"
+        ],
+        "type": "object"
+      },
+      "SubjectKind": {
+        "enum": [
+          "digest",
+          "artifact"
+        ],
+        "type": "string"
       },
       "Target": {
         "additionalProperties": false,
@@ -2344,6 +3827,88 @@
             "type": "object"
           }
         ]
+      },
+      "TerminalOutcome": {
+        "enum": [
+          "succeeded",
+          "failed",
+          "cancelled"
+        ],
+        "type": "string"
+      },
+      "ToolReply": {
+        "oneOf": [
+          {
+            "additionalProperties": false,
+            "properties": {
+              "result": {
+                "$ref": "#/$defs/WorkResult"
+              },
+              "status": {
+                "const": "received",
+                "type": "string"
+              }
+            },
+            "required": [
+              "status",
+              "result"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "error": {
+                "$ref": "#/$defs/ErrorCode"
+              },
+              "status": {
+                "const": "rejected",
+                "type": "string"
+              }
+            },
+            "required": [
+              "status",
+              "error"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "description": "The process died after admission; no tool observation was durably acknowledged.",
+            "properties": {
+              "status": {
+                "const": "uncertain",
+                "type": "string"
+              }
+            },
+            "required": [
+              "status"
+            ],
+            "type": "object"
+          }
+        ]
+      },
+      "Usage": {
+        "additionalProperties": false,
+        "properties": {
+          "input_tokens": {
+            "format": "uint64",
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "output_tokens": {
+            "format": "uint64",
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "type": "object"
       },
       "ValueType": {
         "oneOf": [
@@ -2446,6 +4011,27 @@
         ],
         "type": "string"
       },
+      "VerifiedFact": {
+        "additionalProperties": false,
+        "description": "Values copied from acknowledged task outputs, not assertions invented by a model.",
+        "properties": {
+          "field": {
+            "type": "string"
+          },
+          "instance_id": {
+            "format": "uint64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "value": true
+        },
+        "required": [
+          "instance_id",
+          "field",
+          "value"
+        ],
+        "type": "object"
+      },
       "VersionRef": {
         "additionalProperties": false,
         "description": "Versions are immutable opaque release identifiers, never ranges or `latest`.",
@@ -2460,6 +4046,82 @@
         "required": [
           "id",
           "version"
+        ],
+        "type": "object"
+      },
+      "WaitKind": {
+        "enum": [
+          "human_approval",
+          "external_event"
+        ],
+        "type": "string"
+      },
+      "WaitPolicy": {
+        "additionalProperties": false,
+        "properties": {
+          "exception": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/ExceptionPolicy"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "identity": {
+            "$ref": "#/$defs/VersionRef"
+          },
+          "kind": {
+            "$ref": "#/$defs/WaitKind"
+          },
+          "max_validity_ms": {
+            "description": "Response expiry must be within this duration of durable receipt.",
+            "format": "uint64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "responders": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "uniqueItems": true
+          },
+          "subjects": {
+            "additionalProperties": {
+              "$ref": "#/$defs/SubjectKind"
+            },
+            "description": "Names of required wait inputs whose exact values are being reviewed.",
+            "type": "object"
+          }
+        },
+        "required": [
+          "identity",
+          "kind",
+          "responders",
+          "subjects",
+          "max_validity_ms"
+        ],
+        "type": "object"
+      },
+      "WaitPolicyBinding": {
+        "additionalProperties": false,
+        "properties": {
+          "node_id": {
+            "type": "string"
+          },
+          "policy": {
+            "$ref": "#/$defs/WaitPolicy"
+          },
+          "workflow": {
+            "$ref": "#/$defs/VersionRef"
+          }
+        },
+        "required": [
+          "workflow",
+          "node_id",
+          "policy"
         ],
         "type": "object"
       },
@@ -2556,6 +4218,53 @@
           "request_digest",
           "completed_at_unix_ms",
           "outcome"
+        ],
+        "type": "object"
+      },
+      "Workflow": {
+        "additionalProperties": false,
+        "properties": {
+          "edges": {
+            "items": {
+              "$ref": "#/$defs/Edge"
+            },
+            "type": "array"
+          },
+          "entry": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "inputs": {
+            "additionalProperties": {
+              "$ref": "#/$defs/Field"
+            },
+            "default": {},
+            "type": "object"
+          },
+          "nodes": {
+            "items": {
+              "$ref": "#/$defs/Node"
+            },
+            "type": "array"
+          },
+          "schema_version": {
+            "format": "uint32",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "version": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "schema_version",
+          "id",
+          "version",
+          "entry",
+          "nodes",
+          "edges"
         ],
         "type": "object"
       }

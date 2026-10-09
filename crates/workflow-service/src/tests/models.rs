@@ -101,6 +101,51 @@ impl ModelAdapter for FixtureModel {
         }
     }
 }
+struct WireJournal {
+    binding: ClientBinding,
+    assignment_id: String,
+}
+impl workflow_models::SessionJournal for WireJournal {
+    fn load(
+        &self,
+        _: &workflow_worker::WorkRequest,
+    ) -> workflow_worker::Result<Option<workflow_models::ModelCheckpoint>> {
+        let response = call(
+            &RemoteClient::new(self.binding.clone()).unwrap(),
+            Operation::LoadModelCheckpoint {
+                assignment_id: self.assignment_id.clone(),
+            },
+        )
+        .map_err(|e| {
+            workflow_worker::Error::new(workflow_worker::ErrorCode::InvalidResult, e.message)
+        })?;
+        let Response::ModelCheckpoint(checkpoint) = response else {
+            panic!("checkpoint response")
+        };
+        Ok(checkpoint.map(|c| *c))
+    }
+    fn save(
+        &self,
+        _: &workflow_worker::WorkRequest,
+        previous: Option<&workflow_models::ModelCheckpoint>,
+        next: &workflow_models::ModelCheckpoint,
+    ) -> workflow_worker::Result<()> {
+        let previous_digest = previous.map(workflow_worker::digest).transpose()?;
+        let response = call(
+            &RemoteClient::new(self.binding.clone()).unwrap(),
+            Operation::SaveModelCheckpoint {
+                assignment_id: self.assignment_id.clone(),
+                previous_digest,
+                checkpoint: Box::new(next.clone()),
+            },
+        )
+        .map_err(|e| {
+            workflow_worker::Error::new(workflow_worker::ErrorCode::InvalidResult, e.message)
+        })?;
+        assert!(matches!(response, Response::Unit));
+        Ok(())
+    }
+}
 pub(super) fn model_worker(spec: &Value) {
     let client = TestTransport::new(
         serde_json::from_value(spec["binding"].clone()).unwrap(),
@@ -120,7 +165,11 @@ pub(super) fn model_worker(spec: &Value) {
                 adapter,
                 workflow_builtin_capabilities::worker().unwrap(),
             )
-            .unwrap(),
+            .unwrap()
+            .with_journal(Arc::new(WireJournal {
+                binding: serde_json::from_value(spec["binding"].clone()).unwrap(),
+                assignment_id: spec["assignment"].as_str().unwrap().into(),
+            })),
         )
         .unwrap();
     let report = work_once(&client, &worker, 100).unwrap();
@@ -409,6 +458,17 @@ fn model_transport_contract(in_process: bool) {
             .code,
             ErrorCode::Unauthorized
         );
+        assert_eq!(
+            call(
+                &legacy_client,
+                Operation::LoadModelCheckpoint {
+                    assignment_id: assignment_id.clone()
+                }
+            )
+            .unwrap_err()
+            .code,
+            ErrorCode::Unauthorized
+        );
         let Response::Assignment(task) = call(
             &worker_client,
             Operation::Assignment {
@@ -453,13 +513,13 @@ fn model_transport_contract(in_process: bool) {
             call(
                 &worker_client,
                 Operation::Finish {
-                    assignment_id,
+                    assignment_id: assignment_id.clone(),
                     result: Box::new(forged)
                 }
             )
             .is_err()
         );
-        let child = h.spawn(json!({"kind":"model_worker","local":in_process,"binding":worker_binding,"policy":policy.spec(),"http":gateway.as_ref().map(|g| &g.binding)}));
+        let child = h.spawn(json!({"kind":"model_worker","assignment":assignment_id,"local":in_process,"binding":worker_binding,"policy":policy.spec(),"http":gateway.as_ref().map(|g| &g.binding)}));
         h.wait_child(child);
         let snapshot = service.get(runner.expose_secret(), &start.run_id).unwrap();
         assert_eq!(

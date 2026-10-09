@@ -209,6 +209,39 @@ impl CompiledBundle {
                                 format!("{}.{} child contracts differ", w.id, node.id),
                             ));
                         }
+                        if let NodeKind::Loop { feedback, .. } = &node.kind
+                            && !feedback.is_empty()
+                        {
+                            let failures: Vec<_> = child
+                                .nodes
+                                .iter()
+                                .filter(|n| {
+                                    matches!(
+                                        n.kind,
+                                        NodeKind::Terminal {
+                                            outcome: workflow_ir::TerminalOutcome::Failed
+                                        }
+                                    )
+                                })
+                                .collect();
+                            if failures.is_empty()
+                                || feedback.iter().any(|(target, source)| {
+                                    node.inputs.get(target).is_none_or(|input| {
+                                        failures.iter().any(|n| {
+                                            n.inputs.get(source).is_none_or(|field| {
+                                                !field.required
+                                                    || field.value_type != input.value_type
+                                            })
+                                        })
+                                    })
+                                })
+                            {
+                                return Err(Error::new(
+                                    ErrorCode::ContractMismatch,
+                                    "loop feedback must map every failed terminal's required field to the same input type",
+                                ));
+                            }
+                        }
                         dependencies.get_mut(wk).unwrap().insert(key(reference));
                     }
                     NodeKind::Wait { .. } => {}

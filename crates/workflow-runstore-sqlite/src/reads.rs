@@ -2,6 +2,25 @@ use crate::recovery::{Recovered, recover};
 use crate::*;
 use rusqlite::params;
 impl SqliteRunStore {
+    pub fn history_usage(&mut self, id: &str) -> Result<serde_json::Value> {
+        self.read(id, |r| {
+            let checkpoint = r.engine.checkpoint()?;
+            let bytes = workflow_worker::to_message(&checkpoint)?.len();
+            let events = r.events.len();
+            let frames = r.engine.snapshot().frames.len();
+            let near_limit = events as u64 * 5 >= u64::from(checkpoint.limits.max_events) * 4
+                || bytes * 5 >= workflow_worker::MAX_MESSAGE_BYTES * 4
+                || frames as u64 * 5 >= u64::from(checkpoint.limits.max_frames) * 4;
+            Ok(serde_json::json!({
+                "run_id":id,"revision":r.engine.snapshot().revision,
+                "events":events,"max_events":checkpoint.limits.max_events,
+                "frames":frames,"max_frames":checkpoint.limits.max_frames,
+                "checkpoint_bytes":bytes,"max_checkpoint_bytes":workflow_worker::MAX_MESSAGE_BYTES,
+                "state_checkpoint_revision":r.checkpoint_revision,
+                "replayed_events":r.replayed_events,"continuation_recommended":near_limit
+            }))
+        })
+    }
     pub(crate) fn read<T>(
         &mut self,
         id: &str,

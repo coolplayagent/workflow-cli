@@ -1,0 +1,493 @@
+{
+  "schema_version": 1,
+  "id": "workflow-cli.p1-release",
+  "version": "0.2.0",
+  "entry": "history",
+  "inputs": {},
+  "nodes": [
+    {
+      "id": "history",
+      "kind": {
+        "type": "wait",
+        "event": "history-verified",
+        "timeout_ms": 604800000
+      },
+      "outputs": {
+        "revision": {
+          "value_type": {
+            "type": "string"
+          },
+          "required": true
+        },
+        "evidence_digest": {
+          "value_type": {
+            "type": "string"
+          },
+          "required": true
+        },
+        "evidence_location": {
+          "value_type": {
+            "type": "string"
+          },
+          "required": true
+        }
+      }
+    },
+    {
+      "id": "activities",
+      "kind": {
+        "type": "wait",
+        "event": "activities-verified",
+        "timeout_ms": 604800000
+      },
+      "outputs": {
+        "revision": {
+          "value_type": {
+            "type": "string"
+          },
+          "required": true
+        },
+        "evidence_digest": {
+          "value_type": {
+            "type": "string"
+          },
+          "required": true
+        },
+        "evidence_location": {
+          "value_type": {
+            "type": "string"
+          },
+          "required": true
+        }
+      }
+    },
+    {
+      "id": "provider-recovery",
+      "kind": {
+        "type": "wait",
+        "event": "provider-recovery-verified",
+        "timeout_ms": 604800000
+      },
+      "outputs": {
+        "revision": {
+          "value_type": {
+            "type": "string"
+          },
+          "required": true
+        },
+        "evidence_digest": {
+          "value_type": {
+            "type": "string"
+          },
+          "required": true
+        },
+        "evidence_location": {
+          "value_type": {
+            "type": "string"
+          },
+          "required": true
+        }
+      }
+    },
+    {
+      "id": "agent-continuation",
+      "kind": {
+        "type": "wait",
+        "event": "agent-continuation-verified",
+        "timeout_ms": 604800000
+      },
+      "outputs": {
+        "revision": {
+          "value_type": {
+            "type": "string"
+          },
+          "required": true
+        },
+        "evidence_digest": {
+          "value_type": {
+            "type": "string"
+          },
+          "required": true
+        },
+        "evidence_location": {
+          "value_type": {
+            "type": "string"
+          },
+          "required": true
+        }
+      }
+    },
+    {
+      "id": "qualitygate",
+      "kind": {
+        "type": "wait",
+        "event": "qualitygate-verified",
+        "timeout_ms": 604800000
+      },
+      "outputs": {
+        "revision": {
+          "value_type": {
+            "type": "string"
+          },
+          "required": true
+        },
+        "evidence_digest": {
+          "value_type": {
+            "type": "string"
+          },
+          "required": true
+        },
+        "evidence_location": {
+          "value_type": {
+            "type": "string"
+          },
+          "required": true
+        }
+      }
+    },
+    {
+      "id": "pr-reviewed",
+      "kind": {
+        "type": "wait",
+        "event": "pr-reviewed-verified",
+        "timeout_ms": 604800000
+      },
+      "outputs": {
+        "revision": {
+          "value_type": {
+            "type": "string"
+          },
+          "required": true
+        },
+        "evidence_digest": {
+          "value_type": {
+            "type": "string"
+          },
+          "required": true
+        },
+        "evidence_location": {
+          "value_type": {
+            "type": "string"
+          },
+          "required": true
+        }
+      }
+    },
+    {
+      "id": "main-ci",
+      "kind": {
+        "type": "wait",
+        "event": "main-ci-verified",
+        "timeout_ms": 604800000
+      },
+      "outputs": {
+        "revision": {
+          "value_type": {
+            "type": "string"
+          },
+          "required": true
+        },
+        "evidence_digest": {
+          "value_type": {
+            "type": "string"
+          },
+          "required": true
+        },
+        "evidence_location": {
+          "value_type": {
+            "type": "string"
+          },
+          "required": true
+        }
+      }
+    },
+    {
+      "id": "release",
+      "kind": {
+        "type": "wait",
+        "event": "release-verified",
+        "timeout_ms": 604800000
+      },
+      "outputs": {
+        "revision": {
+          "value_type": {
+            "type": "string"
+          },
+          "required": true
+        },
+        "evidence_digest": {
+          "value_type": {
+            "type": "string"
+          },
+          "required": true
+        },
+        "evidence_location": {
+          "value_type": {
+            "type": "string"
+          },
+          "required": true
+        }
+      }
+    },
+    {
+      "id": "pages",
+      "kind": {
+        "type": "wait",
+        "event": "pages-verified",
+        "timeout_ms": 604800000
+      },
+      "outputs": {
+        "revision": {
+          "value_type": {
+            "type": "string"
+          },
+          "required": true
+        },
+        "evidence_digest": {
+          "value_type": {
+            "type": "string"
+          },
+          "required": true
+        },
+        "evidence_location": {
+          "value_type": {
+            "type": "string"
+          },
+          "required": true
+        }
+      }
+    },
+    {
+      "id": "complete",
+      "kind": {
+        "type": "terminal",
+        "outcome": "succeeded"
+      }
+    },
+    {
+      "id": "failed",
+      "kind": {
+        "type": "terminal",
+        "outcome": "failed"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "history-accepted",
+      "from": "history",
+      "to": "activities",
+      "route": {
+        "type": "accepted"
+      }
+    },
+    {
+      "id": "history-rejected",
+      "from": "history",
+      "to": "failed",
+      "route": {
+        "type": "rejected"
+      }
+    },
+    {
+      "id": "history-timed_out",
+      "from": "history",
+      "to": "failed",
+      "route": {
+        "type": "timed_out"
+      }
+    },
+    {
+      "id": "activities-accepted",
+      "from": "activities",
+      "to": "provider-recovery",
+      "route": {
+        "type": "accepted"
+      }
+    },
+    {
+      "id": "activities-rejected",
+      "from": "activities",
+      "to": "failed",
+      "route": {
+        "type": "rejected"
+      }
+    },
+    {
+      "id": "activities-timed_out",
+      "from": "activities",
+      "to": "failed",
+      "route": {
+        "type": "timed_out"
+      }
+    },
+    {
+      "id": "provider-recovery-accepted",
+      "from": "provider-recovery",
+      "to": "agent-continuation",
+      "route": {
+        "type": "accepted"
+      }
+    },
+    {
+      "id": "provider-recovery-rejected",
+      "from": "provider-recovery",
+      "to": "failed",
+      "route": {
+        "type": "rejected"
+      }
+    },
+    {
+      "id": "provider-recovery-timed_out",
+      "from": "provider-recovery",
+      "to": "failed",
+      "route": {
+        "type": "timed_out"
+      }
+    },
+    {
+      "id": "agent-continuation-accepted",
+      "from": "agent-continuation",
+      "to": "qualitygate",
+      "route": {
+        "type": "accepted"
+      }
+    },
+    {
+      "id": "agent-continuation-rejected",
+      "from": "agent-continuation",
+      "to": "failed",
+      "route": {
+        "type": "rejected"
+      }
+    },
+    {
+      "id": "agent-continuation-timed_out",
+      "from": "agent-continuation",
+      "to": "failed",
+      "route": {
+        "type": "timed_out"
+      }
+    },
+    {
+      "id": "qualitygate-accepted",
+      "from": "qualitygate",
+      "to": "pr-reviewed",
+      "route": {
+        "type": "accepted"
+      }
+    },
+    {
+      "id": "qualitygate-rejected",
+      "from": "qualitygate",
+      "to": "failed",
+      "route": {
+        "type": "rejected"
+      }
+    },
+    {
+      "id": "qualitygate-timed_out",
+      "from": "qualitygate",
+      "to": "failed",
+      "route": {
+        "type": "timed_out"
+      }
+    },
+    {
+      "id": "pr-reviewed-accepted",
+      "from": "pr-reviewed",
+      "to": "main-ci",
+      "route": {
+        "type": "accepted"
+      }
+    },
+    {
+      "id": "pr-reviewed-rejected",
+      "from": "pr-reviewed",
+      "to": "failed",
+      "route": {
+        "type": "rejected"
+      }
+    },
+    {
+      "id": "pr-reviewed-timed_out",
+      "from": "pr-reviewed",
+      "to": "failed",
+      "route": {
+        "type": "timed_out"
+      }
+    },
+    {
+      "id": "main-ci-accepted",
+      "from": "main-ci",
+      "to": "release",
+      "route": {
+        "type": "accepted"
+      }
+    },
+    {
+      "id": "main-ci-rejected",
+      "from": "main-ci",
+      "to": "failed",
+      "route": {
+        "type": "rejected"
+      }
+    },
+    {
+      "id": "main-ci-timed_out",
+      "from": "main-ci",
+      "to": "failed",
+      "route": {
+        "type": "timed_out"
+      }
+    },
+    {
+      "id": "release-accepted",
+      "from": "release",
+      "to": "pages",
+      "route": {
+        "type": "accepted"
+      }
+    },
+    {
+      "id": "release-rejected",
+      "from": "release",
+      "to": "failed",
+      "route": {
+        "type": "rejected"
+      }
+    },
+    {
+      "id": "release-timed_out",
+      "from": "release",
+      "to": "failed",
+      "route": {
+        "type": "timed_out"
+      }
+    },
+    {
+      "id": "pages-accepted",
+      "from": "pages",
+      "to": "complete",
+      "route": {
+        "type": "accepted"
+      }
+    },
+    {
+      "id": "pages-rejected",
+      "from": "pages",
+      "to": "failed",
+      "route": {
+        "type": "rejected"
+      }
+    },
+    {
+      "id": "pages-timed_out",
+      "from": "pages",
+      "to": "failed",
+      "route": {
+        "type": "timed_out"
+      }
+    }
+  ]
+}

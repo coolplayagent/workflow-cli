@@ -2,7 +2,7 @@ use crate::*;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct StartRun {
     pub schema_version: u32,

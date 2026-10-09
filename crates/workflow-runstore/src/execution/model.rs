@@ -24,6 +24,8 @@ pub struct Lease {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct PreparedTask {
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub renewable: bool,
     pub attempt_id: String,
     pub command_id: String,
     pub command_sequence: u64,
@@ -43,6 +45,23 @@ pub enum Claimed {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)]
 pub enum ExecutionAction {
+    Continued {
+        epoch: u64,
+        plan: Box<crate::ContinuationPlan>,
+        at_unix_ms: u64,
+    },
+    ModelCheckpoint {
+        epoch: u64,
+        attempt_id: String,
+        previous_digest: Option<String>,
+        checkpoint: Box<workflow_models::ModelCheckpoint>,
+        at_unix_ms: u64,
+    },
+    Progress {
+        epoch: u64,
+        attempt_id: String,
+        at_unix_ms: u64,
+    },
     Migrated {
         migration: Box<crate::MigrationAuthority>,
     },

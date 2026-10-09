@@ -715,7 +715,7 @@
           "$ref": "#/$defs/VersionRef"
         },
         "retry": {
-          "$ref": "#/$defs/RetryPolicy"
+          "$ref": "#/$defs/RetryPolicy2"
         },
         "target": {
           "$ref": "#/$defs/VersionRef",
@@ -1694,6 +1694,13 @@
               "minimum": 0,
               "type": "integer"
             },
+            "feedback": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "description": "Next-iteration input field -> failed body terminal input field.",
+              "type": "object"
+            },
             "max_iterations": {
               "format": "uint32",
               "minimum": 0,
@@ -1789,6 +1796,16 @@
         },
         "policy": {
           "$ref": "#/$defs/VersionRef"
+        },
+        "retry": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RetryPolicy"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "schema_version": {
           "format": "uint32",
@@ -2031,6 +2048,32 @@
       "type": "object"
     },
     "RetryPolicy": {
+      "additionalProperties": false,
+      "properties": {
+        "initial_backoff_ms": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "max_backoff_ms": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "max_retries": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "max_retries",
+        "initial_backoff_ms",
+        "max_backoff_ms"
+      ],
+      "type": "object"
+    },
+    "RetryPolicy2": {
       "additionalProperties": false,
       "properties": {
         "initial_backoff_ms": {

@@ -55,8 +55,7 @@ pub(super) fn prepare(
     let id = format!("attempt-{}-{}-{number}", e.sequence, l.epoch);
     let deadline = now
         .checked_add(c.descriptor().timeout_ms)
-        .ok_or_else(|| Error::new(ErrorCode::InvalidRequest, "task deadline overflow"))?
-        .min(l.expires_at_unix_ms);
+        .ok_or_else(|| Error::new(ErrorCode::InvalidRequest, "task deadline overflow"))?;
     let policy = match &w
         .nodes
         .iter()
@@ -101,6 +100,7 @@ pub(super) fn prepare(
     )?;
     let grant = workflow_worker::ExecutionGrant::bind(&request)?;
     Ok(PreparedTask {
+        renewable: true,
         attempt_id: id,
         command_id: e.command_id.clone(),
         command_sequence: e.sequence,
@@ -113,6 +113,8 @@ pub(super) fn prepare(
 }
 pub(super) fn model_record(
     r: &Recovered,
+    authority: &Authority,
+    command_id: &str,
     request: &WorkRequest,
     result: &workflow_worker::WorkResult,
 ) -> Result<()> {
@@ -125,7 +127,27 @@ pub(super) fn model_record(
             .iter()
             .find(|p| p.policy == binding.policy)
             .ok_or_else(|| corrupt("model policy missing"))?;
-        workflow_models::verify_result(&workflow_models::Policy::new(p.clone())?, request, result)?;
+        let record = workflow_models::verify_result(
+            &workflow_models::Policy::new(p.clone())?,
+            request,
+            result,
+        )?;
+        if let Some(checkpoint) = authority.model_checkpoints.get(command_id) {
+            let source = record.source_request.as_deref().unwrap_or(request);
+            if checkpoint.request != *source
+                || checkpoint.events != record.events
+                || checkpoint.identity != record.identity
+                || checkpoint.admitted.is_some()
+            {
+                return Err(corrupt(
+                    "model result differs from durably acknowledged session",
+                ));
+            }
+        } else if record.source_request.is_some() {
+            return Err(corrupt(
+                "resumed result lacks a durable predecessor checkpoint",
+            ));
+        }
     }
     Ok(())
 }
@@ -309,6 +331,37 @@ fn verify_at(
         ExecutionAction::Effect { record, transition } => {
             super::effects::verify(r, a, record, transition, artifacts)?
         }
+        ExecutionAction::Continued { plan, .. } => {
+            super::continuation::verify(r, a, plan, artifacts)?;
+        }
+        ExecutionAction::ModelCheckpoint {
+            attempt_id,
+            checkpoint,
+            ..
+        } => {
+            let attempt = a
+                .attempts
+                .get(attempt_id)
+                .ok_or_else(|| corrupt("checkpoint attempt missing"))?;
+            let binding = attempt
+                .prepared
+                .request
+                .model_policy
+                .as_ref()
+                .ok_or_else(|| corrupt("checkpoint task has no model policy"))?;
+            let policy = r
+                .engine
+                .bundle()
+                .spec()
+                .model_policies
+                .iter()
+                .find(|p| p.policy == binding.policy)
+                .ok_or_else(|| corrupt("checkpoint policy missing"))?;
+            workflow_models::Session::restore(
+                &workflow_models::Policy::new(policy.clone())?,
+                checkpoint,
+            )?;
+        }
         ExecutionAction::Prepared { attempt } => {
             let paused = r
                 .events
@@ -330,6 +383,12 @@ fn verify_at(
                 .as_ref()
                 .ok_or_else(|| corrupt("prepared task has no lease"))?;
             let mut expected = prepare(r, e, l, attempt.number, attempt.request.issued_at_unix_ms)?;
+            if !attempt.renewable {
+                expected.renewable = false;
+                expected.request.deadline_unix_ms =
+                    expected.request.deadline_unix_ms.min(l.expires_at_unix_ms);
+                expected.grant = workflow_worker::ExecutionGrant::bind(&expected.request)?;
+            }
             if attempt.prepared_revision < e.revision
                 || attempt.prepared_revision > r.engine.snapshot().revision
             {
@@ -352,7 +411,7 @@ fn verify_at(
             let e = entry(r, &p.command_id)?;
             let c = capability(r, e)?;
             workflow_worker::accept_result(&p.request, &p.grant, &c, result.clone(), *at_unix_ms)?;
-            model_record(r, &p.request, result)?;
+            model_record(r, a, &p.command_id, &p.request, result)?;
             let Command::ExecuteTask { instance_id, .. } = e.command else {
                 unreachable!()
             };

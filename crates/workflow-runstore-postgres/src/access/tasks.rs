@@ -190,9 +190,24 @@ impl AuthenticatedService {
                 error.code.clone(),
                 "worker could not execute assigned contract",
             );
-            who.change(tx, &a.lease.run_id, false, |s, c| {
+            let cancelled = who.change(tx, &a.lease.run_id, false, |s, c| {
                 check_lease(s, &a.lease, &a.task, c.now_unix_ms()?)?;
-                s.fail_task(&a.lease, &a.task.attempt_id, &bounded, c)
+                s.fail_task(&a.lease, &a.task.attempt_id, &bounded, c)?;
+                let snapshot = s.get(&a.lease.run_id)?;
+                let workflow_worker::InvocationScope::Workflow {
+                    node_instance_id, ..
+                } = &a.task.request.scope
+                else {
+                    return Err(corrupt("assignment scope"));
+                };
+                Ok(snapshot
+                    .frames
+                    .values()
+                    .flat_map(|f| f.nodes.values())
+                    .any(|n| {
+                        format!("instance-{}", n.instance_id) == *node_instance_id
+                            && n.cancel_requested
+                    }))
             })?;
             tx.execute(
                 "UPDATE workflow_access.assignments SET settled=true WHERE id=$1",
@@ -200,7 +215,9 @@ impl AuthenticatedService {
             )
             .map_err(storage)?;
             scheduling::finish(tx, assignment)?;
-            scheduling::park(tx, who, &a.lease.run_id, "worker_execution_failed")?;
+            if !cancelled {
+                scheduling::park(tx, who, &a.lease.run_id, "worker_execution_failed")?;
+            }
             Ok(())
         })
     }
@@ -279,5 +296,102 @@ pub(super) fn dispatch_in(
         }
         Claimed::Handled { .. } => Ok(Dispatch::Handled),
         Claimed::Idle => Ok(Dispatch::Idle),
+    }
+}
+
+impl AuthenticatedService {
+    /// A bounded liveness probe records progress separately from the task's
+    /// absolute deadline. It never grants the worker scheduler ownership.
+    pub fn task_progress(&mut self, token: &str, assignment: &str, record: bool) -> Result<bool> {
+        self.transact(
+            token,
+            &[Role::Worker],
+            "task_progress",
+            assignment,
+            |tx, who| {
+                let a = load(tx, who, assignment)?;
+                if a.settled {
+                    return Err(Error::new(
+                        ErrorCode::ReceiptConflict,
+                        "assignment already settled",
+                    ));
+                }
+                who.change(tx, &a.lease.run_id, false, |s, c| {
+                    check_lease(s, &a.lease, &a.task, c.now_unix_ms()?)?;
+                    let snapshot = s.get(&a.lease.run_id)?;
+                    let workflow_worker::InvocationScope::Workflow {
+                        node_instance_id, ..
+                    } = &a.task.request.scope
+                    else {
+                        return Err(corrupt("assignment scope"));
+                    };
+                    let cancelled =
+                        snapshot
+                            .frames
+                            .values()
+                            .flat_map(|f| f.nodes.values())
+                            .any(|n| {
+                                format!("instance-{}", n.instance_id) == *node_instance_id
+                                    && n.cancel_requested
+                            });
+                    if record && !cancelled {
+                        s.progress(&a.lease, &a.task.attempt_id, c)?;
+                    }
+                    Ok(cancelled)
+                })
+            },
+        )
+    }
+    pub fn load_model_checkpoint(
+        &mut self,
+        token: &str,
+        assignment: &str,
+    ) -> Result<Option<workflow_models::ModelCheckpoint>> {
+        self.transact(
+            token,
+            &[Role::Worker],
+            "load_model_checkpoint",
+            assignment,
+            |tx, who| {
+                let a = load(tx, who, assignment)?;
+                if a.settled {
+                    return Err(Error::new(
+                        ErrorCode::ReceiptConflict,
+                        "assignment already settled",
+                    ));
+                }
+                who.change(tx, &a.lease.run_id, false, |s, c| {
+                    check_lease(s, &a.lease, &a.task, c.now_unix_ms()?)?;
+                    s.model_checkpoint(&a.task.request, c)
+                })
+            },
+        )
+    }
+    pub fn save_model_checkpoint(
+        &mut self,
+        token: &str,
+        assignment: &str,
+        previous_digest: Option<&str>,
+        checkpoint: &workflow_models::ModelCheckpoint,
+    ) -> Result<()> {
+        self.transact(
+            token,
+            &[Role::Worker],
+            "save_model_checkpoint",
+            assignment,
+            |tx, who| {
+                let a = load(tx, who, assignment)?;
+                if a.settled {
+                    return Err(Error::new(
+                        ErrorCode::ReceiptConflict,
+                        "assignment already settled",
+                    ));
+                }
+                who.change(tx, &a.lease.run_id, false, |s, c| {
+                    check_lease(s, &a.lease, &a.task, c.now_unix_ms()?)?;
+                    s.save_model_checkpoint(&a.task.request, previous_digest, checkpoint, c)
+                })
+            },
+        )
     }
 }

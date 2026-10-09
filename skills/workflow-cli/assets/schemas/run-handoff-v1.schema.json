@@ -1,0 +1,111 @@
+{
+  "ok": true,
+  "result": {
+    "$defs": {
+      "ArtifactLink": {
+        "additionalProperties": false,
+        "properties": {
+          "artifact_id": {
+            "type": "string"
+          },
+          "digest": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "artifact_id",
+          "digest"
+        ],
+        "type": "object"
+      },
+      "VerifiedFact": {
+        "additionalProperties": false,
+        "description": "Values copied from acknowledged task outputs, not assertions invented by a model.",
+        "properties": {
+          "field": {
+            "type": "string"
+          },
+          "instance_id": {
+            "format": "uint64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "value": true
+        },
+        "required": [
+          "instance_id",
+          "field",
+          "value"
+        ],
+        "type": "object"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "additionalProperties": false,
+    "properties": {
+      "artifacts": {
+        "items": {
+          "$ref": "#/$defs/ArtifactLink"
+        },
+        "type": "array"
+      },
+      "failures": {
+        "items": {
+          "type": "string"
+        },
+        "type": "array"
+      },
+      "objective": {
+        "type": "string"
+      },
+      "plan": {
+        "items": {
+          "type": "string"
+        },
+        "type": "array"
+      },
+      "remaining_work": {
+        "items": {
+          "type": "string"
+        },
+        "type": "array"
+      },
+      "schema_version": {
+        "format": "uint32",
+        "minimum": 0,
+        "type": "integer"
+      },
+      "source_revision": {
+        "format": "uint64",
+        "minimum": 0,
+        "type": "integer"
+      },
+      "source_run_digest": {
+        "type": "string"
+      },
+      "source_run_id": {
+        "type": "string"
+      },
+      "verified_facts": {
+        "items": {
+          "$ref": "#/$defs/VerifiedFact"
+        },
+        "type": "array"
+      }
+    },
+    "required": [
+      "schema_version",
+      "source_run_id",
+      "source_run_digest",
+      "source_revision",
+      "objective",
+      "plan",
+      "verified_facts",
+      "artifacts",
+      "failures",
+      "remaining_work"
+    ],
+    "title": "Handoff",
+    "type": "object"
+  }
+}

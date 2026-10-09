@@ -126,7 +126,13 @@ impl HttpModel {
             &self.binding.endpoint,
             now,
         )
-        .map_err(|_| ModelFailure::Unavailable)?;
+        .map_err(|_| {
+            if call.policy.retry.is_some() {
+                ModelFailure::Authentication
+            } else {
+                ModelFailure::Unavailable
+            }
+        })?;
         let mut call = call.clone();
         call.deadline_unix_ms = call.deadline_unix_ms.min(key.expires_at_unix_ms());
         self.request_with_key(&call, key.expose())
@@ -175,7 +181,33 @@ impl HttpModel {
         };
         let response = request.send().map_err(|_| ModelFailure::Unavailable)?;
         if !response.status().is_success() {
-            return Err(ModelFailure::Unavailable);
+            if call.policy.retry.is_none() {
+                return Err(ModelFailure::Unavailable);
+            }
+            let retry_after_ms = response
+                .headers()
+                .get("retry-after")
+                .and_then(|v| v.to_str().ok())
+                .and_then(|v| {
+                    v.trim()
+                        .parse::<u64>()
+                        .ok()
+                        .map(|n| n.saturating_mul(1000))
+                        .or_else(|| {
+                            httpdate::parse_http_date(v).ok().map(|date| {
+                                date.duration_since(SystemTime::now())
+                                    .unwrap_or_default()
+                                    .as_millis()
+                                    .min(u64::MAX as u128) as u64
+                            })
+                        })
+                });
+            return Err(match response.status().as_u16() {
+                429 => ModelFailure::RateLimited { retry_after_ms },
+                408 | 500..=599 => ModelFailure::Temporary { retry_after_ms },
+                401 | 403 => ModelFailure::Authentication,
+                _ => ModelFailure::InvalidResponse,
+            });
         }
         // Raw provider metadata has its own bound, independent of the accepted proposal bound.
         let mut bytes = vec![];

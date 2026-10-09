@@ -43,8 +43,10 @@ Start 文件绑定准确流程与能力描述符。通过 `capability describe <
 可信宿主时钟在取得事务锁并完成恢复检查后采样，提交接纳前再次采样。零值/时间回退拒绝，
 `now >= expires_at` 已过期。排队调用者不能提交等待写锁前采样的时间。SQLite 串行化所有接纳修改。
 续租延长有界租约并使旧 token 失效，保持 epoch，不延长已准备请求的 deadline。租约最长五分钟。
-Worker 必须配合 deadline；过期限制结果接纳，但不能终止任意同步 Rust 代码或撤销效果。这是可信本地
-时钟/进程/存储边界，不是分布式时钟或远程认证。
+新任务的 deadline 由能力超时确定，可跨越多次租约续期；旧准备记录保留原先受租约限制的语义。
+CLI 将内置、workspace 和模型活动放入私有子进程，父进程持续续租、记录进度并检查取消；失去所有权或
+取消时终止并回收活动进程组。自定义同步 Rust 适配器仍须配合 deadline，不能被强制终止或撤销效果。
+这是可信本地时钟/进程/存储边界，不是分布式时钟或远程认证。
 
 旧所有者在释放、过期或接管后不能完成未提交 attempt。成功提交后准确重试结果返回 duplicate，无新命令，
 租约过期后也如此；同 attempt 改变结果则冲突。读取已提交事实不授予新所有权。
@@ -117,7 +119,7 @@ workflow run resume runs.db run-id resume-1 8 1790559060000 'maintenance finishe
 
 ## 显式存储迁移
 
-新数据库使用 schema 11，旧 schema 1–10 需要验证备份后显式升级，普通 create/open 不迁移：
+新数据库使用 schema 12，旧 schema 1–11 需要验证备份后显式升级，普通 create/open 不迁移：
 
 ```sh
 cargo run --locked -- run --artifacts /path/to/artifacts storage-plan /path/to/existing-runs.db
@@ -154,7 +156,7 @@ cargo run --locked -- run --artifacts /path/to/artifacts migrate /path/to/existi
 独立的 `EffectStore` 与 `drive_with_effects` 在相同租约下持久化写意图并提交提供方观察。CLI 使用
 `run drive-effects`，普通 drive 继续使用只读 worker。稳定键、查询恢复、有界重试、手工核对及提供方
 隔离限制见[持久化外部操作](../04-effects-and-recovery/02-durable-effects.md)。Schema 8 增加策略与操作日志，schema 9 增加
-[有序补偿](../04-effects-and-recovery/03-ordered-compensation.md)。显式升级到 11 接受 1–10；恢复存储在再次接纳写入前必须通过
+[有序补偿](../04-effects-and-recovery/03-ordered-compensation.md)。显式升级到 12 接受 1–11；恢复存储在再次接纳写入前必须通过
 [恢复屏障](../04-effects-and-recovery/04-backup-recovery.md)。
 
 <!-- book-navigation -->

@@ -297,3 +297,170 @@ fn typed_model_success_cannot_skip_a_frozen_postcondition() {
     store.verify(&start.run_id).unwrap();
     assert_eq!(model.calls.load(Ordering::SeqCst), 2);
 }
+
+struct Journal {
+    path: PathBuf,
+    now: u64,
+}
+impl workflow_models::SessionJournal for Journal {
+    fn load(
+        &self,
+        request: &workflow_worker::WorkRequest,
+    ) -> workflow_worker::Result<Option<workflow_models::ModelCheckpoint>> {
+        SqliteRunStore::open(&self.path)
+            .unwrap()
+            .model_checkpoint(request, &Time(self.now))
+            .map_err(|e| {
+                workflow_worker::Error::new(workflow_worker::ErrorCode::InvalidResult, e.message)
+            })
+    }
+    fn save(
+        &self,
+        request: &workflow_worker::WorkRequest,
+        previous: Option<&workflow_models::ModelCheckpoint>,
+        next: &workflow_models::ModelCheckpoint,
+    ) -> workflow_worker::Result<()> {
+        let digest = previous.map(workflow_worker::digest).transpose()?;
+        SqliteRunStore::open(&self.path)
+            .unwrap()
+            .save_model_checkpoint(request, digest.as_deref(), next, &Time(self.now))
+            .map_err(|e| {
+                workflow_worker::Error::new(workflow_worker::ErrorCode::InvalidResult, e.message)
+            })
+    }
+}
+#[test]
+fn checkpoint_takeover_reuses_verified_tool_output_and_fences_old_session_writes() {
+    use workflow_models::{Admission, Next, Session, SessionJournal};
+    let db = Db::new();
+    let mut store = db.store();
+    let start = request();
+    let (lease, p) = prepare(&mut store, &start);
+    let policy = Policy::new(start.bundle.model_policies[0].clone()).unwrap();
+    let model = Planner {
+        calls: AtomicUsize::new(0),
+        unavailable: false,
+    };
+    let mut session = Session::new(
+        policy.clone(),
+        p.request.clone(),
+        model.identity(),
+        p.request.deadline_unix_ms,
+    )
+    .unwrap();
+    let journal = Journal {
+        path: db.path.clone(),
+        now: 1001,
+    };
+    let Next::Model(call) = session.next_action().unwrap() else {
+        panic!()
+    };
+    let a = session.checkpoint(Some(Admission::Model {
+        call_digest: digest(&call).unwrap(),
+        at_unix_ms: 1001,
+    }));
+    journal.save(&p.request, None, &a).unwrap();
+    session
+        .replied(digest(&call).unwrap(), 1001, model.complete(&call))
+        .unwrap();
+    let b = session.checkpoint(None);
+    journal.save(&p.request, Some(&a), &b).unwrap();
+    let Next::Tool(tool) = session.next_action().unwrap() else {
+        panic!()
+    };
+    let c = session.checkpoint(Some(Admission::Tool {
+        request_digest: digest(&tool).unwrap(),
+        at_unix_ms: 1001,
+    }));
+    journal.save(&p.request, Some(&b), &c).unwrap();
+    let tool_result = workflow_builtin_capabilities::worker()
+        .unwrap()
+        .execute_with_clock(
+            &tool,
+            &workflow_worker::ExecutionGrant::bind(&tool).unwrap(),
+            &Time(1001),
+        )
+        .unwrap()
+        .into_result();
+    session
+        .tool_finished(
+            *tool,
+            1001,
+            ToolReply::Received {
+                result: tool_result,
+            },
+        )
+        .unwrap();
+    let acknowledged = session.checkpoint(None);
+    journal.save(&p.request, Some(&c), &acknowledged).unwrap();
+    assert!(
+        journal.save(&p.request, Some(&c), &acknowledged).is_err(),
+        "stale CAS must not append twice"
+    );
+    store.release(&lease, &Time(1002)).unwrap();
+    drop(store);
+    let mut store = SqliteRunStore::open(&db.path).unwrap();
+    let replacement = store
+        .acquire(
+            &LeaseRequest {
+                run_id: start.run_id.clone(),
+                owner: "replacement".into(),
+                acquisition_id: "replacement".into(),
+                ttl_ms: 10000,
+            },
+            &Time(1003),
+        )
+        .unwrap();
+    let Claimed::Task { attempt: next } = store.claim_next(&replacement, &Time(1003)).unwrap()
+    else {
+        panic!()
+    };
+    assert!(store.model_checkpoint(&p.request, &Time(1003)).is_err());
+    assert!(
+        store
+            .save_model_checkpoint(
+                &p.request,
+                Some(&digest(&acknowledged).unwrap()),
+                &acknowledged,
+                &Time(1003)
+            )
+            .is_err()
+    );
+    let journal = Journal {
+        path: db.path.clone(),
+        now: 1004,
+    };
+    let record = workflow_models::execute_journaled(
+        &policy,
+        &next.request,
+        &model,
+        &workflow_builtin_capabilities::worker().unwrap(),
+        &Time(1004),
+        next.request.deadline_unix_ms,
+        Some(&journal),
+    )
+    .unwrap();
+    assert_eq!(record.schema_version, 2);
+    assert_eq!(record.source_request.as_deref(), Some(&p.request));
+    assert_eq!(record.events.len(), 3);
+    assert_eq!(model.calls.load(Ordering::SeqCst), 2);
+    let result = WorkResult {
+        protocol_version: 2,
+        request_digest: digest(&next.request).unwrap(),
+        completed_at_unix_ms: 1004,
+        outcome: record.outcome.clone(),
+        model_record: Some(serde_json::to_value(record).unwrap()),
+    };
+    assert!(
+        store
+            .finish_task(&lease, &p.attempt_id, &result, &Time(1004))
+            .is_err()
+    );
+    store
+        .finish_task(&replacement, &next.attempt_id, &result, &Time(1004))
+        .unwrap();
+    store.verify(&start.run_id).unwrap();
+    let image = store.export_image(&start.run_id).unwrap();
+    let mut restored = SqliteRunStore::from_image(&image, None).unwrap();
+    restored.verify(&start.run_id).unwrap();
+}

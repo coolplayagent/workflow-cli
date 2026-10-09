@@ -248,7 +248,7 @@ fn sql_immutability_and_replay_detect_missing_or_corrupt_records() {
             "seed" => "UPDATE runs SET seed='{}'",
             "event" => "DELETE FROM events",
             "head" => "UPDATE heads SET revision=revision+2",
-            "checkpoint" => "DELETE FROM checkpoints",
+            "checkpoint" => "DELETE FROM state_checkpoints",
             "outbox" => "DELETE FROM outbox WHERE sequence=1",
             _ => "DELETE FROM receipts",
         };
@@ -258,7 +258,7 @@ fn sql_immutability_and_replay_detect_missing_or_corrupt_records() {
             "seed" => "immutable_runs_update",
             "event" => "immutable_events_delete",
             "head" => "monotonic_heads",
-            "checkpoint" => "immutable_checkpoints_delete",
+            "checkpoint" => "immutable_state_checkpoints_delete",
             "outbox" => "immutable_outbox_delete",
             _ => "immutable_receipts_delete",
         };
@@ -730,3 +730,5 @@ mod models;
 mod effects;
 
 mod compensation;
+
+mod long_running;

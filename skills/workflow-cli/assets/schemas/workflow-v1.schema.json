@@ -449,6 +449,13 @@
               "format": "uint64",
               "minimum": 0
             },
+            "feedback": {
+              "description": "Next-iteration input field -> failed body terminal input field.",
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            },
             "max_iterations": {
               "type": "integer",
               "format": "uint32",

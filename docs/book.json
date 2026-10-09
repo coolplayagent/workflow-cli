@@ -171,6 +171,14 @@
             "zh": "受保护的交付"
           },
           "legacy": "release-acceptance"
+        },
+        {
+          "file": "03-execution-and-evidence/10-long-running-agents.md",
+          "legacy": "long-running-agents",
+          "title": {
+            "en": "Long-running agent sessions",
+            "zh": "长时间运行的 Agent 会话"
+          }
         }
       ],
       "directory": "03-execution-and-evidence",

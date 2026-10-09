@@ -81,6 +81,10 @@ pub fn run(args: &[&str], stdout: &mut impl Write, stderr: &mut impl Write) -> i
     }
 }
 fn execute(args: &[&str]) -> Result<(Value, i32)> {
+    if let ["worker", "execute-file", path] = args {
+        crate::activity::execute_file(path)?;
+        return Ok((json!({"ok":true}), 0));
+    }
     let worker = workflow_builtin_capabilities::worker()?;
     match args {
         [

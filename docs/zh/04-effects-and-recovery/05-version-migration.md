@@ -86,7 +86,7 @@ SQLite 和共享事务镜像使用 application schema **11**，逻辑 StartRun �
 保持原有值。Schema 11 防止旧解释器误读定义迁移事件和存储升级日志。普通 open/create 拒绝旧/未来版本，
 不随业务执行自动升级。
 
-本地升级接受 schema 1–10。Schema 1 获得空执行权限头，较晚版本保留原权限。预检在内存构造一致快照，
+本地升级接受 schema 1–11。Schema 1 获得空执行权限头，较晚版本保留原权限。预检在内存构造一致快照，
 验证所有运行、事件、检查点、outbox、回执、证明与产物依赖，输出来源及已验证历史摘要，不执行工具/效果。
 
 ```sh
@@ -111,7 +111,7 @@ workflow run storage-restore before-upgrade.sqlite restored.sqlite upgrade.json
 外部工作后必需的[恢复屏障](04-backup-recovery.md)。同时保留/复制引用的产物目录与内容。如果备份后发生
 执行或外部写，应使用已有隔离恢复/核对流程，不能直接重开旧所有者。
 
-共享镜像从 schema 10 到 11 **逐运行**升级。同作用域管理员调用 `plan_storage_upgrade {run_id}`，再调用
+共享镜像从 schema 10–11 到 12 **逐运行**升级。同作用域管理员调用 `plan_storage_upgrade {run_id}`，再调用
 `upgrade_storage {run_id, plan}`。聚合行锁下检查来源字节摘要，完整回放、全局绑定和产物验证后替换
 镜像；计划不匹配则逐字节不变，相同重试幂等。转换保留逻辑定义、当前租约与记录工作，不重启定义。
 新宿主拒绝未升级旧镜像，旧宿主拒绝新镜像，滚动部署需路由至兼容宿主。外层 PostgreSQL 权威/访问

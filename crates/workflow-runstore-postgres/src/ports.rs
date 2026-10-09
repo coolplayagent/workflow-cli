@@ -143,6 +143,9 @@ impl ExecutionStore for PostgresRunStore {
     fn release(&mut self, l: &Lease, _: &dyn Clock) -> Result<()> {
         self.change(&l.run_id, false, |s, c| s.release(l, c))
     }
+    fn progress(&mut self, l: &Lease, id: &str, _: &dyn Clock) -> Result<()> {
+        self.change(&l.run_id, false, |s, c| s.progress(l, id, c))
+    }
     fn tick_due(&mut self, l: &Lease, _: &dyn Clock) -> Result<Option<Committed>> {
         self.change(&l.run_id, false, |s, c| s.tick_due(l, c))
     }
@@ -166,6 +169,26 @@ impl ExecutionStore for PostgresRunStore {
         _: &dyn Clock,
     ) -> Result<()> {
         self.change(&l.run_id, false, |s, c| s.fail_task(l, id, e, c))
+    }
+    fn model_checkpoint(
+        &mut self,
+        request: &workflow_worker::WorkRequest,
+        _: &dyn Clock,
+    ) -> Result<Option<workflow_models::ModelCheckpoint>> {
+        let id = crate::artifact_producer(request)?.run_id;
+        self.change(&id, false, |s, c| s.model_checkpoint(request, c))
+    }
+    fn save_model_checkpoint(
+        &mut self,
+        request: &workflow_worker::WorkRequest,
+        previous_digest: Option<&str>,
+        checkpoint: &workflow_models::ModelCheckpoint,
+        _: &dyn Clock,
+    ) -> Result<()> {
+        let id = crate::artifact_producer(request)?.run_id;
+        self.change(&id, false, |s, c| {
+            s.save_model_checkpoint(request, previous_digest, checkpoint, c)
+        })
     }
     fn execution_history(
         &mut self,
@@ -251,5 +274,21 @@ impl RestorationStore for PostgresRunStore {
         _: &dyn Clock,
     ) -> Result<bool> {
         self.change(id, false, |s, c| s.acknowledge_recovery(id, r, c))
+    }
+}
+
+impl ContinuationStore for PostgresRunStore {
+    fn prepare_continuation(
+        &mut self,
+        lease: &Lease,
+        plan: &ContinuationPlan,
+        _: &dyn Clock,
+    ) -> Result<ContinuationPlan> {
+        self.change(&lease.run_id, false, |s, c| {
+            s.prepare_continuation(lease, plan, c)
+        })
+    }
+    fn continuation(&mut self, id: &str) -> Result<Option<ContinuationPlan>> {
+        self.read(id, |s| s.continuation(id))
     }
 }

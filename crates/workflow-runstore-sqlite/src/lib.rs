@@ -59,6 +59,7 @@ impl SqliteRunStore {
                 ));
             }
             tx.execute_batch(SCHEMA).map_err(storage)?;
+            tx.execute_batch(STATE_SCHEMA).map_err(storage)?;
             tx.execute_batch(execution::SCHEMA).map_err(storage)?;
             tx.execute_batch(storage_upgrade::SCHEMA).map_err(storage)?;
             tx.pragma_update(None, "application_id", APPLICATION_ID)
@@ -129,23 +130,33 @@ impl RunStore for SqliteRunStore {
         self.acknowledge_delivery(r)
     }
     fn verify(&mut self, id: &str) -> Result<Verification> {
-        self.read(id, |r| {
-            Ok(Verification {
-                run_id: id.into(),
-                revision: r.engine.snapshot().revision,
-                checkpoint_revision: r.checkpoint_revision,
-                events_checked: r.events.len() as u64,
-                commands_checked: r.outbox.len() as u64,
-                inbox_messages_checked: r.engine.snapshot().inbox.len() as u64,
-                state_digest: digest(r.engine.snapshot())?,
-            })
-        })
+        let tx = self.connection.transaction().map_err(storage)?;
+        let r = recovery::audit(&tx, id, self.artifacts.as_deref())?;
+        let report = Verification {
+            run_id: id.into(),
+            revision: r.engine.snapshot().revision,
+            checkpoint_revision: r.checkpoint_revision,
+            events_checked: r.events.len() as u64,
+            commands_checked: r.outbox.len() as u64,
+            inbox_messages_checked: r.engine.snapshot().inbox.len() as u64,
+            state_digest: digest(r.engine.snapshot())?,
+        };
+        tx.commit().map_err(storage)?;
+        Ok(report)
     }
 }
 #[cfg(test)]
 mod tests;
 
 impl ExecutionStore for SqliteRunStore {
+    fn progress(
+        &mut self,
+        lease: &Lease,
+        attempt_id: &str,
+        clock: &dyn workflow_worker::Clock,
+    ) -> Result<()> {
+        self.record_progress(lease, attempt_id, clock)
+    }
     fn acquire(&mut self, r: &LeaseRequest, c: &dyn workflow_worker::Clock) -> Result<Lease> {
         self.acquire_lease(r, c)
     }
@@ -178,6 +189,23 @@ impl ExecutionStore for SqliteRunStore {
         c: &dyn workflow_worker::Clock,
     ) -> Result<()> {
         self.fail_owned_task(l, id, e, c)
+    }
+    fn model_checkpoint(
+        &mut self,
+        request: &workflow_worker::WorkRequest,
+        clock: &dyn workflow_worker::Clock,
+    ) -> Result<Option<workflow_models::ModelCheckpoint>> {
+        self.session_checkpoint(request, None, clock)
+    }
+    fn save_model_checkpoint(
+        &mut self,
+        request: &workflow_worker::WorkRequest,
+        previous_digest: Option<&str>,
+        checkpoint: &workflow_models::ModelCheckpoint,
+        clock: &dyn workflow_worker::Clock,
+    ) -> Result<()> {
+        self.session_checkpoint(request, Some((previous_digest, checkpoint)), clock)
+            .map(|_| ())
     }
     fn execution_history(
         &mut self,

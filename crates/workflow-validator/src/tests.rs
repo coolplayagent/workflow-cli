@@ -120,6 +120,7 @@ fn rejects_missing_wrong_typed_optional_and_future_bindings() {
 fn bounded_loops_require_both_limits_and_an_exhaustion_exit() {
     let mut w = base();
     w.nodes[0].kind = NodeKind::Loop {
+        feedback: Default::default(),
         body: VersionRef {
             id: "repair".into(),
             version: "1".into(),
@@ -130,6 +131,7 @@ fn bounded_loops_require_both_limits_and_an_exhaustion_exit() {
     expect(&w, "unbounded_loop");
     expect(&w, "node_routes");
     w.nodes[0].kind = NodeKind::Loop {
+        feedback: Default::default(),
         body: VersionRef {
             id: "repair".into(),
             version: "1".into(),

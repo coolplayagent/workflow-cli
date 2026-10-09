@@ -84,29 +84,9 @@ paginated history/outbox and re-read the state after an ambiguous response.
 
 ## Journal, checkpoints and corruption checks
 
-Each run keeps its immutable seed and bundle, current state/digest, accepted event
-journal and deterministic command outbox. Initial revision 1 is the seed; events
-occupy contiguous revisions starting at 2. Periodic checkpoints are saved at 16,
-32, 48, ... in the same transition transaction. They use kernel checkpoint v1,
-including the accepted prefix journal and integrity checksum.
+Each run retains its immutable seed/bundle, current state, accepted events and deterministic outbox. Schema 12 saves state checkpoints at revision 1 and every 16 revisions, binding the state to event/outbox prefix digests and the previous checkpoint. Normal recovery validates identities, digest chains, receipts and execution proofs, then replays at most 15 tail events. It does not independently replay every checkpoint prefix. Explicit `run verify` performs one full replay and checks every retained checkpoint and command. Legacy checkpoints remain immutable after upgrade.
 
-Recovery validates all stored records, rebuilds from the full event journal,
-restores each retained checkpoint, advances the latest checkpoint with its tail,
-and compares both results with the current state/digest. Checkpoint prefix and
-revision gaps are errors. It regenerates command intents only for comparison;
-it never dispatches those commands. Missing, extra or changed outbox entries fail
-verification. Receipts must form an ordered prefix, match exact commands, and
-match the separate delivery head/count/digest chain, so a missing final receipt
-cannot silently turn back into pending delivery.
-
-These checks detect corruption and divergence; a database owner able to rewrite
-records and hashes is outside this integrity boundary. Foreign/future schema/application changes
-are refused. Explicit `run migrate <db> <new-backup-file>` upgrades schemas 1–10 to 11 transactionally; see
-the local execution guide. No repair-by-overwrite is implemented. Recovery currently
-replays bounded histories and retained checkpoint prefixes on reads, favoring
-integrity evidence over latency. It is not an optimized constant-time snapshot
-loader. Kernel event/frame/serialized-size budgets still apply, and long-running
-retention/compaction is pending. No production throughput claim is made.
+Receipts form an ordered prefix bound to exact commands and the delivery head. Missing or changed records fail verification. The integrity boundary excludes a database owner who can rewrite both records and hashes. Explicit `run migrate <db> <new-backup-file>` upgrades schemas 1–11 to 12 with a verified backup. Reads still scan retained records; no constant-time recovery or production throughput guarantee is claimed. Inspect `run history-usage` and use [bounded successor segments](10-long-running-agents.md) before reaching the existing event/frame/byte limits.
 
 ## Outbox and future hosts
 

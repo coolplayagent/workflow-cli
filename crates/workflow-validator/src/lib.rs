@@ -486,7 +486,14 @@ fn check_kind(c: &mut Checker<'_>, node: &Node, path: &str, edges: &[&Edge], inc
             body,
             max_iterations,
             deadline_ms,
+            feedback,
         } => {
+            for (target, source) in feedback {
+                if !node.inputs.contains_key(target) || !identifier(source) {
+                    c.error("invalid_loop_feedback", format!("{path}.kind.feedback"), Some(&node.id), None,
+                        "feedback requires a declared loop input and an identifier for the failed terminal field");
+                }
+            }
             c.reference(body, &format!("{path}.kind.body"), &node.id);
             if *max_iterations == 0 || *deadline_ms == 0 {
                 c.error(

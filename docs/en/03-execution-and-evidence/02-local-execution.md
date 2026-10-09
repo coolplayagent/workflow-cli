@@ -62,9 +62,7 @@ exclusive (`now >= expires_at` rejects). A queued caller cannot submit a timesta
 sampled before waiting for the write lock. All admitted mutations are serialized
 by SQLite. Renewals extend a bounded lease and invalidate the old lease token;
 they preserve the epoch and do not extend an already prepared request's deadline.
-Leases are at most five minutes. Worker code must cooperate with its deadline:
-expiry fences result admission, but cannot terminate arbitrary synchronous Rust
-code or undo effects. This is a trusted local clock/process/storage boundary,
+Leases are at most five minutes and are renewed during CLI activity execution. The frozen capability timeout determines the task deadline independently of the lease. CLI builtin, workspace and model work runs in a cancellable child process; ownership loss, cancellation and expiry stop the child. Custom synchronous Rust adapters must still cooperate with deadlines; no process cancellation undoes effects. See [long-running execution](10-long-running-agents.md). This is a trusted local clock/process/storage boundary,
 not a distributed clock or remote authentication protocol.
 
 An old owner cannot finish an unsettled attempt after release, expiry or takeover.
@@ -167,7 +165,7 @@ waits, stale resume conflicts and killed pause writers at five commit phases.
 
 ## Explicit storage migration
 
-New databases use storage schema 11. Schemas 1–10 require an explicit verified
+New databases use storage schema 12. Schemas 1–11 require an explicit verified
 backup and upgrade; ordinary create/open never migrates a store:
 
 ```sh
@@ -222,7 +220,7 @@ intents and settle provider observations under the same run lease. CLI hosts use
 [durable effects](../04-effects-and-recovery/02-durable-effects.md) for stable keys, query recovery, bounded
 retry, manual reconciliation and provider fencing limits. Storage schema 8 adds
 these policies and journal records; schema 9 adds [ordered compensation](../04-effects-and-recovery/03-ordered-compensation.md).
-Explicit migration to schema 11 accepts schemas 1–10; restored stores use the
+Explicit migration to schema 12 accepts schemas 1–11; restored stores use the
 [recovery barrier](../04-effects-and-recovery/04-backup-recovery.md) before further write admission.
 
 <!-- book-navigation -->

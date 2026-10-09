@@ -48,6 +48,7 @@ fn policy() -> Policy {
             .insert(code.into(), FailureClass::Permanent);
     }
     Policy::new(PolicySpec {
+        retry: None,
         schema_version: 1,
         policy: reference("sop.echo-policy"),
         task,
@@ -335,4 +336,194 @@ fn worker_selects_the_exact_policy_and_cannot_downgrade_to_direct_execution() {
     verify_result(&p, &r, &accepted).unwrap();
     assert_eq!(count.load(Ordering::SeqCst), 2);
     assert!(verify_result(&other, &r, &accepted).is_err());
+}
+
+fn retry_policy() -> Policy {
+    let mut p = policy().spec().clone();
+    p.retry = Some(RetryPolicy {
+        max_retries: 2,
+        initial_backoff_ms: 10,
+        max_backoff_ms: 20,
+    });
+    for code in ["model_rate_limited", "model_authentication"] {
+        p.task
+            .error_codes
+            .insert(code.into(), FailureClass::Permanent);
+    }
+    Policy::new(p).unwrap()
+}
+#[test]
+fn retry_eligibility_and_admitted_call_budget_survive_checkpoint_replay() {
+    let p = retry_policy();
+    let r = request(&p);
+    let planner = Planner {
+        calls: Arc::new(AtomicUsize::new(0)),
+        action: Some(Action::Complete {
+            outputs: r.inputs.clone(),
+            summary: "verified".into(),
+        }),
+    };
+    let mut s = Session::new(p.clone(), r.clone(), planner.identity(), 900).unwrap();
+    let Next::Model(call) = s.next_action().unwrap() else {
+        panic!()
+    };
+    s.replied(
+        digest(&call).unwrap(),
+        100,
+        Reply::Failed {
+            failure: ModelFailure::Temporary {
+                retry_after_ms: None,
+            },
+        },
+    )
+    .unwrap();
+    assert_eq!(s.retry_at(), 110);
+    let checkpoint: ModelCheckpoint =
+        parse_message(&to_message(&s.checkpoint(None)).unwrap()).unwrap();
+    let mut s = Session::restore(&p, &checkpoint).unwrap();
+    let Next::Model(call) = s.next_action().unwrap() else {
+        panic!()
+    };
+    assert_eq!(call.remaining_model_calls, 2);
+    let failure = Reply::Failed {
+        failure: ModelFailure::RateLimited {
+            retry_after_ms: Some(15),
+        },
+    };
+    assert!(
+        s.replied(digest(&call).unwrap(), 109, failure.clone())
+            .is_err()
+    );
+    s.replied(digest(&call).unwrap(), 110, failure).unwrap();
+    assert_eq!(
+        s.retry_at(),
+        130,
+        "Retry-After and exponential backoff are both respected"
+    );
+    let mut s = Session::restore(&p, &s.checkpoint(None)).unwrap();
+    let Next::Model(call) = s.next_action().unwrap() else {
+        panic!()
+    };
+    assert_eq!(call.remaining_model_calls, 1);
+    s.replied(digest(&call).unwrap(), 130, planner.complete(&call))
+        .unwrap();
+    let record = s.record().unwrap();
+    verify_record(&p, &r, &record).unwrap();
+    assert!(matches!(record.outcome, AdapterOutcome::Succeeded { .. }));
+    for failure in [
+        ModelFailure::Authentication,
+        ModelFailure::Refused,
+        ModelFailure::InvalidResponse,
+        ModelFailure::RateLimited {
+            retry_after_ms: Some(21),
+        },
+        ModelFailure::Temporary {
+            retry_after_ms: Some(1000),
+        },
+    ] {
+        let mut s = Session::new(p.clone(), r.clone(), planner.identity(), 900).unwrap();
+        let Next::Model(call) = s.next_action().unwrap() else {
+            panic!()
+        };
+        s.replied(digest(&call).unwrap(), 100, Reply::Failed { failure })
+            .unwrap();
+        assert!(matches!(s.next_action().unwrap(), Next::Complete));
+    }
+}
+struct MemoryJournal {
+    checkpoint: std::sync::Mutex<Option<ModelCheckpoint>>,
+    saves: AtomicUsize,
+    fail_at: usize,
+}
+impl SessionJournal for MemoryJournal {
+    fn load(&self, _: &WorkRequest) -> Result<Option<ModelCheckpoint>> {
+        Ok(self.checkpoint.lock().unwrap().clone())
+    }
+    fn save(
+        &self,
+        _: &WorkRequest,
+        previous: Option<&ModelCheckpoint>,
+        next: &ModelCheckpoint,
+    ) -> Result<()> {
+        if self.saves.fetch_add(1, Ordering::SeqCst) + 1 == self.fail_at {
+            return Err(Error::new(
+                ErrorCode::InvalidResult,
+                "simulated process loss before acknowledgement",
+            ));
+        }
+        let mut stored = self.checkpoint.lock().unwrap();
+        assert_eq!(stored.as_ref(), previous);
+        verify_checkpoint_update(previous, next, 100).unwrap();
+        *stored = Some(next.clone());
+        Ok(())
+    }
+}
+#[test]
+fn acknowledged_tools_are_not_repeated_after_journal_reopen() {
+    let p = policy();
+    let r = request(&p);
+    let calls = Arc::new(AtomicUsize::new(0));
+    let model = Planner {
+        calls: calls.clone(),
+        action: None,
+    };
+    let tool_calls = Arc::new(AtomicUsize::new(0));
+    let tools = tools(tool_calls.clone());
+    let journal = MemoryJournal {
+        checkpoint: std::sync::Mutex::new(None),
+        saves: AtomicUsize::new(0),
+        fail_at: 5,
+    };
+    assert!(execute_journaled(&p, &r, &model, &tools, &Time, 900, Some(&journal)).is_err());
+    assert_eq!(tool_calls.load(Ordering::SeqCst), 1);
+    assert_eq!(calls.load(Ordering::SeqCst), 1);
+    let record = execute_journaled(&p, &r, &model, &tools, &Time, 900, Some(&journal)).unwrap();
+    assert_eq!(tool_calls.load(Ordering::SeqCst), 1);
+    assert_eq!(calls.load(Ordering::SeqCst), 2);
+    verify_record(&p, &r, &record).unwrap();
+    let original = journal.load(&r).unwrap().unwrap();
+    let mut foreign = original.clone();
+    foreign.identity.model = "changed-provider".into();
+    assert!(verify_checkpoint_update(Some(&original), &foreign, 100).is_err());
+    foreign = original.clone();
+    foreign.events.remove(0);
+    assert!(Session::restore(&p, &foreign).is_err());
+    foreign = original.clone();
+    foreign.request.inputs.insert("value".into(), json!(99));
+    assert!(Session::restore(&p, &foreign).is_err());
+}
+#[test]
+fn unacknowledged_call_is_explicitly_uncertain_and_consumes_the_original_budget() {
+    let p = policy();
+    let r = request(&p);
+    let calls = Arc::new(AtomicUsize::new(0));
+    let model = Planner {
+        calls: calls.clone(),
+        action: None,
+    };
+    let journal = MemoryJournal {
+        checkpoint: std::sync::Mutex::new(None),
+        saves: AtomicUsize::new(0),
+        fail_at: 2,
+    };
+    let tool_calls = Arc::new(AtomicUsize::new(0));
+    let tools = tools(tool_calls.clone());
+    assert!(execute_journaled(&p, &r, &model, &tools, &Time, 900, Some(&journal)).is_err());
+    let record = execute_journaled(&p, &r, &model, &tools, &Time, 900, Some(&journal)).unwrap();
+    assert_eq!(
+        calls.load(Ordering::SeqCst),
+        1,
+        "legacy policy does not authorize another provider call"
+    );
+    assert_eq!(tool_calls.load(Ordering::SeqCst), 0);
+    assert!(matches!(
+        &record.events[0],
+        ModelEvent::Replied {
+            response: Reply::Failed {
+                failure: ModelFailure::Uncertain
+            },
+            ..
+        }
+    ));
+    verify_record(&p, &r, &record).unwrap();
 }

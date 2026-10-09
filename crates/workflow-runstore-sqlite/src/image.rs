@@ -20,6 +20,7 @@ const TABLES: &[(&str, usize)] = &[
     ("execution_heads", 3),
     ("execution_events", 4),
     ("storage_migrations", 3),
+    ("state_checkpoints", 4),
 ];
 
 /// The external transaction must atomically admit its write inside this window.
@@ -75,22 +76,30 @@ impl RunImage {
         }
         let mut old: Self =
             serde_json::from_slice(bytes).map_err(|_| corrupt("invalid run image"))?;
-        if old.schema_version != 10 || old.tables.len() != TABLES.len() - 1 {
+        let source_version = old.schema_version;
+        let expected_tables = match source_version {
+            10 => 11,
+            11 => 12,
+            _ => 0,
+        };
+        if expected_tables == 0 || old.tables.len() != expected_tables {
             return Err(Error::new(
                 ErrorCode::UnsupportedStorage,
-                "only v10 images require this upgrade",
+                "only v10/v11 images require this upgrade",
             ));
         }
         old.schema_version = STORAGE_VERSION;
-        old.tables.push(vec![]);
+        old.tables.resize_with(TABLES.len(), Vec::new);
         let mut store = SqliteRunStore::from_image(&old, artifacts)?;
         let tx = store.connection.transaction().map_err(storage)?;
         let report = storage_upgrade::record(
             &tx,
-            10,
+            source_version,
             workflow_artifacts::content_digest(bytes),
             store.artifacts.as_deref(),
         )?;
+        let recovered = crate::recovery::audit(&tx, &old.run_id, store.artifacts.as_deref())?;
+        crate::recovery::write_state_checkpoint(&tx, &recovered.engine)?;
         tx.commit().map_err(storage)?;
         Ok((store.export_image(&old.run_id)?, report))
     }
@@ -156,6 +165,7 @@ impl SqliteRunStore {
             .pragma_update(None, "foreign_keys", "ON")
             .map_err(storage)?;
         connection.execute_batch(SCHEMA).map_err(storage)?;
+        connection.execute_batch(STATE_SCHEMA).map_err(storage)?;
         connection
             .execute_batch(execution::SCHEMA)
             .map_err(storage)?;
@@ -180,6 +190,21 @@ impl SqliteRunStore {
         image: &RunImage,
         artifacts: Option<Box<dyn workflow_artifacts::ArtifactReader>>,
     ) -> Result<Self> {
+        Self::load_image(image, artifacts, true)
+    }
+    /// The caller has verified the image digest in an authoritative transaction.
+    /// Journal and checkpoint integrity are still checked; full replay is an audit.
+    pub fn from_authoritative_image(
+        image: &RunImage,
+        artifacts: Option<Box<dyn workflow_artifacts::ArtifactReader>>,
+    ) -> Result<Self> {
+        Self::load_image(image, artifacts, false)
+    }
+    fn load_image(
+        image: &RunImage,
+        artifacts: Option<Box<dyn workflow_artifacts::ArtifactReader>>,
+        full_audit: bool,
+    ) -> Result<Self> {
         // Validate even images created by this crate; do not rely on parse callers.
         let image = RunImage::parse(&image.bytes()?)?;
         let mut store = Self::image_reducer(artifacts)?;
@@ -200,7 +225,11 @@ impl SqliteRunStore {
         }
         tx.commit().map_err(storage)?;
         Self::check_single_run(&store.connection, &image.run_id)?;
-        store.verify(&image.run_id)?;
+        if full_audit {
+            store.verify(&image.run_id)?;
+        } else {
+            store.get(&image.run_id)?;
+        }
         store.execution_history(&image.run_id, 0, 1)?;
         store.storage_history()?;
         Ok(store)

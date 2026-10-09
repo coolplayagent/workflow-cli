@@ -27,6 +27,12 @@
         "minimum": 0,
         "type": "integer"
       },
+      "lease_ms": {
+        "default": 120000,
+        "format": "uint64",
+        "minimum": 0,
+        "type": "integer"
+      },
       "model_bindings": {
         "type": [
           "string",

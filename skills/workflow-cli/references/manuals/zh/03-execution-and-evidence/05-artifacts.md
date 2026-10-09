@@ -102,7 +102,7 @@ attempt/请求/输入摘要的产物。完成还受有效租约、输出契约�
 [共享产物访问](../05-shared-execution/04-shared-artifacts.md)增加经过认证的上传和生产者接纳。
 
 运行存储为 schema **11**。`run --artifacts <store> migrate <db> <new-backup-file>` 在验证备份后显式
-升级 schema 1–10，检查依赖并保留执行记录；外来/未来 store 拒绝。详见[版本迁移](../04-effects-and-recovery/05-version-migration.md)。
+升级 schema 1–11，检查依赖并保留执行记录；外来/未来 store 拒绝。详见[版本迁移](../04-effects-and-recovery/05-version-migration.md)。
 产物目录独立为 schema 1，已有定义/worker 线路格式不变。
 
 ## 可移植性与验证边界

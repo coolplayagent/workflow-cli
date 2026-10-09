@@ -260,3 +260,56 @@ fn plaintext_nonloopback_and_credential_urls_are_rejected() {
         Err(ModelFailure::Unavailable)
     );
 }
+
+#[test]
+fn retry_enabled_http_classifies_status_and_preserves_bounded_retry_after_metadata() {
+    for (status, expected) in [
+        ("401 Unauthorized", ModelFailure::Authentication),
+        ("403 Forbidden", ModelFailure::Authentication),
+        (
+            "429 Too Many Requests",
+            ModelFailure::RateLimited {
+                retry_after_ms: Some(3000),
+            },
+        ),
+        (
+            "503 Unavailable",
+            ModelFailure::Temporary {
+                retry_after_ms: Some(3000),
+            },
+        ),
+        ("400 Bad Request", ModelFailure::InvalidResponse),
+    ] {
+        let (url, thread) = server(
+            status,
+            "Retry-After: 3\r\n",
+            "provider body with private details".into(),
+        );
+        let model = HttpModel::new(binding(Provider::OpenaiResponses, url)).unwrap();
+        let mut call = call();
+        call.policy.retry = Some(workflow_models::RetryPolicy {
+            max_retries: 1,
+            initial_backoff_ms: 100,
+            max_backoff_ms: 5000,
+        });
+        assert_eq!(model.request_with_key(&call, "fixture-key"), Err(expected));
+        thread.join().unwrap();
+    }
+    let date = httpdate::fmt_http_date(SystemTime::now() + Duration::from_secs(5));
+    let (url, thread) = server(
+        "429 Too Many Requests",
+        &format!("Retry-After: {date}\r\n"),
+        "ignored".into(),
+    );
+    let model = HttpModel::new(binding(Provider::OpenaiResponses, url)).unwrap();
+    let mut call = call();
+    call.policy.retry = Some(workflow_models::RetryPolicy {
+        max_retries: 1,
+        initial_backoff_ms: 100,
+        max_backoff_ms: 5000,
+    });
+    assert!(
+        matches!(model.request_with_key(&call,"fixture-key"),Err(ModelFailure::RateLimited { retry_after_ms:Some(ms) }) if ms>0 && ms<=5000)
+    );
+    thread.join().unwrap();
+}

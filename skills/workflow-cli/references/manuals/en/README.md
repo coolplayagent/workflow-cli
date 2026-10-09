@@ -37,6 +37,7 @@ Execute local work durably and verify artifacts, workspaces and delivery evidenc
 - [3.7 Evidence gates](03-execution-and-evidence/07-evidence-gates.md)
 - [3.8 Runtime postconditions](03-execution-and-evidence/08-runtime-postconditions.md)
 - [3.9 Protected delivery](03-execution-and-evidence/09-release-acceptance.md)
+- [3.10 Long-running agent sessions](03-execution-and-evidence/10-long-running-agents.md)
 
 ## 04. [Effects and recovery](04-effects-and-recovery/README.md)
 

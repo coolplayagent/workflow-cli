@@ -49,6 +49,7 @@ fn config(d: &Dir) -> Config {
         artifacts: None,
         model_bindings: None,
         effect_bindings: None,
+        lease_ms: 120000,
         poll_interval_ms: 20,
         error_backoff_ms: 100,
     }
@@ -60,6 +61,7 @@ fn start(c: &Config) -> Child {
         std::process::Command::new(std::env::current_exe().unwrap())
             .args(["--exact", "daemon::tests::daemon_child", "--nocapture"])
             .env("WORKFLOW_DAEMON_CLI_CONFIG", &path)
+            .env("WORKFLOW_DAEMON_MODEL_KEY", "fixture-key")
             .stdout(std::process::Stdio::null())
             .spawn()
             .unwrap(),
@@ -424,7 +426,15 @@ fn idle_waits_do_not_create_lease_history_on_every_scan_and_storage_errors_are_v
     let d = Dir::new();
     let c = config(&d);
     let mut store = workflow_runstore_sqlite::SqliteRunStore::create(&c.database).unwrap();
-    store.start(&request("waiting", 30000)).unwrap();
+    // This contract concerns an idle wait. Start directly at the wait rather
+    // than spending its observation budget on unrelated builtin compilation.
+    let mut waiting: workflow_runstore::StartRun = serde_json::from_slice(
+        &std::fs::read(base().join("examples/runs/review-start.json")).unwrap(),
+    )
+    .unwrap();
+    waiting.run_id = "waiting".into();
+    waiting.started_at_unix_ms = workflow_worker::SystemClock.now_unix_ms().unwrap();
+    store.start(&waiting).unwrap();
     let server = Server::start(
         &c.control_directory,
         Info {
@@ -440,11 +450,13 @@ fn idle_waits_do_not_create_lease_history_on_every_scan_and_storage_errors_are_v
         delayed: BTreeMap::new(),
         models: vec![],
         effects: None,
+        active: BTreeMap::new(),
         sequence: 0,
     };
-    for _ in 0..10 {
+    wait(|| {
         p.poll(&c, &control).unwrap();
-    }
+        store.waits("waiting", 0, 100).unwrap().items.len() == 1 && p.active.is_empty()
+    });
     assert_eq!(store.waits("waiting", 0, 100).unwrap().items.len(), 1);
     let history = store.execution_history("waiting", 0, 100).unwrap().items;
     for _ in 0..5 {
@@ -489,4 +501,116 @@ fn daemon_configuration_schema_matches_exported_contract() {
     )
     .unwrap();
     assert_eq!(actual, expected);
+}
+
+#[test]
+fn slow_activity_renews_while_other_run_times_out_and_stop_drains_all_children() {
+    let d = Dir::new();
+    let mut c = config(&d);
+    // Leave admission/SQLite scheduling margin on the two-core CI runner,
+    // while keeping the blocked activity longer than the entire first lease.
+    c.lease_ms = 5000;
+    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+    let endpoint = format!("http://{}/model", listener.local_addr().unwrap());
+    let (seen_tx, seen_rx) = std::sync::mpsc::channel();
+    let (release_tx, release_rx) = std::sync::mpsc::channel();
+    let server = std::thread::spawn(move || {
+        let (mut stream, _) = listener.accept().unwrap();
+        stream
+            .set_read_timeout(Some(Duration::from_secs(10)))
+            .unwrap();
+        let mut bytes = vec![];
+        loop {
+            let mut buffer = [0; 4096];
+            let n = stream.read(&mut buffer).unwrap();
+            assert!(n > 0);
+            bytes.extend_from_slice(&buffer[..n]);
+            if let Some(end) = bytes.windows(4).position(|b| b == b"\r\n\r\n") {
+                let headers = String::from_utf8_lossy(&bytes[..end]).to_ascii_lowercase();
+                let size: usize = headers
+                    .lines()
+                    .find_map(|l| l.strip_prefix("content-length: "))
+                    .unwrap()
+                    .parse()
+                    .unwrap();
+                if bytes.len() >= end + 4 + size {
+                    break;
+                }
+            }
+        }
+        seen_tx.send(()).unwrap();
+        release_rx.recv_timeout(Duration::from_secs(30)).unwrap();
+        let proposal = json!({"protocol_version":1,"action":{"type":"complete","outputs":{"valid":true,"diagnostics":[],"digest":workflow_worker::digest(&"fixture").unwrap()},"summary":"Fixture completion"}}).to_string();
+        let reply = json!({"id":"reply","model":"fixture","status":"completed","output":[{"type":"message","role":"assistant","status":"completed","content":[{"type":"output_text","text":proposal}]}]}).to_string();
+        write!(stream,"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",reply.len(),reply).unwrap();
+    });
+    let mut model: workflow_runstore::StartRun =
+        serde_json::from_slice(&std::fs::read(base().join("examples/models/start.json")).unwrap())
+            .unwrap();
+    model.run_id = "slow-model".into();
+    model.started_at_unix_ms = workflow_worker::SystemClock.now_unix_ms().unwrap();
+    let policy = workflow_models::Policy::new(model.bundle.model_policies[0].clone()).unwrap();
+    let bindings = d.0.join("bindings.json");
+    std::fs::write(&bindings,serde_json::to_vec(&json!([{"policy":policy.binding(),"http":{"schema_version":1,"provider":"openai_responses","model":"fixture","endpoint":endpoint,"api_key_env":"WORKFLOW_DAEMON_MODEL_KEY","allow_loopback_http":true}}])).unwrap()).unwrap();
+    c.model_bindings = Some(bindings.to_str().unwrap().into());
+    let mut store = workflow_runstore_sqlite::SqliteRunStore::create(&c.database).unwrap();
+    store.start(&model).unwrap();
+    let mut child = start(&c);
+    seen_rx.recv_timeout(Duration::from_secs(15)).unwrap();
+    let mut timed: Value = serde_json::from_slice(
+        &std::fs::read(base().join("examples/runs/review-start.json")).unwrap(),
+    )
+    .unwrap();
+    timed["run_id"] = json!("independent-timer");
+    timed["started_at_unix_ms"] = json!(workflow_worker::SystemClock.now_unix_ms().unwrap());
+    for w in timed["bundle"]["workflows"].as_array_mut().unwrap() {
+        for n in w["nodes"].as_array_mut().unwrap() {
+            if n["kind"]["type"] == "wait" {
+                n["kind"]["timeout_ms"] = json!(6000);
+            }
+        }
+    }
+    store
+        .start(&serde_json::from_value(timed).unwrap())
+        .unwrap();
+    wait(|| store.get("independent-timer").unwrap().status == RunStatus::Failed);
+    let history = store.execution_history("slow-model", 0, 100).unwrap().items;
+    let first_expiry = history
+        .iter()
+        .find_map(|r| match &r.action {
+            workflow_runstore::ExecutionAction::Acquired { lease } => {
+                Some(lease.expires_at_unix_ms)
+            }
+            _ => None,
+        })
+        .unwrap();
+    assert!(history.iter().any(|r| matches!(
+        r.action,
+        workflow_runstore::ExecutionAction::Progress { at_unix_ms, .. } if at_unix_ms >= first_expiry
+    )), "no progress beyond the first lease: history={history:?}; daemon={:?}",
+        workflow_daemon_local::inspect(&c.control_directory));
+    assert_eq!(store.get("slow-model").unwrap().status, RunStatus::Running);
+    let status = workflow_daemon_local::inspect(&c.control_directory)
+        .unwrap()
+        .status
+        .unwrap();
+    workflow_daemon_local::request_stop(&c.control_directory, &status.instance).unwrap();
+    assert!(child.0.try_wait().unwrap().is_none());
+    assert_eq!(
+        workflow_daemon_local::inspect(&c.control_directory)
+            .unwrap()
+            .status
+            .unwrap()
+            .phase,
+        workflow_daemon_local::Phase::Draining
+    );
+    release_tx.send(()).unwrap();
+    wait(|| child.0.try_wait().unwrap().is_some());
+    server.join().unwrap();
+    assert_eq!(
+        store.get("slow-model").unwrap().status,
+        RunStatus::Succeeded
+    );
+    store.verify("slow-model").unwrap();
+    store.verify("independent-timer").unwrap();
 }

@@ -114,12 +114,13 @@ pub(super) fn run(
             "invalid worker drain timeout",
         ));
     }
+    let binding: ClientBinding = read(binding)?;
     let (worker, mut principal) = if let Some(models) = config.models {
         let bundle: workflow_kernel::BundleSpec = read(&models.bundle)?;
         workflow_kernel::CompiledBundle::compile(bundle.clone())?;
-        crate::models::shared_worker(&bundle, &models.bindings)?
+        crate::activity::Config::remote(Some(bundle), Some(&models.bindings), binding.clone())?
     } else {
-        (workflow_builtin_capabilities::worker()?, None)
+        crate::activity::Config::remote(None, None, binding.clone())?
     };
     let effects = if let Some(path) = config.effects {
         let bindings: Vec<workflow_effect_http::HttpEffectBinding> = read(&path)?;
@@ -138,7 +139,6 @@ pub(super) fn run(
     } else {
         None
     };
-    let binding: ClientBinding = read(binding)?;
     let client = RemoteClient::new(binding.clone())?;
     let _signals = Signals::install()?;
     let session = WorkerSession::start(

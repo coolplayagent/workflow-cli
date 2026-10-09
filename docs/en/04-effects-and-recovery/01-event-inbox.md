@@ -125,6 +125,6 @@ expiry during task settlement, corrupted Inbox heads and CLI receipt/query behav
 
 4.1 Events and human decisions
 
-[Book contents](../README.md) · [4. Effects and recovery](README.md) · [中文](../../zh/04-effects-and-recovery/01-event-inbox.md) · [Previous: 3.9 Protected delivery](../03-execution-and-evidence/09-release-acceptance.md) · [Next: 4.2 Durable external effects](02-durable-effects.md)
+[Book contents](../README.md) · [4. Effects and recovery](README.md) · [中文](../../zh/04-effects-and-recovery/01-event-inbox.md) · [Previous: 3.10 Long-running agent sessions](../03-execution-and-evidence/10-long-running-agents.md) · [Next: 4.2 Durable external effects](02-durable-effects.md)
 
 <!-- /book-navigation -->

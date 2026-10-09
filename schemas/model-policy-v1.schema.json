@@ -226,6 +226,32 @@
         }
       ]
     },
+    "RetryPolicy": {
+      "additionalProperties": false,
+      "properties": {
+        "initial_backoff_ms": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "max_backoff_ms": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "max_retries": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "max_retries",
+        "initial_backoff_ms",
+        "max_backoff_ms"
+      ],
+      "type": "object"
+    },
     "ValueType": {
       "oneOf": [
         {
@@ -348,6 +374,16 @@
     },
     "policy": {
       "$ref": "#/$defs/VersionRef"
+    },
+    "retry": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/RetryPolicy"
+        },
+        {
+          "type": "null"
+        }
+      ]
     },
     "schema_version": {
       "format": "uint32",

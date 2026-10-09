@@ -3,7 +3,15 @@ use rusqlite::{Connection, OpenFlags};
 use serde::{Serialize, de::DeserializeOwned};
 use std::{path::Path, time::Duration};
 pub(crate) const APPLICATION_ID: i64 = 0x57465231;
-pub const STORAGE_VERSION: i64 = 11;
+pub const STORAGE_VERSION: i64 = 12;
+pub(crate) const STATE_SCHEMA: &str = "
+CREATE TABLE IF NOT EXISTS state_checkpoints (
+ run_id TEXT NOT NULL REFERENCES runs(run_id), revision INTEGER NOT NULL CHECK(revision>0),
+ document TEXT NOT NULL, digest TEXT NOT NULL, PRIMARY KEY(run_id,revision)
+);
+CREATE TRIGGER IF NOT EXISTS immutable_state_checkpoints_update BEFORE UPDATE ON state_checkpoints BEGIN SELECT RAISE(ABORT,'immutable state checkpoint'); END;
+CREATE TRIGGER IF NOT EXISTS immutable_state_checkpoints_delete BEFORE DELETE ON state_checkpoints BEGIN SELECT RAISE(ABORT,'immutable state checkpoint'); END;
+";
 pub(crate) const SCHEMA: &str = "
 CREATE TABLE bundles (digest TEXT PRIMARY KEY NOT NULL, document TEXT NOT NULL);
 CREATE TABLE binding_locks (

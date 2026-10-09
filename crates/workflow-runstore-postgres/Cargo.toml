@@ -5,6 +5,7 @@ edition.workspace = true
 license.workspace = true
 
 [dependencies]
+workflow-models = { path = "../workflow-models" }
 workflow-templates = { path = "../workflow-templates" }
 workflow-credentials = { path = "../workflow-credentials" }
 workflow-ir = { path = "../workflow-ir" }

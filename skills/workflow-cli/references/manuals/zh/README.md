@@ -37,6 +37,7 @@
 - [3.7 证据门禁](03-execution-and-evidence/07-evidence-gates.md)
 - [3.8 运行时后置条件](03-execution-and-evidence/08-runtime-postconditions.md)
 - [3.9 受保护的交付](03-execution-and-evidence/09-release-acceptance.md)
+- [3.10 长时间运行的 Agent 会话](03-execution-and-evidence/10-long-running-agents.md)
 
 ## 04. [外部操作与恢复](04-effects-and-recovery/README.md)
 

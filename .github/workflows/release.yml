@@ -65,7 +65,9 @@ jobs:
           cat > release-notes.md <<'NOTES'
           One workflow-cli skill with its matching Linux x86_64 executable, task references, complete English/Chinese books, examples and schemas.
 
-          This release adds bilingual READMEs and a six-volume, 37-chapter book with numbered directories, volume indexes and a shared reading order, chapter navigation and language switching. Source and installed skill links stay inside the skill directory; committed manuals, examples and schemas are copied into releases without importing external checkout resources. Missing resources and heading anchors fail validation. Regression tests cover missing translations, encoded/Unicode links, transitive offline reading and rendered page integrity.
+          v0.2.0 adds verified state checkpoints with bounded tail replay, renewable and cancellable activities, concurrent local scheduling, frozen provider retries, durable model/tool sessions, typed loop feedback and traceable successor handoffs. Full history verification and existing approval/effect/artifact proofs remain available.
+
+          Storage schema 12 requires explicit backup and upgrade from local schemas 1–11 or shared images 10–11. Retain the previous executable and stop old writers before migration. Upgrade shared services/workers and their exact version allowlist together. Model policies without retry/feedback additions retain their existing identities and behavior.
 
           Requires Ubuntu 24.04 / glibc 2.39 or newer. Verify SHA256SUMS before extracting into your agent's skills directory. Run workflow-cli/scripts/workflow.sh --version to check the installation.
 
@@ -73,7 +75,9 @@ jobs:
 
           Documentation: https://coolplayagent.github.io/workflow-cli/
 
-          本版提供中英文 README 与 六卷 37 章书籍式文档，分组与章节使用编号，提供各卷目录、前后章导航和语言切换。源码与安装后的 skill 链接均在自身目录内闭合，已提交的手册、示例与 schema 直接随包发布；缺失文件、标题锚点或翻译会阻止验证通过。新增回归测试覆盖中文/编码链接、离线资源完整性与页面导航。
+          v0.2.0 完成长历史恢复、长任务续租与取消、provider 有界重试、模型/工具会话恢复四项改进，增加类型化循环反馈与可追溯的后继交接。已有审批、制品和副作用证据继续校验。
+
+          存储 schema 12 必须显式备份升级；支持本地 1–11、共享 image 10–11。迁移前停止旧写入者并保留旧二进制，共享服务、worker 与允许版本策略应一起升级。
 
           支持 Linux x86_64、Ubuntu 24.04 / glibc 2.39 及更新版本。解压前验证 SHA256SUMS；运行 workflow-cli/scripts/workflow.sh --version 检查安装。数据库迁移仍使用独立的显式备份与升级流程。
           NOTES

@@ -124,7 +124,7 @@ SQLite 提交先回放并检查结果，再原子提交结果、事件、状态�
 拒绝原始成功任务事件。摘要绑定内容，不是签名，本地适配器与数据库完整性属于可信宿主边界。
 已完成运行重启不再次采样模型。
 
-Schema 5 开始保护这些语义，当前存储是 schema 11。旧版本遵循显式备份[迁移](../04-effects-and-recovery/05-version-migration.md)，
+Schema 5 开始保护这些语义，当前存储是 schema 12。旧版本遵循显式备份[迁移](../04-effects-and-recovery/05-version-migration.md)，
 已有运行需要产物时配置 `--artifacts`。旧协议 1 字节、请求/bundle 摘要及已完成运行历史保留。
 
 ## HTTP 与预算边界
@@ -146,9 +146,7 @@ Schema 5 开始保护这些语义，当前存储是 schema 11。旧版本遵循�
 `model_unavailable`、`model_invalid_response`、`model_refused`、`model_budget`、`model_deadline`，均为
 permanent。Driver 退出 0 表示持久化操作成功，业务结果仍检查快照。
 
-上限按 attempt 计算。超时或崩溃可能留下未知账单，后续 attempt 可能再次计费。不声称全运行原子金额
-预算、流式输出、session 中途恢复或恰好一次模型计费。同步自定义适配器需配合 deadline，租约只限制
-迟到结果，不能终止任意 Rust 代码。已提交记录回放，未提交 session 可能在既有重试上限内重做。
+CLI 将调用接纳与观察结果写入会话检查点，重启保留原截止时间、预算、输入、策略及 provider binding，复用已确认的工具结果。未确认调用明确记录为未知，计费也可能未知。可选的冻结重试策略区分临时故障、限流与认证错误，并在预算内遵守 Retry-After。详见[长时间会话](10-long-running-agents.md)的配置和 schema-2 恢复记录；没有 retry 的策略保持旧行为。自定义同步 Rust adapter 仍需合作遵守截止时间，CLI 活动子进程支持取消。不承诺原子货币预算、流式输出或恰好一次计费。
 
 ## 验证与后续范围
 

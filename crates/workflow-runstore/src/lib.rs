@@ -1,4 +1,6 @@
 //! Durable run storage port. Adapters commit state, events and command intents atomically.
+mod continuation;
+pub use continuation::*;
 mod acceptance;
 mod effects;
 pub use acceptance::*;
@@ -146,6 +148,8 @@ pub fn command_entry(
 pub fn schema(kind: &str) -> Result<String> {
     let schema = match kind {
         "lease" => schemars::schema_for!(LeaseRequest),
+        "continuation" => schemars::schema_for!(ContinuationPlan),
+        "handoff" => schemars::schema_for!(Handoff),
         "execution-record" => schemars::schema_for!(ExecutionRecord),
         "start" => schemars::schema_for!(StartRun),
         "receipt" => schemars::schema_for!(DeliveryReceipt),
