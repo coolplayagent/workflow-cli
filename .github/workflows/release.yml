@@ -1,0 +1,86 @@
+name: Release skill and Pages
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      actions: read
+      pages: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Require a tested main-branch commit and matching release tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          test "$GITHUB_REF_TYPE" = tag
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/main
+          ci_run=$(gh api --method GET "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs" \
+            -f head_sha="$GITHUB_SHA" -f branch=main -f event=push -f status=success \
+            --jq '.workflow_runs[0].id // empty')
+          test -n "$ci_run" || { echo 'The exact commit requires a successful CI push run on main.'; exit 1; }
+          echo "Verified CI run: $ci_run"
+      - run: cargo build --release --locked -p workflow-cli
+      - name: Package and verify outside the checkout
+        run: |
+          python3 scripts/package_skill.py --binary target/release/workflow --output dist --tag "$GITHUB_REF_NAME"
+          python3 scripts/verify_skill.py dist/workflow-cli-skill-*.tar.gz
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: workflow-skill
+          path: dist/*
+          if-no-files-found: error
+      - uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5
+      - run: python3 -m pip install -r website/requirements.txt
+      - run: python3 scripts/build_site.py
+      - uses: actions/upload-pages-artifact@7b1f4a764d45c48632c6b24a0339c27f5614fb0b # v4
+        with:
+          path: _site
+  publish:
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
+        with:
+          name: workflow-skill
+          path: dist
+      - name: Publish the verified skill
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cat > release-notes.md <<'NOTES'
+          One workflow-cli skill with its matching Linux x86_64 executable, task references, manuals, examples and schemas.
+
+          Requires Ubuntu 24.04 / glibc 2.39 or newer. Verify SHA256SUMS before extracting into your agent's skills directory. Run workflow-cli/scripts/workflow.sh --version to check the installation.
+
+          The extracted archive is verified in an unrelated directory: manifest integrity, resource links, schema/validation, successful and failed real workflows, recovery without repeated tasks, daemon approval/rejection, backup and runtime resolution.
+
+          Documentation: https://coolplayagent.github.io/workflow-cli/
+          NOTES
+          gh release create "$GITHUB_REF_NAME" dist/* --repo "$GITHUB_REPOSITORY" \
+            --verify-tag --title "Workflow CLI skill $GITHUB_REF_NAME" --notes-file release-notes.md
+  pages:
+    needs: [build, publish]
+    runs-on: ubuntu-24.04
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy documentation
+        id: deployment
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4

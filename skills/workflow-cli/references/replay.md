@@ -1,16 +1,8 @@
----
-name: workflow-replay
-description: Check workflow-cli definition bundles, simulate deterministic control flow, and restore or advance replay checkpoints. Use for workflow branch, wait, loop and cancellation analysis; these commands calculate state and intents without dispatching tasks or persisting runs.
-metadata:
-  version: "1.0.0"
----
-
 # Workflow replay
 
-Resolve `workflow` and read `workflow help`. In this source checkout use
-`cargo run --locked --` or the Bazel binary; `bazel run` needs absolute paths.
+Use the wrapper resolved by SKILL.md and read `workflow help`.
 Read `workflow schema kernel-bundle` and `kernel-scenario` for current formats.
-The repository guide at `docs/kernel-semantics.md` defines transition semantics.
+The repository guide at [manual](manuals/kernel-semantics.md) defines transition semantics.
 
 Obtain exact workflow definitions and capability descriptors from the task's
 catalog. Keep provider credentials and storage configuration outside the bundle.
@@ -23,7 +15,7 @@ For an explicitly requested simulation, write a scenario with the checked bundle
 run ID, typed inputs, positive logical start time and supplied events. Begin with
 an empty event list to inspect the initial snapshot and commands. Label simulated
 task outputs as simulated; never use them as evidence that real work ran or that
-an approval was granted. Repository examples under `examples/kernel` are simulations.
+an approval was granted. Repository examples under `assets/examples/kernel` are simulations.
 
 Run `workflow kernel replay <scenario.json>` and inspect `snapshot.status`, node
 states, reasons, winner edges and command intents. Exit 0 only means evaluation

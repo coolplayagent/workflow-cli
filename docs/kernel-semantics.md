@@ -21,7 +21,7 @@ cancelled; parallel all waits for both results; parallel any waits for the losin
 branch's cancellation reconciliation; repair fails two rounds then succeeds on
 round three. Changed parallel/repair definitions use version `2.0.0`.
 
-Read the bundled [workflow-replay Skill](../skills/workflow-replay/SKILL.md) for
+Read the bundled [replay guide](../skills/workflow-cli/references/replay.md) for
 the agent loop. `workflow schema kernel-bundle`, `kernel-event`, `kernel-scenario`
 and `kernel-checkpoint` expose the input formats. A successful CLI evaluation exits
 0, even when `snapshot.status` is `failed` or `cancelled`. Rejected inputs or

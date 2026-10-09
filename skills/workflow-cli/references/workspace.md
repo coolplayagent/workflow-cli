@@ -1,13 +1,6 @@
----
-name: workflow-workspace
-description: Allocate workflow-cli attempt workspaces from fixed Git commits, inspect file changes and capture declared typed outputs as retained artifacts. Use for host-managed isolated attempt files and provenance; execution sandboxing and automatic merge need separate adapters.
-metadata:
-  version: "1.0.0"
----
-
 # Workflow workspace
 
-Read `workflow help`, `docs/workspaces.md` and `workflow schema workspace-checkout`.
+Read `workflow help`, [manual](manuals/workspaces.md) and `workflow schema workspace-checkout`.
 Use the run database, artifact store, workspace store and repository mapping from
 the task. The local adapter requires Linux, `/proc` and Git. Only `workspace init`
 creates a store; investigate a missing/foreign store instead of silently replacing it.
@@ -30,9 +23,10 @@ Do not silently substitute the caller's current or dirty checkout.
 Run `workspace observe` to inspect actual changes. `ok: true` or exit 0 does not
 mean clean; read `clean`, the tree digest and changes. `workspace verify-clean`
 exits 1 for a dirty tree. Generated reports count as changes too. Neither command
-advances the run. The host must independently bind the real capability's inputs
-and execution to this workspace; the current runtime does not automatically do it.
-`examples/workspaces/validate-isolated.py` demonstrates that binding for the actual
+advances the run. Use `run drive-workspaces` with an explicit workspace binding for integrated
+builtin execution and capture. In a manual worker flow the host must bind the real
+capability inputs and execution to this workspace.
+`assets/examples/workspaces/validate-isolated.py` demonstrates that binding for the actual
 inline definition validator and existing gates.
 
 Write only within the intended workspace and authorized task scope. Allocation
@@ -51,7 +45,7 @@ files as a new verified commit.
 Attach the actual capture references to the real worker result before `run
 --artifacts <store> finish`. A later capture cannot modify settled evidence. Inspect
 business status and gate decisions afterward; workspace observation alone is not
-a gate PASS. Use the workflow-artifact and workflow-run contracts for retention
+a gate PASS. Use the [artifact](artifact.md) and [run](run.md) contracts for retention
 and fenced settlement. Do not fabricate reports, producer identities or Boolean
 results to get a successful transition.
 

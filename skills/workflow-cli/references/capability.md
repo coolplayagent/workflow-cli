@@ -1,16 +1,7 @@
----
-name: workflow-capability
-description: Discover and invoke workflow-cli capabilities through typed inputs, or prepare and validate worker-protocol requests and results. Use for capability invocation and worker integration; workflow authoring and running-job administration are separate tasks.
-metadata:
-  version: "1.0.0"
----
-
 # Workflow capability
 
-Resolve `workflow` and read `workflow help`. In this source checkout use
-`cargo run --locked --` or the Bazel-built binary. Use absolute file paths with
-`bazel run`. This Skill ships with the repository; no global installation or
-provider setup is needed to run the built-in read-only capabilities.
+Use the wrapper resolved by SKILL.md and read `workflow help`. Builtin read-only
+capabilities need no provider configuration.
 
 Read `workflow capability list` and `capability describe <id> <version>` for the
 actual catalog, contracts, digest and usage. Use the exact version returned by the
@@ -53,18 +44,18 @@ and remains subject to the task's existing authorization.
 
 Result validation checks the invocation contract. It does not commit a run,
 verify artifact existence by itself, prove a business gate passed or ensure exactly-once
-execution. This release accepts only read-only capabilities; write declarations
-need the future durable effect executor. Do not describe an in-process timeout
+execution. This standalone worker command accepts only read-only capabilities. Managed
+writes use `run drive-effects` and the durable effect protocol in the [run guide](run.md). Do not describe an in-process timeout
 as hard cancellation of arbitrary Rust code.
 
 Report the exact capability/version, contract or request digest, outcome and any
 remaining host-side verification. Stop at the requested invocation/integration;
-use workflow-run for requested durable state operations. Worker dispatch does not
+use the [run guide](run.md) for requested durable state operations. Worker dispatch does not
 commit the run. `run drive` supplies durable ownership and atomic result settlement
 for local built-ins; use it when the task requires persistent workflow execution.
 
 
-For worker evidence, the workflow-artifact Skill publishes a typed manifest and
+For worker evidence, the [artifact guide](artifact.md) publishes a typed manifest and
 returns its portable ID/manifest digest. Attach that exact link only to the actual
 producing request's result. The configured RunStore verifies bytes, lineage and
 producer/input identity on finish and recovery. Source-revision declarations and

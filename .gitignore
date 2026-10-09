@@ -1,3 +1,6 @@
 /target/
 /bazel-*
 /.qualitygate/
+/dist/
+/_site/
+__pycache__/

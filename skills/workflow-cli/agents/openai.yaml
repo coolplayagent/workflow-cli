@@ -1,0 +1,4 @@
+interface:
+  display_name: "Workflow CLI"
+  short_description: "Author and run durable, evidence-checked workflows"
+  default_prompt: "Use $workflow-cli to validate and execute this workflow with its required evidence."

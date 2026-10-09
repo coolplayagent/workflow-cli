@@ -43,8 +43,8 @@ Cancellation never undoes an external write. For a new event shape use
 `workflow schema kernel-event`; start and receipt inputs use `run-start` and
 `run-receipt`. JSON inputs are strictly decoded and limited to 2 MiB.
 
-The [workflow-run Skill](../skills/workflow-run/SKILL.md) covers durable operations.
-The [workflow-replay Skill](../skills/workflow-replay/SKILL.md) covers simulations
+The [run guide](../skills/workflow-cli/references/run.md) covers durable operations.
+The [replay guide](../skills/workflow-cli/references/replay.md) covers simulations
 and file checkpoints. The [kernel guide](kernel-semantics.md) defines business
 status, branch, cancellation, loop and deadline behavior.
 

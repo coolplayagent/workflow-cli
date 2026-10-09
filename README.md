@@ -60,7 +60,14 @@ for the build integration used here.
 
 ## LLM and Skill over CLI
 
-The bundled [workflow-definition Skill](skills/workflow-definition/SKILL.md) instructs an agent to write a draft definition, run `workflow validate
+Install the single [workflow-cli skill](skills/workflow-cli/SKILL.md) from a
+[GitHub Release](https://github.com/coolplayagent/workflow-cli/releases). It bundles
+the matching Linux x86_64 CLI, task references, manuals and examples. See
+[installation and release verification](docs/skill-distribution.md) and the
+[documentation site](https://coolplayagent.github.io/workflow-cli/).
+
+
+The bundled [definition guide](skills/workflow-cli/references/definition.md) instructs an agent to write a draft definition, run `workflow validate
 <file>`, inspect JSON diagnostics, fix the indicated field and validate again.
 `workflow schema` exposes the complete input shape without sending the model any
 provider credentials. Exit status is `0` for success, `1` for invalid definitions,
@@ -77,24 +84,24 @@ checks and gives reproducible definition-error, edit-latency and replay-step bas
 Definitions are data: reading or validating one does not invoke its capabilities.
 The registry supports incremental draft edits, historical queries and publication.
 Read the [authoring guide](docs/definition-registry.md) for the full CLI loop and
-concurrency semantics. The [workflow-capability Skill](skills/workflow-capability/SKILL.md)
+concurrency semantics. The [capability guide](skills/workflow-cli/references/capability.md)
 covers typed invocation of the compiler capabilities and worker request/result
 checks. Read the [worker protocol guide](docs/worker-protocol.md) for standalone
-and node invocation examples. The [workflow-replay Skill](skills/workflow-replay/SKILL.md)
+and node invocation examples. The [replay guide](skills/workflow-cli/references/replay.md)
 and [kernel guide](docs/kernel-semantics.md) cover bundle checks, simulated transitions
-and checkpoint restore. The [workflow-run Skill](skills/workflow-run/SKILL.md) and
+and checkpoint restore. The [run guide](skills/workflow-cli/references/run.md) and
 [run storage guide](docs/run-store.md) cover `run start/status/event/cancel`, history
 and pending delivery. The [local execution guide](docs/local-execution.md) covers
 `run drive`, which calls built-in adapters and commits real results. No background
-timer service remains after the command exits. The [workflow-artifact Skill](skills/workflow-artifact/SKILL.md)
+timer service remains after the command exits. The [artifact guide](skills/workflow-cli/references/artifact.md)
 and [artifact guide](docs/artifacts.md) cover typed reports, provenance, integrity
-checks and their connection to fenced result submission. The [workflow-gate Skill](skills/workflow-gate/SKILL.md)
+checks and their connection to fenced result submission. The [gate guide](skills/workflow-cli/references/gate.md)
 and [evidence checker guide](docs/evidence-gates.md) cover exact policy/target checks
 and decision revalidation. The [runtime postcondition guide](docs/runtime-postconditions.md)
 covers frozen mandatory gates, durable UNKNOWN waits and bounded repair.
-The [workflow-workspace Skill](skills/workflow-workspace/SKILL.md) and [workspace guide](docs/workspaces.md)
+The [workspace guide](skills/workflow-cli/references/workspace.md) and [workspace guide](docs/workspaces.md)
 cover host-managed attempt directories and typed output capture.
-The [workflow-model Skill](skills/workflow-model/SKILL.md) and [model execution guide](docs/model-execution.md)
+The [model guide](skills/workflow-cli/references/model.md) and [model execution guide](docs/model-execution.md)
 cover frozen policies, provider replacement and explicit decision replay.
 The [R02 acceptance guide](docs/model-boundaries-acceptance.md) covers the component
 interfaces and shared local/remote model contracts.

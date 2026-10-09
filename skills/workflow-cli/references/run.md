@@ -1,22 +1,17 @@
----
-name: workflow-run
-description: Create and inspect durable workflow-cli runs, submit trusted events, pause, resume or cancel with an expected revision, inspect the command outbox and verify storage recovery, and drive read-only tasks or managed write effects with durable leases. Use for persistent workflow progress, explicit local execution and optional unattended local daemon operation.
-metadata:
-  version: "1.11.0"
----
-
 # Workflow run
 
-Resolve `workflow` and read `workflow help`. Use `cargo run --locked --` in this
-source checkout or the Bazel binary; `bazel run` needs absolute file paths. Consult
-`docs/run-store.md` and `docs/local-execution.md` for transaction, lease and failure semantics.
+Use the wrapper resolved by SKILL.md and read `workflow help`. Consult
+[manual](manuals/run-store.md) and [manual](manuals/local-execution.md) for transaction, lease and failure semantics.
 
 Choose the explicit run database from the user's task. `run init <db>` alone
 creates a store. Do not point it at a definition-registry database or silently
 initialize a different database after a query fails. Inspect the error and path.
-For schema 1–9, use the explicit `run --artifacts <store> migrate <db>`
-transaction to upgrade to schema 10 when within the task scope. Omit the reader only
-when existing runs have no artifact dependencies. A future/foreign schema must not be overwritten to make it open.
+For schema 1–10, inspect `run storage-plan <db>` and use the explicit
+`run --artifacts <store> migrate <db> <new-backup-file>` to upgrade to schema 11
+with a verified backup. Omit the artifact reader only when retained runs have no
+artifact dependencies. Read [version migration](manuals/version-migration.md) for
+plan, backup, rollback and definition-migration contracts. A future/foreign schema
+must not be overwritten to make it open.
 
 Read `workflow schema run-start`, obtain exact definitions and descriptors from
 the task's catalog, and validate the bundle with `kernel check`. Use the intended
@@ -38,17 +33,17 @@ status. A foreground drive starts no background process: timers advance on the n
 explicit drive or through an explicitly started local daemon.
 Use `run execution-history <db> <id> 0 <limit>` for lease, request, result and error
 observations. Do not infer task execution from an outbox command alone.
-`examples/execution` exercises real built-in validation and business decisions.
+`assets/examples/execution` exercises real built-in validation and business decisions.
 A worker error stops the drive; a later explicit drive may retry read-only work,
 up to three attempts per command. Lease conflicts require inspecting ownership
 and waiting for release/expiry. Never edit epochs, reset budgets or fabricate a
 result. Managed write effects use the separate effect host described below. Artifact
 evidence requires a configured store: use `run --artifacts <store> <operation> ...`
-and the workflow-artifact Skill. That configuration is needed again for recovery
+and the [artifact guide](artifact.md). That configuration is needed again for recovery
 queries; never remove evidence to make a missing dependency look successful. A release error can follow a committed task;
 read status/history before retrying.
 
-Pending work persists when the process exits. Repository examples under `examples/runs`
+Pending work persists when the process exits. Repository examples under `assets/examples/runs`
 use simulated approvals, results and receipts; label them as simulation.
 
 For administrative host events, obtain authenticated, validated observations, then read
@@ -99,7 +94,7 @@ replace the local lease token with its returned value. Release the current lease
 afterward. `run tick-due` observes due waits under the lease; `run attempt-failed`
 records an actual worker protocol error, never an invented business outcome.
 
-For a bundle with mandatory postconditions, read `docs/runtime-postconditions.md`.
+For a bundle with mandatory postconditions, read [manual](manuals/runtime-postconditions.md).
 A settled task can still await its gate; inspect node decisions and run status.
 `claim`/`drive` computes gates from settled evidence. UNKNOWN is idle until an
 authorized explicit `run retry-gate <db> <run-id> <instance-id> <event-id>
@@ -108,17 +103,17 @@ its cause first. Missing attachments on settled results cannot be added later.
 Raw successful task events for these runs, all raw gate events, and manual gate
 receipts are rejected. Use declared repair bounds and retain failure history.
 
-For host-managed files from a fixed Git commit, use the workflow-workspace Skill
+For host-managed files from a fixed Git commit, use the [workspace guide](workspace.md)
 with this actual prepared request. Its independent directory and typed capture
 are separate from run execution authority. Bind the real capability inputs to
-those files, then attach the capture references before settlement. The built-in
-driver does not automatically allocate workspaces or inspect them at gate time.
+those files, then attach the capture references before settlement. Use `run drive-workspaces` for the integrated builtin workspace driver; ordinary
+`run drive` does not allocate workspaces. Gates consume settled captured evidence.
 
-For model-policy tasks, follow `skills/workflow-model/SKILL.md` and use
+For model-policy tasks, follow `model.md` and use
 `run drive-models` with exact host bindings. Model result settlement checks explicit
 records; raw task successes cannot bypass it. Recovery replays without model calls.
 
-For a real host-verified callback, read `docs/event-inbox.md`, `schema run-signal`
+For a real host-verified callback, read [manual](manuals/event-inbox.md), `schema run-signal`
 and `run waits <db> <id> 0 <limit>`. Copy the actual run digest, target and correlation;
 retain a stable source message ID, decision, bounded reason and expiry. Use
 `run receive <db> <signal.json>` and inspect `result.entry.status.status`:
@@ -133,7 +128,7 @@ the actual source/decision first. Never create a human approval from model text.
 
 ## Managed write effects
 
-Read `docs/durable-effects.md` before dispatching a write. The workflow needs a
+Read [manual](manuals/durable-effects.md) before dispatching a write. The workflow needs a
 frozen effect binding, exact descriptor and authorized host target/principal
 configuration. Use `run drive-effects <db> <id> <owner> <budget> <bindings.json>`
 only within the user's authorized effect scope. An optional model binding file
@@ -154,7 +149,7 @@ the provider and quiescing outstanding writers. This settles the task as cancell
 and does not grant a new attempt. Do not fabricate receipts or authenticated actor
 claims.
 
-For compensation, read `docs/ordered-compensation.md`. Declare exact compensator
+For compensation, read [manual](manuals/ordered-compensation.md). Declare exact compensator
 versions, same-frame effect dependencies and an explicit business branch. The host
 binds the original Applied receipt and enforces reverse dependency order.
 `irreversible: true` prohibits a compensator. Inspect `needs_attention` separately
@@ -166,7 +161,7 @@ of rollback; check the original effects and their `compensated_by` links.
 
 ## Local backup and recovery
 
-Read `docs/backup-recovery.md` and the exported backup schemas. Name the exact run
+Read [manual](manuals/backup-recovery.md) and the exported backup schemas. Name the exact run
 store, required artifacts and optional definition registry in the source file;
 `backup create` writes only to a new directory. `backup verify` checks bytes and
 full application replay. Do not copy live database files or omit required artifacts.
@@ -195,7 +190,7 @@ Restoring a database does not retire the source service or authorize two active 
 
 ## Optional unattended local daemon
 
-Read `docs/local-daemon.md` and `schema daemon-config`. Use `daemon serve` with the
+Read [manual](manuals/local-daemon.md) and `schema daemon-config`. Use `daemon serve` with the
 explicit database, artifact path and private control directory; it remains in the
 foreground and can be supervised by the OS. Bindings load once at startup. Local
 builtins need no network, while configured model/effect adapters still may.

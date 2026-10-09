@@ -1,15 +1,6 @@
----
-name: workflow-artifact
-description: Publish, verify, trace, export and import typed workflow-cli artifacts and attach checked report references to real worker results. Use for durable evidence and artifact handoffs; workspace isolation and business gate policy remain separate operations.
-metadata:
-  version: "1.0.0"
----
-
 # Workflow artifact
 
-Read `workflow help` and `docs/artifacts.md`. In the checkout, use
-`cargo run --locked --` or the built binary; Bazel invocation requires absolute
-input paths. The local store needs no model, network account or cloud service.
+Read `workflow help` and the [artifact manual](manuals/artifacts.md). The local store needs no model, network account or cloud service.
 
 Use the artifact directory authorized by the task. Only `artifact init <store>`
 creates one. Do not replace a missing/foreign/corrupt store with a fresh directory
@@ -57,8 +48,8 @@ history before another invocation.
 Export to a new path with `artifact export`, saving the returned reference.
 Import that exact reference and payload into an initialized destination store.
 Transfer ancestor artifacts first in lineage order. Verify again after relocation.
-The current implementation covers local stores; no remote upload credentials or
-temporary download permissions are implied.
+These artifact commands address local stores. Authenticated remote transfers use
+`remote artifact-upload` and `remote artifact-download`; see the [remote guide](remote.md).
 
 `artifact cleanup-orphans` removes only uncommitted objects/uploads after catalog
 verification and serialization with active publication. It never deletes committed

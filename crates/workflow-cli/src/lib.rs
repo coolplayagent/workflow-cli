@@ -111,10 +111,27 @@ pub fn run(
         .collect::<Vec<_>>()
         .as_slice()
     {
+        ["--version" | "-V"] => write(
+            stdout,
+            &format!("workflow {}", env!("CARGO_PKG_VERSION")),
+            0,
+        ),
+        ["version"] | ["version", "--format", "json"] => write(
+            stdout,
+            &serde_json::json!({
+                "project_name": "workflow-cli",
+                "version": env!("CARGO_PKG_VERSION"),
+                "cli_contract_version": 1,
+                "os": std::env::consts::OS,
+                "architecture": std::env::consts::ARCH,
+            })
+            .to_string(),
+            0,
+        ),
         [] | ["help" | "--help" | "-h"] => write(
             stdout,
             &format!(
-                "{HELP}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}",
+                "{HELP}\nVERSION\n  workflow --version\n  workflow version --format json\n\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}",
                 registry::HELP,
                 worker::HELP,
                 kernel::HELP,

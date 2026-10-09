@@ -1,18 +1,11 @@
----
-name: workflow-definition
-description: Create, edit, validate, compare and publish portable workflow-cli SOP definitions using revisioned drafts and the workflow compiler. Use for business process definitions and their diagnostics; this compiler does not execute workflows or administer running jobs.
----
-
 # Workflow definition
 
 Use the `workflow` CLI as the authority for definition shape and validation. A
 Skill explains how to use the compiler; it does not replace its checks with a
 model judgment.
 
-Resolve the executable and read `workflow help`. If working in the workflow-cli
-source checkout, use `cargo run --locked --` or `bazel run //:workflow --` with the
-same arguments. Bazel requires absolute definition paths. Do not install or build
-an unrelated checkout just because `workflow` is missing.
+Use the wrapper resolved by SKILL.md and read `workflow help`. Keep definition
+files in the task workspace; relative paths resolve against the working directory.
 
 Run `workflow schema` for the current IR. Translate the requested SOP into stable
 node and edge IDs, explicit input contracts, legal routes and terminal outcomes.
@@ -29,7 +22,7 @@ resolve capabilities or authorize execution.
 and exact input/output contracts. A node intended for checked direct invocation
 must match those contracts and reference an available capability version. The
 worker boundary supports read-only capability calls. For bundle contract checks
-and deterministic control-flow simulation, use the workflow-replay Skill and
+and deterministic control-flow simulation, use the [replay guide](replay.md) and
 `workflow kernel check/replay`. These operations do not dispatch tasks or persist runs.
 
 Run `workflow validate <file>` after editing. Read the JSON `diagnostics`, including
@@ -76,5 +69,5 @@ version should be executed.
 
 Report the resulting file or registry identity, revision, validation diagnostics,
 digest and unresolved bindings. Stop at the definition operation requested by the
-user. For requested durable progress, use workflow-run and its explicit database;
+user. For requested durable progress, use the [run guide](run.md) and its explicit database;
 run storage still requires a host for external execution.

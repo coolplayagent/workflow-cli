@@ -1,13 +1,6 @@
----
-name: workflow-gate
-description: Evaluate and revalidate workflow-cli evidence against an exact policy, action and target using settled execution history and typed artifacts. Use for R03 evidence checks and frozen runtime postconditions; external effects need separate authority.
-metadata:
-  version: "1.1.0"
----
-
 # Workflow gate
 
-Read `workflow help`, `docs/evidence-gates.md` and `workflow schema gate-request`.
+Read `workflow help`, [manual](manuals/evidence-gates.md) and `workflow schema gate-request`.
 Use the task's host-controlled policy, run database and artifact store. Do not
 create a replacement store, remove requirements or change the accepted Boolean
 field to manufacture a PASS. Policy changes require the authority established
@@ -47,10 +40,10 @@ consumption remains a separate integration.
 
 ## Mandatory runtime gates
 
-Read `docs/runtime-postconditions.md` and `schema kernel-bundle`. Use the authorized
+Read [manual](manuals/runtime-postconditions.md) and `schema kernel-bundle`. Use the authorized
 frozen `postconditions` when starting a run; bind required checker instances through
 the workflow, exact policy/action and target bindings. Never weaken or omit gates
-from an existing approved task. `examples/gates/drive-guarded.py` demonstrates real
+from an existing approved task. `assets/examples/gates/drive-guarded.py` demonstrates real
 execution and separate task/terminal PASS transitions.
 
 Use the fenced `run acquire/claim/finish` flow for actual worker observations and
