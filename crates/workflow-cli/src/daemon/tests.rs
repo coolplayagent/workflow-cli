@@ -426,7 +426,15 @@ fn idle_waits_do_not_create_lease_history_on_every_scan_and_storage_errors_are_v
     let d = Dir::new();
     let c = config(&d);
     let mut store = workflow_runstore_sqlite::SqliteRunStore::create(&c.database).unwrap();
-    store.start(&request("waiting", 30000)).unwrap();
+    // This contract concerns an idle wait. Start directly at the wait rather
+    // than spending its observation budget on unrelated builtin compilation.
+    let mut waiting: workflow_runstore::StartRun = serde_json::from_slice(
+        &std::fs::read(base().join("examples/runs/review-start.json")).unwrap(),
+    )
+    .unwrap();
+    waiting.run_id = "waiting".into();
+    waiting.started_at_unix_ms = workflow_worker::SystemClock.now_unix_ms().unwrap();
+    store.start(&waiting).unwrap();
     let server = Server::start(
         &c.control_directory,
         Info {
@@ -499,7 +507,9 @@ fn daemon_configuration_schema_matches_exported_contract() {
 fn slow_activity_renews_while_other_run_times_out_and_stop_drains_all_children() {
     let d = Dir::new();
     let mut c = config(&d);
-    c.lease_ms = 2000;
+    // Leave admission/SQLite scheduling margin on the two-core CI runner,
+    // while keeping the blocked activity longer than the entire first lease.
+    c.lease_ms = 5000;
     let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
     let endpoint = format!("http://{}/model", listener.local_addr().unwrap());
     let (seen_tx, seen_rx) = std::sync::mpsc::channel();
@@ -556,7 +566,7 @@ fn slow_activity_renews_while_other_run_times_out_and_stop_drains_all_children()
     for w in timed["bundle"]["workflows"].as_array_mut().unwrap() {
         for n in w["nodes"].as_array_mut().unwrap() {
             if n["kind"]["type"] == "wait" {
-                n["kind"]["timeout_ms"] = json!(3000);
+                n["kind"]["timeout_ms"] = json!(6000);
             }
         }
     }
@@ -565,10 +575,20 @@ fn slow_activity_renews_while_other_run_times_out_and_stop_drains_all_children()
         .unwrap();
     wait(|| store.get("independent-timer").unwrap().status == RunStatus::Failed);
     let history = store.execution_history("slow-model", 0, 100).unwrap().items;
+    let first_expiry = history
+        .iter()
+        .find_map(|r| match &r.action {
+            workflow_runstore::ExecutionAction::Acquired { lease } => {
+                Some(lease.expires_at_unix_ms)
+            }
+            _ => None,
+        })
+        .unwrap();
     assert!(history.iter().any(|r| matches!(
         r.action,
-        workflow_runstore::ExecutionAction::Progress { .. }
-    )));
+        workflow_runstore::ExecutionAction::Progress { at_unix_ms, .. } if at_unix_ms >= first_expiry
+    )), "no progress beyond the first lease: history={history:?}; daemon={:?}",
+        workflow_daemon_local::inspect(&c.control_directory));
     assert_eq!(store.get("slow-model").unwrap().status, RunStatus::Running);
     let status = workflow_daemon_local::inspect(&c.control_directory)
         .unwrap()
