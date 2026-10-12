@@ -719,6 +719,7 @@ fn final_completion_and_cancel_race_preserves_the_winner_and_late_observation() 
     store.verify(&s.run_id).unwrap();
 }
 
+mod checked_acquire;
 mod execution;
 
 mod gates;

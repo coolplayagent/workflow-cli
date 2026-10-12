@@ -1,0 +1,15 @@
+{
+  "first_rejected_array_depth": 128,
+  "typed": {
+    "capability": "sha256:fe1c154afef1103b6e370c1f4480833944fc249b7e1ccd50873f035221354675",
+    "grant": "sha256:82f5d04648ffd23c33677ef102caadb154ffb1958e8fdb4c0fac43288c084355",
+    "request": "sha256:bdc305e537bf40addbda0753b1af639b4314d032564451ece51c0140c98431cb",
+    "result": "sha256:f923400f45c21bfa2c4e230f4274caac04cf7d45e25b454b79adedbb749e3387"
+  },
+  "values": {
+    "limits": "sha256:19d344cac06d7c4586c58bbf1b341b285289daa0e2178055ced9f63789320c54",
+    "nested": "sha256:60c03fc6535409ab91e96efccf36b4b453aa8f20595f1e82f775fce8cc216d79",
+    "ordered": "sha256:99168216144c7fed5d4c54916cf98d9c66096280c04a499822a99b6658bd177a",
+    "unicode": "sha256:c4a40032328d287892dbe922b1e4b909c5cfaf48e08f54747b559d222b43a912"
+  }
+}

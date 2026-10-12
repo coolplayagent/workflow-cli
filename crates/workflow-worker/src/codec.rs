@@ -97,7 +97,8 @@ pub fn to_message<T: Serialize>(value: &T) -> Result<Vec<u8>> {
 }
 pub fn digest<T: Serialize>(value: &T) -> Result<String> {
     // serde_json without preserve_order stores object keys in sorted order.
-    let normalized: Value = parse_message(&to_message(value)?)?;
+    let serialized = serde_json::to_vec(value).map_err(invalid)?;
+    let normalized: Value = parse_message(&serialized)?;
     let bytes = serde_json::to_vec(&normalized).map_err(invalid)?;
     Ok(format!("sha256:{:x}", Sha256::digest(bytes)))
 }

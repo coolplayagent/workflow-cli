@@ -17,5 +17,5 @@ rust_test(
     name = "tests",
     size = "small",
     crate = ":workflow_worker",
-    data = ["//:fixtures"],
+    data = ["//:fixtures", "fixtures/digest-values.json", "fixtures/digest-goldens.json"],
 )

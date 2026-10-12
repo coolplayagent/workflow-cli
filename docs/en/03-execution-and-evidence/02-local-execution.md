@@ -72,6 +72,33 @@ This read of an already committed fact does not grant new ownership.
 
 ## Failure and retry behavior
 
+Hosts that need to fence a previously observed baseline can use
+`workflow run acquire-checked-v1 <db> <request.json>`; the request schema is
+`workflow schema run-acquire-checked-v1`. The strict version-1 request contains
+`lease` (the original lease request), `expected_run_digest`,
+`expected_bundle_digest`, `expected_snapshot_digest`, `expected_execution_digest`
+and `expected_snapshot_revision`. All fields are mandatory. Digests use the
+same canonical SHA-256 calculation as `run acceptance`; a historical acceptance
+report alone never authorizes a later write. Execution history has its own
+digest because lease and prepared-attempt records can change without advancing
+the snapshot revision.
+
+The owner compares all fields against recovered state in the acquire write
+transaction before appending `Acquired`. Success returns the existing lease
+format. `admission_conflict` proves the preconditions failed without a run,
+execution or audit write. It grants no lease. Other failures, including a lost
+response, do not establish rollback and must not trigger an automatic replay.
+Ordinary acquire and its lease, expiry and fencing rules are unchanged. This is
+a single-run operation, not an atomic multi-run admission mechanism.
+
+The authenticated service exposes operation
+`{"type":"acquire_checked_v1","request":{...}}` through the existing version-1
+service request and `workflow remote call <binding.json> <request.json>`.
+`request.lease.owner` must equal the authenticated scheduler, recovery or
+administrator identity. The PostgreSQL transaction uses its primary clock and
+the same validated reducer as SQLite. Production clients use this service API;
+the local database command is for explicitly separate embedded stores.
+
 | Observation | Behavior |
 | --- | --- |
 | Missing adapter or rejected worker protocol | Preserve the worker error as an attempt observation; leave the task and command pending. Drive exits 1 and releases when possible. |

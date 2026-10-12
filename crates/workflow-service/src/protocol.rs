@@ -204,6 +204,9 @@ pub enum Operation {
         acquisition_id: String,
         ttl_ms: u64,
     },
+    AcquireCheckedV1 {
+        request: Box<AcquireCheckedV1>,
+    },
     Release {
         lease: Lease,
     },
@@ -332,6 +335,9 @@ impl Request {
     pub fn validate(&self) -> Result<()> {
         if self.protocol_version != PROTOCOL_VERSION {
             return Err(invalid());
+        }
+        if let Operation::AcquireCheckedV1 { request } = &self.operation {
+            request.validate()?;
         }
         if let Operation::ArtifactPut { content, .. } = &self.operation
             && (content.is_empty()
@@ -552,6 +558,9 @@ impl Request {
             } => service
                 .acquire(token, run_id, acquisition_id, *ttl_ms)
                 .map(Response::Lease),
+            Operation::AcquireCheckedV1 { request } => {
+                service.acquire_checked(token, request).map(Response::Lease)
+            }
             Operation::Release { lease } => service.release(token, lease).map(|_| Response::Unit),
             Operation::Tick { lease } => service
                 .tick(token, lease)
@@ -617,6 +626,16 @@ impl Request {
         }
     }
     pub fn accepts(&self, response: &Response) -> bool {
+        if let Operation::AcquireCheckedV1 { request } = &self.operation {
+            return matches!(response, Response::Lease(lease)
+                if lease.run_id == request.lease.run_id
+                    && lease.owner == request.lease.owner
+                    && lease.acquisition_id == request.lease.acquisition_id
+                    && lease.epoch > 0
+                    && lease.issued_at_unix_ms > 0
+                    && lease.expires_at_unix_ms.checked_sub(lease.issued_at_unix_ms)
+                        == Some(request.lease.ttl_ms));
+        }
         matches!(
             (&self.operation, response),
             (

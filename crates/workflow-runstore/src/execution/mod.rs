@@ -1,8 +1,10 @@
 //! Host-owned execution contract. Lease fencing protects commits; it is not remote authentication.
 mod authority;
+mod checked;
 mod model;
 use crate::*;
 pub use authority::Authority;
+pub use checked::AcquireCheckedV1;
 pub use model::*;
 use workflow_worker::{Clock, WorkResult};
 
@@ -12,6 +14,14 @@ pub const MAX_EXECUTION_RECORDS: u64 = 10_000;
 
 pub trait ExecutionStore: RunStore {
     fn acquire(&mut self, request: &LeaseRequest, clock: &dyn Clock) -> Result<Lease>;
+    /// Older adapters remain source-compatible but must opt in to atomic checks.
+    /// Never emulate this operation with a read followed by ordinary acquire.
+    fn acquire_checked(&mut self, _: &AcquireCheckedV1, _: &dyn Clock) -> Result<Lease> {
+        Err(Error::new(
+            ErrorCode::InvalidRequest,
+            "checked acquire is unsupported by this adapter",
+        ))
+    }
     fn renew(&mut self, lease: &Lease, ttl_ms: u64, clock: &dyn Clock) -> Result<Lease>;
     fn release(&mut self, lease: &Lease, clock: &dyn Clock) -> Result<()>;
     fn tick_due(&mut self, lease: &Lease, clock: &dyn Clock) -> Result<Option<Committed>>;

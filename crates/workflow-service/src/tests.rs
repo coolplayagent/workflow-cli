@@ -1,5 +1,6 @@
 use super::*;
 mod artifacts;
+mod checked_acquire;
 mod cluster;
 mod effects;
 mod models;

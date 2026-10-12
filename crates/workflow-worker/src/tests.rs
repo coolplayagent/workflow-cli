@@ -544,3 +544,5 @@ fn time_spent_validating_cannot_start_expired_work_or_return_a_late_result() {
         ErrorCode::ClockError
     );
 }
+
+mod codec;
