@@ -444,3 +444,50 @@ fn effect_cli_claim_observe_and_inspect_preserve_the_exact_external_receipt() {
     assert_eq!(invoke(&["run", "verify", db, "demo-effect-release"]).0, 0);
     std::fs::remove_dir_all(dir).unwrap();
 }
+
+#[test]
+fn checked_acquire_cli_schema_strict_request_conflict_and_legacy_compatibility() {
+    let dir = std::env::temp_dir().join(format!("workflow-checked-cli-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let db_path = dir.join("runs.db");
+    let db = db_path.to_str().unwrap();
+    let input_path = dir.join("checked.json");
+    let input = input_path.to_str().unwrap();
+    let start = base().join("examples/runs/review-start.json");
+    assert_eq!(invoke(&["run", "init", db]).0, 0);
+    assert_eq!(invoke(&["run", "start", db, start.to_str().unwrap()]).0, 0);
+    let (code, baseline) = invoke(&["run", "acceptance", db, "demo-review-approved"]);
+    assert_eq!(code, 0);
+    let b = &baseline["result"];
+    let request = json!({"schema_version":1,"lease":{"run_id":"demo-review-approved","owner":"cli-owner","acquisition_id":"checked","ttl_ms":30000},"expected_run_digest":b["run_digest"],"expected_bundle_digest":b["bundle_digest"],"expected_snapshot_digest":b["snapshot_digest"],"expected_execution_digest":b["execution_digest"],"expected_snapshot_revision":b["revision"]});
+    let (code, schema) = invoke(&["schema", "run-acquire-checked-v1"]);
+    assert_eq!(code, 0);
+    assert!(schema.to_string().contains("expected_execution_digest"));
+    let mut missing = request.clone();
+    missing
+        .as_object_mut()
+        .unwrap()
+        .remove("expected_snapshot_digest");
+    std::fs::write(&input_path, serde_json::to_vec(&missing).unwrap()).unwrap();
+    assert_ne!(invoke(&["run", "acquire-checked-v1", db, input]).0, 0);
+    std::fs::write(&input_path, serde_json::to_vec(&request).unwrap()).unwrap();
+    let (code, acquired) = invoke(&["run", "acquire-checked-v1", db, input]);
+    assert_eq!(code, 0, "{acquired}");
+    assert_eq!(acquired["result"]["owner"], "cli-owner");
+    let (code, conflict) = invoke(&["run", "acquire-checked-v1", db, input]);
+    assert_eq!(code, 1);
+    assert_eq!(conflict["error"]["code"], "admission_conflict");
+    std::fs::write(
+        &input_path,
+        serde_json::to_vec(&acquired["result"]).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(invoke(&["run", "release", db, input]).0, 0);
+    let mut legacy = request["lease"].clone();
+    legacy["acquisition_id"] = json!("ordinary");
+    std::fs::write(&input_path, serde_json::to_vec(&legacy).unwrap()).unwrap();
+    let (code, ordinary) = invoke(&["run", "acquire", db, input]);
+    assert_eq!(code, 0);
+    assert_eq!(ordinary["result"]["epoch"], 2);
+    std::fs::remove_dir_all(dir).unwrap();
+}

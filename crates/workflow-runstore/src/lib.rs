@@ -29,6 +29,7 @@ pub enum ErrorCode {
     ArtifactRejected,
     LeaseBusy,
     LeaseConflict,
+    AdmissionConflict,
     AttemptInProgress,
     AttemptBudget,
     ManualReconciliation,
@@ -148,6 +149,7 @@ pub fn command_entry(
 pub fn schema(kind: &str) -> Result<String> {
     let schema = match kind {
         "lease" => schemars::schema_for!(LeaseRequest),
+        "acquire-checked-v1" => schemars::schema_for!(AcquireCheckedV1),
         "continuation" => schemars::schema_for!(ContinuationPlan),
         "handoff" => schemars::schema_for!(Handoff),
         "execution-record" => schemars::schema_for!(ExecutionRecord),

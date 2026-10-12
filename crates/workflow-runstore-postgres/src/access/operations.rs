@@ -377,6 +377,23 @@ impl AuthenticatedService {
             },
         )
     }
+    pub fn acquire_checked(&mut self, token: &str, request: &AcquireCheckedV1) -> Result<Lease> {
+        request.validate()?;
+        self.transact(
+            token,
+            &[Role::Scheduler, Role::Recovery, Role::Administrator],
+            "acquire_checked_v1",
+            &request.lease.run_id,
+            |tx, who| {
+                if request.lease.owner != who.id {
+                    return Err(denied());
+                }
+                who.change(tx, &request.lease.run_id, false, |s, c| {
+                    s.acquire_checked(request, c)
+                })
+            },
+        )
+    }
     pub fn release(&mut self, token: &str, lease: &Lease) -> Result<()> {
         self.transact(
             token,

@@ -149,6 +149,13 @@ impl RunStore for SqliteRunStore {
 mod tests;
 
 impl ExecutionStore for SqliteRunStore {
+    fn acquire_checked(
+        &mut self,
+        r: &AcquireCheckedV1,
+        c: &dyn workflow_worker::Clock,
+    ) -> Result<Lease> {
+        self.acquire_checked_lease(r, c)
+    }
     fn progress(
         &mut self,
         lease: &Lease,

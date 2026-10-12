@@ -194,6 +194,7 @@ pub fn run(
             | "run-handoff"
             | "run-receipt"
             | "run-lease"
+            | "run-acquire-checked-v1"
             | "run-execution-record"
             | "run-signal"
             | "run-migration-request"

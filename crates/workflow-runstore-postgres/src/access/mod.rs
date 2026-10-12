@@ -434,6 +434,18 @@ impl AuthenticatedService {
                 }
             }
         };
+        if let Err(error) = &result
+            && error.code == ErrorCode::AdmissionConflict
+        {
+            // This new precondition outcome promises no write, including audit.
+            // Dropping the outer transaction rolls back the entire operation.
+            // Other rejections retain the existing independently committed audit.
+            live(&mut tx, &who)?;
+            return Err(Error::new(
+                error.code.clone(),
+                "authorized baseline conflict",
+            ));
+        }
         audit(
             &mut tx,
             &who,

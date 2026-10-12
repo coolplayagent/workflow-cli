@@ -134,6 +134,10 @@ impl RunStore for PostgresRunStore {
 // Caller clocks cannot influence shared lease or effect authority. All executor
 // methods supply the primary database clock to the same validated reducer.
 impl ExecutionStore for PostgresRunStore {
+    fn acquire_checked(&mut self, r: &AcquireCheckedV1, _: &dyn Clock) -> Result<Lease> {
+        r.validate()?;
+        self.change(&r.lease.run_id, false, |s, c| s.acquire_checked(r, c))
+    }
     fn acquire(&mut self, r: &LeaseRequest, _: &dyn Clock) -> Result<Lease> {
         self.change(&r.run_id, false, |s, c| s.acquire(r, c))
     }

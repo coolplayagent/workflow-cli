@@ -26,12 +26,31 @@ impl SqliteRunStore {
         request: &LeaseRequest,
         clock: &dyn Clock,
     ) -> Result<Lease> {
+        self.acquire_lease_with_baseline(request, None, clock)
+    }
+    pub(crate) fn acquire_checked_lease(
+        &mut self,
+        request: &AcquireCheckedV1,
+        clock: &dyn Clock,
+    ) -> Result<Lease> {
+        request.validate()?;
+        self.acquire_lease_with_baseline(&request.lease, Some(request), clock)
+    }
+    fn acquire_lease_with_baseline(
+        &mut self,
+        request: &LeaseRequest,
+        expected: Option<&AcquireCheckedV1>,
+        clock: &dyn Clock,
+    ) -> Result<Lease> {
         let tx = self
             .connection
             .transaction_with_behavior(TransactionBehavior::Immediate)
             .map_err(storage)?;
         let r = crate::recovery::recover(&tx, &request.run_id, self.artifacts.as_deref())?;
-        let (mut a, _) = read(&tx, &r, self.artifacts.as_deref())?;
+        let (mut a, records) = read(&tx, &r, self.artifacts.as_deref())?;
+        if let Some(expected) = expected {
+            expected.check_baseline(r.engine.snapshot(), &records)?;
+        }
         let now = clock.now_unix_ms()?;
         if now < r.engine.snapshot().now_unix_ms {
             return Err(Error::new(
