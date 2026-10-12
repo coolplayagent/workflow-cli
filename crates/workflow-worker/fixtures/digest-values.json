@@ -1,0 +1,43 @@
+[
+  {
+    "id": "ordered",
+    "value": {
+      "z": 2,
+      "a": 1
+    }
+  },
+  {
+    "id": "nested",
+    "value": {
+      "outer": {
+        "z": [
+          true,
+          null,
+          1.25
+        ],
+        "a": {
+          "k": "v"
+        }
+      }
+    }
+  },
+  {
+    "id": "unicode",
+    "value": {
+      "text": "中文 café العربية 😀",
+      "escaped": "line\nquote\"slash\\\t",
+      "combining": "é"
+    }
+  },
+  {
+    "id": "limits",
+    "value": [
+      -9223372036854775808,
+      18446744073709551615,
+      -0.0,
+      1.0,
+      1.2345678901234567,
+      1e+30
+    ]
+  }
+]
