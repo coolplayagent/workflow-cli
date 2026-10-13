@@ -15,6 +15,32 @@ use std::{
 };
 const SOCKET: &str = "control.sock";
 const LIMIT: u64 = 65536;
+fn read_request(stream: &mut UnixStream) -> io::Result<Vec<u8>> {
+    let deadline = std::time::Instant::now() + Duration::from_millis(200);
+    let mut bytes = Vec::new();
+    let mut buffer = [0u8; 4097];
+    loop {
+        let remaining = deadline.saturating_duration_since(std::time::Instant::now());
+        if remaining.is_zero() {
+            return Err(io::Error::new(
+                io::ErrorKind::TimedOut,
+                "control request deadline elapsed",
+            ));
+        }
+        stream.set_read_timeout(Some(remaining))?;
+        let count = match stream.read(&mut buffer) {
+            Err(error) if error.kind() == io::ErrorKind::Interrupted => continue,
+            result => result?,
+        };
+        if count == 0 {
+            return Ok(bytes);
+        }
+        bytes.extend_from_slice(&buffer[..count]);
+        if bytes.len() > 4096 {
+            return Err(invalid("oversized control request"));
+        }
+    }
+}
 #[derive(Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)]
 enum Request {
@@ -188,14 +214,12 @@ impl Server {
             while !q.load(Ordering::Acquire) {
                 match listener.accept() {
                     Ok((mut stream, _)) => {
-                        let _ = stream.set_read_timeout(Some(Duration::from_millis(200)));
                         let _ = stream.set_write_timeout(Some(Duration::from_millis(200)));
-                        let mut bytes = vec![];
-                        if (&mut stream).take(4097).read_to_end(&mut bytes).is_err()
-                            || bytes.len() > 4096
-                        {
+                        // A per-read timeout alone lets trickled bytes retain the
+                        // sole listener forever and prevent daemon shutdown.
+                        let Ok(bytes) = read_request(&mut stream) else {
                             continue;
-                        }
+                        };
                         let reply = match serde_json::from_slice::<Request>(&bytes) {
                             Ok(Request::Status) => Reply::Status {
                                 status: Box::new(c.snapshot()),

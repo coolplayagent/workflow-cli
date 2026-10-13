@@ -27,6 +27,33 @@ fn info() -> Info {
     }
 }
 #[test]
+fn slow_control_requests_do_not_extend_the_listener_deadline() {
+    use std::io::Write;
+    let d = Dir::new();
+    let server = Server::start(&d.0, info()).unwrap();
+    let mut stream = std::os::unix::net::UnixStream::connect(d.0.join("control.sock")).unwrap();
+    stream.write_all(b"{").unwrap();
+    let sender = std::thread::spawn(move || {
+        for _ in 0..20 {
+            std::thread::sleep(Duration::from_millis(50));
+            if stream.write_all(b" ").is_err() {
+                break;
+            }
+        }
+    });
+    std::thread::sleep(Duration::from_millis(30));
+    let started = std::time::Instant::now();
+    let observation = inspect(&d.0).unwrap();
+    let elapsed = started.elapsed();
+    sender.join().unwrap();
+    assert_eq!(observation.availability, Availability::Responsive);
+    assert!(
+        elapsed < Duration::from_millis(600),
+        "status blocked for {elapsed:?}"
+    );
+    drop(server);
+}
+#[test]
 fn live_control_fences_stop_generation_and_drains_prior_admission() {
     let d = Dir::new();
     assert_eq!(inspect(&d.0).unwrap().availability, Availability::Stopped);
