@@ -92,7 +92,7 @@ pub struct Node {
     pub inputs: Contract,
     #[serde(default)]
     pub outputs: Contract,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "deserialize_bindings")]
     pub bindings: BTreeMap<String, Binding>,
     #[serde(default)]
     pub preconditions: Vec<Condition>,
@@ -165,6 +165,35 @@ pub enum Binding {
     WorkflowInput { field: String },
     NodeOutput { node: String, field: String },
     Literal { value: Value },
+}
+
+fn deserialize_bindings<'de, D>(deserializer: D) -> Result<BTreeMap<String, Binding>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    struct BindingsVisitor;
+    impl<'de> serde::de::Visitor<'de> for BindingsVisitor {
+        type Value = BTreeMap<String, Binding>;
+
+        fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+            formatter.write_str("a map of unique binding names")
+        }
+
+        fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
+        where
+            A: serde::de::MapAccess<'de>,
+        {
+            let mut bindings = BTreeMap::new();
+            while let Some(name) = map.next_key::<String>()? {
+                if bindings.contains_key(&name) {
+                    return Err(serde::de::Error::custom("duplicate binding name"));
+                }
+                bindings.insert(name, map.next_value()?);
+            }
+            Ok(bindings)
+        }
+    }
+    deserializer.deserialize_map(BindingsVisitor)
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]

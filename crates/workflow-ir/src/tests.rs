@@ -56,6 +56,73 @@ fn imports_fail_on_unknown_fields_duplicate_fields_and_trailing_documents() {
 }
 
 #[test]
+fn imports_reject_duplicate_binding_names_before_values_are_overwritten() {
+    let workflow = example();
+    let mut accepted = Vec::new();
+    for second_value in ["KEPT", "LOST"] {
+        let json = workflow.canonical_json().unwrap().replace(
+            "\"bindings\":{}",
+            &format!(
+                r#""bindings":{{"x":{{"source":"literal","value":"LOST"}},"\u0078":{{"source":"literal","value":"{second_value}"}}}}"#
+            ),
+        );
+        let yaml = workflow.to_yaml().unwrap().replace(
+            "bindings: {}",
+            &format!(
+                "bindings:\n    x: {{source: literal, value: LOST}}\n    x: {{source: literal, value: {second_value}}}"
+            ),
+        );
+        for (input, format, file) in [
+            (json, Format::Json, "bad.json"),
+            (yaml, Format::Yaml, "bad.yaml"),
+        ] {
+            let diagnostic = match parse(&input, format, file) {
+                Err(diagnostic) => diagnostic,
+                Ok(imported) => {
+                    accepted.push((file, second_value, imported.nodes[0].bindings.clone()));
+                    continue;
+                }
+            };
+            assert_eq!(diagnostic.code, "parse_error");
+            assert_eq!(diagnostic.file, file);
+            assert!(diagnostic.path.contains("nodes[0].bindings"));
+            assert!(diagnostic.message.contains("duplicate binding name"));
+        }
+    }
+    assert!(
+        accepted.is_empty(),
+        "duplicate bindings accepted: {accepted:?}"
+    );
+}
+
+#[test]
+fn imports_preserve_distinct_binding_names_and_canonical_roundtrips() {
+    let mut workflow = example();
+    workflow.nodes[0].bindings = BTreeMap::from([
+        (
+            "x".into(),
+            Binding::Literal {
+                value: json!("first"),
+            },
+        ),
+        (
+            "X".into(),
+            Binding::Literal {
+                value: json!("second"),
+            },
+        ),
+    ]);
+    for (input, format) in [
+        (workflow.canonical_json().unwrap(), Format::Json),
+        (workflow.to_yaml().unwrap(), Format::Yaml),
+    ] {
+        let imported = parse(&input, format, "valid").unwrap();
+        assert_eq!(imported, workflow);
+        assert_eq!(imported.digest().unwrap(), workflow.digest().unwrap());
+    }
+}
+
+#[test]
 fn nested_parse_diagnostics_retain_file_and_field_path() {
     let json = example()
         .canonical_json()
