@@ -12,6 +12,9 @@ struct fields, duplicate struct fields, unsupported schema versions and trailing
 documents are rejected. A CLI document is at most 1 MiB; graphs have at most 4096
 nodes and 16384 edges. Stable IDs are 1–128 ASCII letters, digits, `_`, `-` or `.`.
 Node and edge IDs are unique within their respective namespaces.
+Node binding names must also be unique in JSON and YAML documents. Repeating a
+binding name is a parse error, even when both values are identical; imports never
+choose one of the repeated bindings silently.
 
 Versions are opaque immutable release IDs with the same character set. Ranges,
 `latest`, `head`, `main`, `master`, `stable` and `x` are rejected. This is a syntax
